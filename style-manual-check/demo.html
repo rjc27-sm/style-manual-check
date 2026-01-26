@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="en-AU">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Style Manual Check – demo</title>
+    
+    <style>
+        :root {
+            --primary: #1a365d;
+            --primary-light: #2c5282;
+            --success: #276749;
+            --warning: #c05621;
+            --error: #c53030;
+            --gray-50: #f7fafc;
+            --gray-100: #edf2f7;
+            --gray-200: #e2e8f0;
+            --gray-300: #cbd5e0;
+            --gray-600: #718096;
+            --gray-700: #4a5568;
+            --gray-800: #2d3748;
+            --white: #ffffff;
+        }
+        
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            font-size: 14px;
+            line-height: 1.5;
+            color: var(--gray-800);
+            background: var(--gray-100);
+            display: flex;
+            min-height: 100vh;
+        }
+        
+        /* Two-panel layout for demo */
+        .demo-container {
+            display: flex;
+            width: 100%;
+            max-width: 1400px;
+            margin: 0 auto;
+            gap: 20px;
+            padding: 20px;
+        }
+        
+        .document-panel {
+            flex: 1;
+            background: var(--white);
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            padding: 30px;
+        }
+        
+        .document-panel h2 {
+            font-size: 14px;
+            color: var(--gray-600);
+            margin-bottom: 20px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .document-panel textarea {
+            width: 100%;
+            height: 400px;
+            padding: 16px;
+            font-family: 'Georgia', serif;
+            font-size: 14px;
+            line-height: 1.8;
+            border: 1px solid var(--gray-300);
+            border-radius: 6px;
+            resize: vertical;
+        }
+        
+        .taskpane-panel {
+            width: 350px;
+            background: var(--gray-50);
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            padding: 16px;
+            max-height: calc(100vh - 40px);
+            overflow-y: auto;
+        }
+        
+        /* Header */
+        .header {
+            margin-bottom: 20px;
+        }
+        
+        .header h1 {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--primary);
+            margin-bottom: 4px;
+        }
+        
+        .header p {
+            font-size: 12px;
+            color: var(--gray-600);
+        }
+        
+        /* Scan button */
+        .scan-btn {
+            width: 100%;
+            padding: 12px 16px;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--white);
+            background: var(--primary);
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.2s;
+            margin-bottom: 16px;
+        }
+        
+        .scan-btn:hover {
+            background: var(--primary-light);
+        }
+        
+        /* Status bar */
+        .status {
+            padding: 10px 12px;
+            background: var(--gray-100);
+            border-radius: 6px;
+            font-size: 13px;
+            color: var(--gray-700);
+            margin-bottom: 16px;
+        }
+        
+        .status.success {
+            background: #c6f6d5;
+            color: var(--success);
+        }
+        
+        /* Summary stats */
+        .summary {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        
+        .stat {
+            flex: 1;
+            padding: 12px;
+            background: var(--white);
+            border: 1px solid var(--gray-200);
+            border-radius: 6px;
+            text-align: center;
+        }
+        
+        .stat-number {
+            font-size: 24px;
+            font-weight: 600;
+            color: var(--primary);
+        }
+        
+        .stat-label {
+            font-size: 11px;
+            color: var(--gray-600);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        /* Issues list */
+        .issues-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        
+        .issues-header h2 {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--gray-800);
+        }
+        
+        .filter-select {
+            padding: 4px 8px;
+            font-size: 12px;
+            border: 1px solid var(--gray-300);
+            border-radius: 4px;
+            background: var(--white);
+        }
+        
+        .issues-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        /* Individual issue card */
+        .issue-card {
+            background: var(--white);
+            border: 1px solid var(--gray-200);
+            border-radius: 8px;
+            padding: 14px;
+            border-left: 4px solid var(--warning);
+        }
+        
+        .issue-card.spelling {
+            border-left-color: var(--error);
+        }
+        
+        .issue-card.punctuation {
+            border-left-color: var(--warning);
+        }
+        
+        .issue-card.dates {
+            border-left-color: var(--primary);
+        }
+        
+        .issue-card.capitalisation {
+            border-left-color: #805ad5;
+        }
+
+        .issue-card.watch-words {
+            border-left-color: #2b6cb0;
+        }
+        
+        .issue-type {
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--gray-600);
+            margin-bottom: 6px;
+        }
+        
+        .issue-found {
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 13px;
+            background: #fed7d7;
+            padding: 2px 6px;
+            border-radius: 3px;
+            color: var(--error);
+        }
+        
+        .issue-arrow {
+            color: var(--gray-400);
+            margin: 0 8px;
+        }
+        
+        .issue-suggestion {
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 13px;
+            background: #c6f6d5;
+            padding: 2px 6px;
+            border-radius: 3px;
+            color: var(--success);
+        }
+        
+        .issue-text {
+            margin: 8px 0;
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 4px;
+        }
+        
+        .issue-explanation {
+            font-size: 12px;
+            color: var(--gray-600);
+            margin-bottom: 12px;
+            padding: 8px;
+            background: var(--gray-50);
+            border-radius: 4px;
+        }
+        
+        .issue-explanation a {
+            color: var(--primary);
+            text-decoration: none;
+        }
+        
+        .issue-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            padding: 6px 12px;
+            font-size: 12px;
+            font-weight: 500;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .btn-accept {
+            background: var(--success);
+            color: var(--white);
+            border: none;
+        }
+        
+        .btn-accept:hover {
+            background: #22543d;
+        }
+        
+        .btn-ignore {
+            background: var(--white);
+            color: var(--gray-700);
+            border: 1px solid var(--gray-300);
+        }
+        
+        .btn-ignore:hover {
+            background: var(--gray-100);
+        }
+        
+        .btn-fix-all {
+            background: var(--white);
+            color: var(--primary);
+            border: 1px solid var(--primary);
+        }
+        
+        .btn-fix-all:hover {
+            background: var(--gray-100);
+        }
+        
+        /* Footer */
+        .footer {
+            margin-top: 24px;
+            padding-top: 16px;
+            border-top: 1px solid var(--gray-200);
+            font-size: 11px;
+            color: var(--gray-600);
+            text-align: center;
+        }
+        
+        .footer a {
+            color: var(--primary);
+            text-decoration: none;
+        }
+        
+        .hidden {
+            display: none !important;
+        }
+        
+        /* Demo notice */
+        .demo-notice {
+            background: #fef3c7;
+            border: 1px solid #f59e0b;
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 20px;
+            font-size: 12px;
+            color: #92400e;
+        }
+    </style>
+</head>
+<body>
+    <div class="demo-container">
+        <!-- Document panel (simulates Word) -->
+        <div class="document-panel">
+            <h2>📄 Sample document (edit to test)</h2>
+            <textarea id="documentText">Annual report summary
+
+The organization has finalized its strategic plan for 2024–2025. This document summarizes the key initiatives we are prioritizing this year, e.g., workforce planning & digital transformation.
+
+Key Achievements For This Year
+
+Our team analyzed the data from January 15, 2024 and recognized several important trends. The program—which was authorized last year—exceeded expectations. It would of been difficult to achieve these results without the team's dedication.
+
+We utilized new methodologies to maximize efficiency.  The center has been modernized and all staff have been familiarized with the new systems. The training programme was well received.
+
+In order to facilitate the implementation of these changes, we will endeavour to provide assistance with the transition. Prior to commencing, staff should obtain the necessary documentation.
+
+Staff Development And Training Programs
+
+Irregardless of budget constraints, we supported 12 staff to complete their master's degree qualifications. This is a deep-seeded commitment to professional development. N.B. Funding will continue through the training budget.
+
+The argument that training is a mute point should be rejected. Our judgment is that continued investment is essential. Research by Smith et al. supports this conclusion.
+
+Next Steps For The Team
+
+The 1ˢᵗ quarterly review is scheduled for AEST 14:00 on the 3ʳᵈ of March. This will be our 21ˢᵗ annual planning session.
+
+Please organize your submissions by February 28, 2024. Various formats are acceptable, i.e., Word, PDF, etc. Contact the program coordinator for more information. WW2 veterans will be recognised at the ceremony.</textarea>
+        </div>
+        
+        <!-- Taskpane (the add-in UI) -->
+        <div class="taskpane-panel">
+            <div class="demo-notice">
+                ⚠️ This is a standalone demo. In Word, this panel appears on the right side of the document.
+            </div>
+            
+            <div class="header">
+                <h1>Style Manual Check</h1>
+                <p>Based on the Australian Government Style Manual</p>
+            </div>
+            
+            <button id="scanBtn" class="scan-btn">
+                Scan document
+            </button>
+            
+            <div id="summary" class="summary hidden">
+                <div class="stat">
+                    <div id="issueCount" class="stat-number">0</div>
+                    <div class="stat-label">Issues</div>
+                </div>
+                <div class="stat">
+                    <div id="fixedCount" class="stat-number">0</div>
+                    <div class="stat-label">Fixed</div>
+                </div>
+            </div>
+            
+            <div id="issuesContainer" class="hidden">
+                <div class="issues-header">
+                    <h2>Issues found</h2>
+                    <select id="filterSelect" class="filter-select">
+                        <option value="all">All types</option>
+                        <option value="spelling">Spelling</option>
+                        <option value="punctuation">Punctuation</option>
+                        <option value="dates">Dates</option>
+                        <option value="capitalisation">Capitalisation</option>
+                        <option value="watch-words">Watch words</option>
+                    </select>
+                </div>
+                
+                <div id="issuesList" class="issues-list">
+                    <!-- Issues will be inserted here -->
+                </div>
+            </div>
+            
+            <div id="emptyState" class="status success hidden">
+                ✓ No issues found. Your document follows Australian style.
+            </div>
+            
+            <div class="footer">
+                Based on the <a href="https://www.stylemanual.gov.au/" target="_blank">Australian Government Style Manual</a>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Load the rule definitions -->
+    <script src="src/spellings.js"></script>
+    <script src="src/rules.js"></script>
+    
+    <script>
+        // Demo-specific code (simulates the Word add-in behavior)
+        
+        let allIssues = [];
+        let fixedCount = 0;
+        let currentFilter = 'all';
+
+        // Display names for categories (handles hyphenated IDs)
+        const categoryDisplayNames = {
+            'watch-words': 'Watch words'
+        };
+        
+        const elements = {
+            documentText: document.getElementById('documentText'),
+            scanBtn: document.getElementById('scanBtn'),
+            summary: document.getElementById('summary'),
+            issueCount: document.getElementById('issueCount'),
+            fixedCount: document.getElementById('fixedCount'),
+            issuesContainer: document.getElementById('issuesContainer'),
+            issuesList: document.getElementById('issuesList'),
+            filterSelect: document.getElementById('filterSelect'),
+            emptyState: document.getElementById('emptyState')
+        };
+        
+        elements.scanBtn.addEventListener('click', scanDocument);
+        elements.filterSelect.addEventListener('change', (e) => {
+            currentFilter = e.target.value;
+            displayResults();
+        });
+        
+        function scanDocument() {
+            const text = elements.documentText.value;
+            allIssues = checkText(text);
+            
+            // Add IDs to issues
+            allIssues.forEach((issue, i) => {
+                issue.id = 'issue-' + i;
+            });
+            
+            displayResults();
+        }
+        
+        function displayResults() {
+            const filteredIssues = currentFilter === 'all' 
+                ? allIssues 
+                : allIssues.filter(i => i.rule.category === currentFilter);
+            
+            elements.summary.classList.remove('hidden');
+            elements.issueCount.textContent = allIssues.length;
+            elements.fixedCount.textContent = fixedCount;
+            
+            if (allIssues.length === 0) {
+                elements.emptyState.classList.remove('hidden');
+                elements.issuesContainer.classList.add('hidden');
+            } else {
+                elements.emptyState.classList.add('hidden');
+                elements.issuesContainer.classList.remove('hidden');
+                renderIssuesList(filteredIssues);
+            }
+        }
+        
+        function renderIssuesList(issues) {
+            elements.issuesList.innerHTML = '';
+            
+            // Group by rule for "Fix all" count
+            const countByRule = {};
+            allIssues.forEach(i => {
+                countByRule[i.rule.id] = (countByRule[i.rule.id] || 0) + 1;
+            });
+            
+            for (const issue of issues) {
+                const card = document.createElement('div');
+                card.className = `issue-card ${issue.rule.category}`;
+                
+                const sameTypeCount = countByRule[issue.rule.id];
+                
+                card.innerHTML = `
+                    <div class="issue-type">${categoryDisplayNames[issue.rule.category] || issue.rule.category}</div>
+                    <div class="issue-text">
+                        <span class="issue-found">${escapeHtml(issue.found)}</span>
+                        <span class="issue-arrow">→</span>
+                        <span class="issue-suggestion">${escapeHtml(issue.suggestion)}</span>
+                    </div>
+                    <div class="issue-explanation">
+                        ${escapeHtml(issue.rule.description)}
+                        ${issue.rule.link ? `<br><a href="${issue.rule.link}" target="_blank">Learn more →</a>` : ''}
+                    </div>
+                    <div class="issue-actions">
+                        <button class="btn btn-accept" onclick="acceptFix('${issue.id}')">Accept</button>
+                        <button class="btn btn-ignore" onclick="ignoreIssue('${issue.id}')">Ignore</button>
+                        ${sameTypeCount > 1 ? `<button class="btn btn-fix-all" onclick="fixAllOfType('${issue.rule.id}')">Fix all ${sameTypeCount}</button>` : ''}
+                    </div>
+                `;
+                
+                elements.issuesList.appendChild(card);
+            }
+        }
+        
+        function acceptFix(issueId) {
+            const issue = allIssues.find(i => i.id === issueId);
+            if (!issue) return;
+            
+            // Replace in the textarea
+            const text = elements.documentText.value;
+            elements.documentText.value = text.replace(issue.found, issue.suggestion);
+            
+            // Remove from issues
+            allIssues = allIssues.filter(i => i.id !== issueId);
+            fixedCount++;
+            displayResults();
+        }
+        
+        function ignoreIssue(issueId) {
+            allIssues = allIssues.filter(i => i.id !== issueId);
+            displayResults();
+        }
+        
+        function fixAllOfType(ruleId) {
+            const toFix = allIssues.filter(i => i.rule.id === ruleId);
+            
+            let text = elements.documentText.value;
+            for (const issue of toFix) {
+                text = text.split(issue.found).join(issue.suggestion);
+            }
+            elements.documentText.value = text;
+            
+            allIssues = allIssues.filter(i => i.rule.id !== ruleId);
+            fixedCount += toFix.length;
+            displayResults();
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    </script>
+</body>
+</html>
