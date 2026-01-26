@@ -491,14 +491,9 @@ const RULES = [
                 const item2 = match[2];
                 const item3 = match[3];
 
-                // Check if the last item extends further with " and " (compound item)
-                // For example: "retail, wholesale, and accommodation and food services"
-                const endPos = match.index + fullMatch.length;
-                const following = text.substring(endPos, endPos + 50);
-                const beforePunctuation = following.split(/[,.\n]/)[0];
-
-                // If text after our match contains " and ", the last item is compound - don't flag
-                if (/\s+and\s+/i.test(beforePunctuation)) {
+                // Don't flag if the last item is compound (contains "and")
+                // For example: "accommodation and food services"
+                if (/\band\b/i.test(item3)) {
                     continue;
                 }
 
@@ -506,7 +501,7 @@ const RULES = [
                 issues.push({
                     found: fullMatch,
                     suggestion: suggestion,
-                    // No autoFix - user must decide if clarity requires the comma
+                    autoFix: suggestion,
                     position: match.index,
                     rule: this
                 });
