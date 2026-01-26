@@ -473,6 +473,47 @@ const RULES = [
             return issues;
         }
     },
+    {
+        id: 'punct-serial-comma',
+        name: 'Serial comma (Oxford comma)',
+        category: 'punctuation',
+        description: 'Restrict use of the serial comma. Use it only when needed for clarity, such as when the last item contains \'and\' or when a defining phrase applies only to the final item.',
+        link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/punctuation/commas',
+        check: function(text) {
+            const issues = [];
+            // Match list pattern: "item, item, and item"
+            // Each item can be 1-4 words to catch phrases like "the red car"
+            const regex = /\b((?:\w+\s+){0,3}\w+),\s+((?:\w+\s+){0,3}\w+),\s+and\s+((?:\w+\s+){0,3}\w+)\b/gi;
+            let match;
+            while ((match = regex.exec(text)) !== null) {
+                const fullMatch = match[0];
+                const item1 = match[1];
+                const item2 = match[2];
+                const item3 = match[3];
+
+                // Check if the last item extends further with " and " (compound item)
+                // For example: "retail, wholesale, and accommodation and food services"
+                const endPos = match.index + fullMatch.length;
+                const following = text.substring(endPos, endPos + 50);
+                const beforePunctuation = following.split(/[,.\n]/)[0];
+
+                // If text after our match contains " and ", the last item is compound - don't flag
+                if (/\s+and\s+/i.test(beforePunctuation)) {
+                    continue;
+                }
+
+                const suggestion = item1 + ', ' + item2 + ' and ' + item3;
+                issues.push({
+                    found: fullMatch,
+                    suggestion: suggestion,
+                    // No autoFix - user must decide if clarity requires the comma
+                    position: match.index,
+                    rule: this
+                });
+            }
+            return issues;
+        }
+    },
 
     // ==================== DATES AND TIME RULES ====================
     {
