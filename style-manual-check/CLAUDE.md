@@ -7,7 +7,7 @@ Style Manual Check is a Microsoft Word add-in that checks documents against the 
 ## Current status
 
 **Completed:**
-- Core rule engine with 48 rules across 8 categories
+- Core rule engine with 48 rules across 9 categories
 - Browser-based demo (demo.html) for testing rules
 - Comprehensive word lists in src/spellings.js
 - Rule definitions in src/rules.js
@@ -41,7 +41,8 @@ style-manual-check/
 5. **Dates and time** (11 rules) - Date formats, time formats, decades, year spans, ordinals in dates
 6. **Headings** (4 rules) - Title case, length, full stops, all caps
 7. **Government terms** (6 rules) - Commonwealth government, minister/secretary prepositions, generic references
-8. **Readability** (1 rule) - Sentence length over 25 words
+8. **Watch words** (1 rule) - Plain language alternatives for jargon and complex phrases
+9. **Readability** (1 rule) - Sentence length over 25 words
 
 ## Key Style Manual principles to follow
 
