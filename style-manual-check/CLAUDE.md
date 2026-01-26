@@ -7,7 +7,7 @@ Style Manual Check is a Microsoft Word add-in that checks documents against the 
 ## Current status
 
 **Completed:**
-- Core rule engine with 42 rules across 7 categories
+- Core rule engine with 47 rules across 8 categories
 - Browser-based demo (demo.html) for testing rules
 - Comprehensive word lists in src/spellings.js
 - Rule definitions in src/rules.js
@@ -26,7 +26,7 @@ style-manual-check/
 ├── README.md           # User-facing documentation
 ├── demo.html           # Browser demo for testing rules
 ├── src/
-│   ├── rules.js        # Rule definitions (42 rules)
+│   ├── rules.js        # Rule definitions (47 rules)
 │   └── spellings.js    # Word dictionaries (US→AU, common errors)
 └── docs/
     └── (documentation files)
@@ -40,7 +40,8 @@ style-manual-check/
 4. **Punctuation** (11 rules) - Dashes, quotes, serial comma, ampersands, superscript ordinals
 5. **Dates and time** (11 rules) - Date formats, time formats, decades, year spans, ordinals in dates
 6. **Headings** (4 rules) - Title case, length, full stops, all caps
-7. **Readability** (1 rule) - Sentence length over 25 words
+7. **Government terms** (5 rules) - Commonwealth government, minister/secretary prepositions, generic references
+8. **Readability** (1 rule) - Sentence length over 25 words
 
 ## Key Style Manual principles to follow
 
@@ -54,6 +55,8 @@ style-manual-check/
 - Use 'program' not 'programme' (Australian Government preference)
 - Time zones come after the time: '14:00 AEST' not 'AEST 14:00'
 - Keep sentences under 25 words for readability
+- Use 'Australian Government', not 'Commonwealth government'
+- Use 'Minister for [portfolio]', not 'Minister of [portfolio]'
 
 ## UI text requirements
 
@@ -68,6 +71,7 @@ The add-in's own interface text must follow Style Manual rules:
 - Spelling: https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/spelling
 - Headings: https://www.stylemanual.gov.au/structuring-content/headings
 - Quotation marks: https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/punctuation/quotation-marks
+- Government terms: https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/names-and-terms/government-terms
 
 ## Technical notes
 

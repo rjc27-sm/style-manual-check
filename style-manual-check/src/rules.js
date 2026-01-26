@@ -1249,6 +1249,131 @@ const RULES = [
         }
     },
 
+    // ==================== GOVERNMENT TERMS ====================
+    {
+        id: 'govt-commonwealth-government',
+        name: 'Commonwealth government',
+        category: 'government-terms',
+        description: 'Use \'Australian Government\', not \'Commonwealth government\', to refer to the national government of Australia.',
+        link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/names-and-terms/government-terms',
+        check: function(text) {
+            const issues = [];
+            const regex = /\bCommonwealth government\b/gi;
+            let match;
+            while ((match = regex.exec(text)) !== null) {
+                issues.push({
+                    found: match[0],
+                    suggestion: 'Australian Government',
+                    autoFix: 'Australian Government',
+                    position: match.index,
+                    rule: this
+                });
+            }
+            return issues;
+        }
+    },
+    {
+        id: 'govt-minister-preposition',
+        name: 'Minister of (wrong preposition)',
+        category: 'government-terms',
+        description: 'Use \'Minister for\', not \'Minister of\', when referring to a minister\'s portfolio.',
+        link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/names-and-terms/government-terms',
+        check: function(text) {
+            const issues = [];
+            // Match "Minister of [Portfolio]" - portfolio typically starts with capital
+            const regex = /\bMinister of ([A-Z][a-zA-Z]*(?:\s+(?:and\s+)?[A-Z][a-zA-Z]*)*)\b/g;
+            let match;
+            while ((match = regex.exec(text)) !== null) {
+                const portfolio = match[1];
+                const replacement = 'Minister for ' + portfolio;
+                issues.push({
+                    found: match[0],
+                    suggestion: replacement,
+                    autoFix: replacement,
+                    position: match.index,
+                    rule: this
+                });
+            }
+            return issues;
+        }
+    },
+    {
+        id: 'govt-secretary-preposition',
+        name: 'Secretary for (wrong preposition)',
+        category: 'government-terms',
+        description: 'Use \'Secretary of\', not \'Secretary for\', when referring to a departmental secretary.',
+        link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/names-and-terms/government-terms',
+        check: function(text) {
+            const issues = [];
+            // Match "Secretary for the Department" or "Secretary for [Department Name]"
+            const regex = /\bSecretary for (the Department|[A-Z][a-zA-Z]*(?:\s+[a-zA-Z]+)*)\b/g;
+            let match;
+            while ((match = regex.exec(text)) !== null) {
+                const dept = match[1];
+                const replacement = 'Secretary of ' + dept;
+                issues.push({
+                    found: match[0],
+                    suggestion: replacement,
+                    autoFix: replacement,
+                    position: match.index,
+                    rule: this
+                });
+            }
+            return issues;
+        }
+    },
+    {
+        id: 'govt-generic-department',
+        name: 'Generic department reference',
+        category: 'government-terms',
+        description: 'Use lower case for generic references to departments. Write \'the department\', not \'the Department\'.',
+        link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/names-and-terms/government-terms',
+        check: function(text) {
+            const issues = [];
+            // Match "the Department" NOT followed by "of" (which would indicate a formal name)
+            const regex = /\bthe Department\b(?!\s+of\b)/g;
+            let match;
+            while ((match = regex.exec(text)) !== null) {
+                issues.push({
+                    found: match[0],
+                    suggestion: 'the department',
+                    autoFix: 'the department',
+                    position: match.index,
+                    rule: this
+                });
+            }
+            return issues;
+        }
+    },
+    {
+        id: 'govt-generic-agency',
+        name: 'Generic agency reference',
+        category: 'government-terms',
+        description: 'Use lower case for generic references to agencies, authorities and commissions.',
+        link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/names-and-terms/government-terms',
+        check: function(text) {
+            const issues = [];
+            // Match "the Agency", "the Authority", "the Commission" when standalone
+            // Don't flag if followed by "of", "for", or another capital letter (formal name)
+            const terms = ['Agency', 'Authority', 'Commission'];
+            for (const term of terms) {
+                const regex = new RegExp('\\bthe ' + term + '\\b(?!\\s+(?:of|for|[A-Z]))', 'g');
+                let match;
+                while ((match = regex.exec(text)) !== null) {
+                    const replacement = 'the ' + term.toLowerCase();
+                    issues.push({
+                        found: match[0],
+                        suggestion: replacement,
+                        autoFix: replacement,
+                        position: match.index,
+                        rule: this
+                    });
+                }
+            }
+            return issues;
+        }
+    },
+
     // ==================== READABILITY RULES ====================
     {
         id: 'readability-sentence-length',

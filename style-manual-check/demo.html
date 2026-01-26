@@ -227,6 +227,10 @@
             border-left-color: #319795;
         }
 
+        .issue-card.government-terms {
+            border-left-color: #d69e2e;
+        }
+
         .issue-type {
             font-size: 10px;
             font-weight: 600;
@@ -398,7 +402,9 @@ The meeting is on Thursday, 15 August at 10.30 am in the morning. The deadline w
 
 The policy is often described as "innovative" by stakeholders. The term 'stakeholder,' which appears frequently, should be used sparingly. The word 'synergy,' meaning combined effect, is overused.
 
-The priorities are efficiency, quality, and value. The industries most affected are retail, wholesale, and accommodation and food services.</textarea>
+The priorities are efficiency, quality, and value. The industries most affected are retail, wholesale, and accommodation and food services.
+
+Defence is a Commonwealth government responsibility. The Department of Finance owns the policy. The Department has been working on it for months. The Minister of Education announced the new policy. The Secretary for the Department of Health attended. The Agency will continue its work.</textarea>
         </div>
         
         <!-- Taskpane (the add-in UI) -->
@@ -436,6 +442,7 @@ The priorities are efficiency, quality, and value. The industries most affected 
                         <option value="punctuation">Punctuation</option>
                         <option value="dates-and-time">Dates and time</option>
                         <option value="headings">Headings</option>
+                        <option value="government-terms">Government terms</option>
                         <option value="readability">Readability</option>
                         <option value="watch-words">Watch words</option>
                     </select>
@@ -470,7 +477,8 @@ The priorities are efficiency, quality, and value. The industries most affected 
         // Display names for categories (handles hyphenated IDs)
         const categoryDisplayNames = {
             'watch-words': 'Watch words',
-            'dates-and-time': 'Dates and time'
+            'dates-and-time': 'Dates and time',
+            'government-terms': 'Government terms'
         };
         
         const elements = {
