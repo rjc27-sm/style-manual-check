@@ -386,6 +386,8 @@ Next Steps For The Team
 
 The 1ˢᵗ quarterly review is scheduled for AEST 14:00 on the 3ʳᵈ of March. This will be our 21ˢᵗ annual planning session.
 
+The 2023-24 financial year saw significant growth. The program - which ran from 2020-2023 - exceeded all targets.
+
 Please organize your submissions by February 28, 2024. Various formats are acceptable, i.e., Word, PDF, etc. Contact the program coordinator for more information. WW2 veterans will be recognised at the ceremony.</textarea>
         </div>
         
@@ -435,7 +437,7 @@ Please organize your submissions by February 28, 2024. Various formats are accep
             </div>
             
             <div id="emptyState" class="status success hidden">
-                ✓ No issues found. Your document follows Australian style.
+                ✓ Check complete
             </div>
             
             <div class="footer">
@@ -521,9 +523,12 @@ Please organize your submissions by February 28, 2024. Various formats are accep
             for (const issue of issues) {
                 const card = document.createElement('div');
                 card.className = `issue-card ${issue.rule.category}`;
-                
-                const sameTypeCount = countByRule[issue.rule.id];
-                
+
+                // Only count fixable issues for "Fix all" button
+                const fixableOfType = allIssues.filter(i => i.rule.id === issue.rule.id && i.autoFix);
+                const sameTypeCount = fixableOfType.length;
+                const canAutoFix = !!issue.autoFix;
+
                 card.innerHTML = `
                     <div class="issue-type">${categoryDisplayNames[issue.rule.category] || issue.rule.category}</div>
                     <div class="issue-text">
@@ -536,24 +541,24 @@ Please organize your submissions by February 28, 2024. Various formats are accep
                         ${issue.rule.link ? `<br><a href="${issue.rule.link}" target="_blank">Learn more →</a>` : ''}
                     </div>
                     <div class="issue-actions">
-                        <button class="btn btn-accept" onclick="acceptFix('${issue.id}')">Accept</button>
+                        ${canAutoFix ? `<button class="btn btn-accept" onclick="acceptFix('${issue.id}')">Accept</button>` : ''}
                         <button class="btn btn-ignore" onclick="ignoreIssue('${issue.id}')">Ignore</button>
-                        ${sameTypeCount > 1 ? `<button class="btn btn-fix-all" onclick="fixAllOfType('${issue.rule.id}')">Fix all ${sameTypeCount}</button>` : ''}
+                        ${canAutoFix && sameTypeCount > 1 ? `<button class="btn btn-fix-all" onclick="fixAllOfType('${issue.rule.id}')">Fix all ${sameTypeCount}</button>` : ''}
                     </div>
                 `;
-                
+
                 elements.issuesList.appendChild(card);
             }
         }
         
         function acceptFix(issueId) {
             const issue = allIssues.find(i => i.id === issueId);
-            if (!issue) return;
-            
-            // Replace in the textarea
+            if (!issue || !issue.autoFix) return;
+
+            // Replace in the textarea using autoFix (the actual replacement text)
             const text = elements.documentText.value;
-            elements.documentText.value = text.replace(issue.found, issue.suggestion);
-            
+            elements.documentText.value = text.replace(issue.found, issue.autoFix);
+
             // Remove from issues
             allIssues = allIssues.filter(i => i.id !== issueId);
             fixedCount++;
@@ -566,15 +571,16 @@ Please organize your submissions by February 28, 2024. Various formats are accep
         }
         
         function fixAllOfType(ruleId) {
-            const toFix = allIssues.filter(i => i.rule.id === ruleId);
-            
+            // Only fix issues that have autoFix
+            const toFix = allIssues.filter(i => i.rule.id === ruleId && i.autoFix);
+
             let text = elements.documentText.value;
             for (const issue of toFix) {
-                text = text.split(issue.found).join(issue.suggestion);
+                text = text.split(issue.found).join(issue.autoFix);
             }
             elements.documentText.value = text;
-            
-            allIssues = allIssues.filter(i => i.rule.id !== ruleId);
+
+            allIssues = allIssues.filter(i => !(i.rule.id === ruleId && i.autoFix));
             fixedCount += toFix.length;
             displayResults();
         }

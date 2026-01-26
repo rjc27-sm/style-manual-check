@@ -20,9 +20,11 @@ const RULES = [
                 const word = match[1];
                 const lower = word.toLowerCase();
                 if (SPELLINGS[lower]) {
+                    const replacement = preserveCase(word, SPELLINGS[lower]);
                     issues.push({
                         found: word,
-                        suggestion: preserveCase(word, SPELLINGS[lower]),
+                        suggestion: replacement,
+                        autoFix: replacement,
                         position: match.index,
                         rule: this
                     });
@@ -45,9 +47,11 @@ const RULES = [
                 const word = match[1];
                 const lower = word.toLowerCase();
                 if (SPELLINGS[lower]) {
+                    const replacement = preserveCase(word, SPELLINGS[lower]);
                     issues.push({
                         found: word,
-                        suggestion: preserveCase(word, SPELLINGS[lower]),
+                        suggestion: replacement,
+                        autoFix: replacement,
                         position: match.index,
                         rule: this
                     });
@@ -71,9 +75,11 @@ const RULES = [
                 const regex = new RegExp('\\b(' + usWord + ')\\b', 'gi');
                 let match;
                 while ((match = regex.exec(text)) !== null) {
+                    const replacement = preserveCase(match[1], SPELLINGS[usWord]);
                     issues.push({
                         found: match[1],
-                        suggestion: preserveCase(match[1], SPELLINGS[usWord]),
+                        suggestion: replacement,
+                        autoFix: replacement,
                         position: match.index,
                         rule: this
                     });
@@ -97,9 +103,11 @@ const RULES = [
                 const regex = new RegExp('\\b(' + usWord + ')\\b', 'gi');
                 let match;
                 while ((match = regex.exec(text)) !== null) {
+                    const replacement = preserveCase(match[1], SPELLINGS[usWord]);
                     issues.push({
                         found: match[1],
-                        suggestion: preserveCase(match[1], SPELLINGS[usWord]),
+                        suggestion: replacement,
+                        autoFix: replacement,
                         position: match.index,
                         rule: this
                     });
@@ -121,9 +129,11 @@ const RULES = [
                 const regex = new RegExp('\\b(' + usWord + ')\\b', 'gi');
                 let match;
                 while ((match = regex.exec(text)) !== null) {
+                    const replacement = preserveCase(match[1], SPELLINGS[usWord]);
                     issues.push({
                         found: match[1],
-                        suggestion: preserveCase(match[1], SPELLINGS[usWord]),
+                        suggestion: replacement,
+                        autoFix: replacement,
                         position: match.index,
                         rule: this
                     });
@@ -149,9 +159,11 @@ const RULES = [
                 const regex = new RegExp('\\b(' + usWord + ')\\b', 'gi');
                 let match;
                 while ((match = regex.exec(text)) !== null) {
+                    const replacement = preserveCase(match[1], SPELLINGS[usWord]);
                     issues.push({
                         found: match[1],
-                        suggestion: preserveCase(match[1], SPELLINGS[usWord]),
+                        suggestion: replacement,
+                        autoFix: replacement,
                         position: match.index,
                         rule: this
                     });
@@ -179,9 +191,11 @@ const RULES = [
                     const regex = new RegExp('\\b(' + usWord + ')\\b', 'gi');
                     let match;
                     while ((match = regex.exec(text)) !== null) {
+                        const replacement = preserveCase(match[1], SPELLINGS[usWord]);
                         issues.push({
                             found: match[1],
-                            suggestion: preserveCase(match[1], SPELLINGS[usWord]),
+                            suggestion: replacement,
+                            autoFix: replacement,
                             position: match.index,
                             rule: this
                         });
@@ -208,9 +222,11 @@ const RULES = [
                 const regex = new RegExp('\\b' + escaped + '\\b', 'gi');
                 let match;
                 while ((match = regex.exec(text)) !== null) {
+                    const replacement = preserveCase(match[0], correct);
                     issues.push({
                         found: match[0],
-                        suggestion: preserveCase(match[0], correct),
+                        suggestion: replacement,
+                        autoFix: replacement,
                         position: match.index,
                         rule: this
                     });
@@ -223,17 +239,18 @@ const RULES = [
         id: 'error-judgment',
         name: 'Judgment spelling',
         category: 'spelling',
-        description: 'Use \'judgement\' in Australian English, except for legal judgments (court decisions).',
+        description: 'Use \'judgement\' in Australian English. Note: legal judgments (court decisions) use \'judgment\'.',
         link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/spelling/common-misspellings-and-word-confusion',
         check: function(text) {
             const issues = [];
             const regex = /\b(judgment|judgments)\b/gi;
             let match;
             while ((match = regex.exec(text)) !== null) {
-                const suggestion = match[0].toLowerCase() === 'judgment' ? 'judgement' : 'judgements';
+                const replacement = match[0].toLowerCase() === 'judgment' ? 'judgement' : 'judgements';
                 issues.push({
                     found: match[0],
-                    suggestion: preserveCase(match[0], suggestion) + ' (unless referring to a court judgment)',
+                    suggestion: preserveCase(match[0], replacement),
+                    // No autoFix - user must decide if this is a legal context
                     position: match.index,
                     rule: this
                 });
@@ -254,9 +271,11 @@ const RULES = [
             const regex = /(\w)—(\w)/g;
             let match;
             while ((match = regex.exec(text)) !== null) {
+                const replacement = match[1] + ' – ' + match[2];
                 issues.push({
                     found: match[0],
-                    suggestion: match[1] + ' – ' + match[2],
+                    suggestion: replacement,
+                    autoFix: replacement,
                     position: match.index,
                     rule: this
                 });
@@ -276,9 +295,71 @@ const RULES = [
             const regex = /([A-Za-z])–([A-Za-z])/g;
             let match;
             while ((match = regex.exec(text)) !== null) {
+                const replacement = match[1] + ' – ' + match[2];
                 issues.push({
                     found: match[0],
-                    suggestion: match[1] + ' – ' + match[2],
+                    suggestion: replacement,
+                    autoFix: replacement,
+                    position: match.index,
+                    rule: this
+                });
+            }
+            return issues;
+        }
+    },
+    {
+        id: 'punct-hyphen-date-range',
+        name: 'Hyphen in date range',
+        category: 'punctuation',
+        description: 'Use an en dash (–), not a hyphen (-), for date spans in financial years, calendar years, terms of office and lifespans.',
+        link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/punctuation/dashes',
+        check: function(text) {
+            const issues = [];
+            // Match year ranges with hyphens: yyyy-yyyy or yyyy-yy
+            const regex = /\b(\d{4})-(\d{2,4})\b/g;
+            let match;
+            while ((match = regex.exec(text)) !== null) {
+                const startYear = match[1];
+                const endPart = match[2];
+                // Only flag if it looks like a year range (not a random number)
+                const startNum = parseInt(startYear);
+                const endNum = parseInt(endPart);
+                // Check if start year is reasonable (1800-2100) and end makes sense
+                if (startNum >= 1800 && startNum <= 2100) {
+                    // For 2-digit end, check it could be a valid year continuation
+                    // For 4-digit end, check it's greater than or equal to start
+                    if (endPart.length === 2 || (endPart.length === 4 && endNum >= startNum)) {
+                        const replacement = startYear + '–' + endPart;
+                        issues.push({
+                            found: match[0],
+                            suggestion: replacement,
+                            autoFix: replacement,
+                            position: match.index,
+                            rule: this
+                        });
+                    }
+                }
+            }
+            return issues;
+        }
+    },
+    {
+        id: 'punct-hyphen-parenthetical',
+        name: 'Hyphen as parenthetical dash',
+        category: 'punctuation',
+        description: 'Use spaced en dashes ( – ) for parenthetical phrases, not spaced hyphens ( - ).',
+        link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/punctuation/dashes',
+        check: function(text) {
+            const issues = [];
+            // Match spaced hyphens (word - word pattern)
+            const regex = /(\w) - (\w)/g;
+            let match;
+            while ((match = regex.exec(text)) !== null) {
+                const replacement = match[1] + ' – ' + match[2];
+                issues.push({
+                    found: match[0],
+                    suggestion: replacement,
+                    autoFix: replacement,
                     position: match.index,
                     rule: this
                 });
@@ -297,9 +378,11 @@ const RULES = [
             const regex = /([.!?])  +/g;
             let match;
             while ((match = regex.exec(text)) !== null) {
+                const replacement = match[1] + ' ';
                 issues.push({
                     found: match[0],
-                    suggestion: match[1] + ' ',
+                    suggestion: replacement,
+                    autoFix: replacement,
                     position: match.index,
                     rule: this
                 });
@@ -318,9 +401,11 @@ const RULES = [
             const regex = /(\w) \/ (\w)/g;
             let match;
             while ((match = regex.exec(text)) !== null) {
+                const replacement = match[1] + '/' + match[2];
                 issues.push({
                     found: match[0],
-                    suggestion: match[1] + '/' + match[2],
+                    suggestion: replacement,
+                    autoFix: replacement,
                     position: match.index,
                     rule: this
                 });
@@ -342,9 +427,11 @@ const RULES = [
             while ((match = regex.exec(text)) !== null) {
                 // Don't flag if it contains single quotes (nested quote)
                 if (!match[1].includes("'")) {
+                    const replacement = "'" + match[1] + "'";
                     issues.push({
                         found: match[0],
-                        suggestion: "'" + match[1] + "'",
+                        suggestion: replacement,
+                        autoFix: replacement,
                         position: match.index,
                         rule: this
                     });
@@ -372,9 +459,11 @@ const RULES = [
                 const day = match[2];
                 const month = match[1];
                 const year = match[3];
+                const replacement = day + ' ' + month + ' ' + year;
                 issues.push({
                     found: match[0],
-                    suggestion: day + ' ' + month + ' ' + year,
+                    suggestion: replacement,
+                    autoFix: replacement,
                     position: match.index,
                     rule: this
                 });
@@ -405,9 +494,11 @@ const RULES = [
                 
                 // If second number > 12, it's clearly US format (month/day)
                 if (second > 12) {
+                    const replacement = second + ' ' + months[first - 1] + ' ' + year;
                     issues.push({
                         found: match[0],
-                        suggestion: second + ' ' + months[first - 1] + ' ' + year,
+                        suggestion: replacement,
+                        autoFix: replacement,
                         position: match.index,
                         rule: this
                     });
@@ -520,9 +611,11 @@ const RULES = [
             const regex = /\be\.g\.(?:,)?/gi;
             let match;
             while ((match = regex.exec(text)) !== null) {
+                const replacement = 'for example' + (match[0].endsWith(',') ? ',' : '');
                 issues.push({
                     found: match[0],
-                    suggestion: 'for example' + (match[0].endsWith(',') ? ',' : ''),
+                    suggestion: replacement,
+                    autoFix: replacement,
                     position: match.index,
                     rule: this
                 });
@@ -541,9 +634,11 @@ const RULES = [
             const regex = /\bi\.e\.(?:,)?/gi;
             let match;
             while ((match = regex.exec(text)) !== null) {
+                const replacement = 'that is' + (match[0].endsWith(',') ? ',' : '');
                 issues.push({
                     found: match[0],
-                    suggestion: 'that is' + (match[0].endsWith(',') ? ',' : ''),
+                    suggestion: replacement,
+                    autoFix: replacement,
                     position: match.index,
                     rule: this
                 });
@@ -565,6 +660,7 @@ const RULES = [
                 issues.push({
                     found: match[0],
                     suggestion: 'and so on',
+                    autoFix: 'and so on',
                     position: match.index,
                     rule: this
                 });
@@ -585,7 +681,8 @@ const RULES = [
             while ((match = regex.exec(text)) !== null) {
                 issues.push({
                     found: match[0],
-                    suggestion: 'and others (or keep \'et al.\' for references)',
+                    suggestion: 'and others',
+                    // No autoFix - 'et al.' is acceptable in academic references
                     position: match.index,
                     rule: this
                 });
@@ -607,6 +704,7 @@ const RULES = [
                 issues.push({
                     found: match[0],
                     suggestion: 'Note: ',
+                    autoFix: 'Note: ',
                     position: match.index,
                     rule: this
                 });
@@ -659,6 +757,7 @@ const RULES = [
                 issues.push({
                     found: '&',
                     suggestion: 'and',
+                    autoFix: 'and',
                     position: match.index + 1, // +1 to point at the & not the space
                     rule: this
                 });
@@ -691,9 +790,11 @@ const RULES = [
                     case 'ᵗʰ': plain = 'th'; break;
                     default: plain = superscript;
                 }
+                const replacement = num + plain;
                 issues.push({
                     found: match[0],
-                    suggestion: num + plain,
+                    suggestion: replacement,
+                    autoFix: replacement,
                     position: match.index,
                     rule: this
                 });
@@ -720,9 +821,11 @@ const RULES = [
             while ((match = regex.exec(text)) !== null) {
                 const tz = match[1].toUpperCase();
                 const time = match[2];
+                const replacement = time + ' ' + tz;
                 issues.push({
                     found: match[0],
-                    suggestion: time + ' ' + tz,
+                    suggestion: replacement,
+                    autoFix: replacement,
                     position: match.index,
                     rule: this
                 });

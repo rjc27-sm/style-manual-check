@@ -7,7 +7,7 @@ Style Manual Check is a Microsoft Word add-in that checks documents against the 
 ## Current status
 
 **Completed:**
-- Core rule engine with 27 rules across 7 categories
+- Core rule engine with 29 rules across 7 categories
 - Browser-based demo (demo.html) for testing rules
 - Comprehensive word lists in src/spellings.js
 - Rule definitions in src/rules.js
@@ -37,7 +37,7 @@ style-manual-check/
 1. **Spelling** (7 rules) - US to Australian English conversions (-ize→-ise, -or→-our, etc.)
 2. **Common errors** (2 rules) - Always-wrong phrases (would of, irregardless, etc.)
 3. **Latin abbreviations** (5 rules) - e.g.→for example, i.e.→that is, etc.
-4. **Punctuation** (7 rules) - Dashes, quotes, ampersands, superscript ordinals
+4. **Punctuation** (9 rules) - Dashes (including date ranges), quotes, ampersands, superscript ordinals
 5. **Dates** (3 rules) - US date format, ambiguous dates, time zone positioning
 6. **Capitalisation** (1 rule) - Title case heading detection
 7. **Readability** (1 rule) - Sentence length over 25 words
