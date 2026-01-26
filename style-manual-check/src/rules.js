@@ -729,6 +729,42 @@ const RULES = [
             }
             return issues;
         }
+    },
+
+    // ==================== READABILITY RULES ====================
+    {
+        id: 'readability-sentence-length',
+        name: 'Long sentence',
+        category: 'readability',
+        description: 'Sentences over 25 words can be harder to read. Consider breaking up this long sentence.',
+        link: 'https://www.stylemanual.gov.au/accessible-and-inclusive-content/how-people-read',
+        check: function(text) {
+            const issues = [];
+            // Split text into sentences using common sentence-ending punctuation
+            // This regex matches sentence-ending punctuation followed by space or end of string
+            const sentenceRegex = /[^.!?]*[.!?]+(?:\s|$)/g;
+            let match;
+            let position = 0;
+
+            while ((match = sentenceRegex.exec(text)) !== null) {
+                const sentence = match[0].trim();
+                if (!sentence) continue;
+
+                // Count words (split on whitespace, filter out empty strings)
+                const words = sentence.split(/\s+/).filter(w => w.length > 0);
+                const wordCount = words.length;
+
+                if (wordCount > 25) {
+                    issues.push({
+                        found: sentence,
+                        suggestion: 'This sentence is ' + wordCount + ' words long',
+                        position: match.index,
+                        rule: this
+                    });
+                }
+            }
+            return issues;
+        }
     }
 ];
 

@@ -7,7 +7,7 @@ Style Manual Check is a Microsoft Word add-in that checks documents against the 
 ## Current status
 
 **Completed:**
-- Core rule engine with 24 rules across 5 categories
+- Core rule engine with 27 rules across 7 categories
 - Browser-based demo (demo.html) for testing rules
 - Comprehensive word lists in src/spellings.js
 - Rule definitions in src/rules.js
@@ -40,6 +40,7 @@ style-manual-check/
 4. **Punctuation** (7 rules) - Dashes, quotes, ampersands, superscript ordinals
 5. **Dates** (3 rules) - US date format, ambiguous dates, time zone positioning
 6. **Capitalisation** (1 rule) - Title case heading detection
+7. **Readability** (1 rule) - Sentence length over 25 words
 
 ## Key Style Manual principles to follow
 
@@ -51,6 +52,7 @@ style-manual-check/
 - Use spaced en dashes, not em dashes
 - Use 'program' not 'programme' (Australian Government preference)
 - Time zones come after the time: '14:00 AEST' not 'AEST 14:00'
+- Keep sentences under 25 words for readability
 
 ## UI text requirements
 
