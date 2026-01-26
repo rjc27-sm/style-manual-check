@@ -417,7 +417,7 @@ const RULES = [
         id: 'punct-double-quotes',
         name: 'Double quotation marks',
         category: 'punctuation',
-        description: 'Australian style uses single quotation marks for direct speech and quoted material.',
+        description: 'Use single quotation marks, not double. Use double quotation marks only for quotes within quotes.',
         link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/punctuation/quotation-marks',
         check: function(text) {
             const issues = [];
@@ -428,6 +428,38 @@ const RULES = [
                 // Don't flag if it contains single quotes (nested quote)
                 if (!match[1].includes("'")) {
                     const replacement = "'" + match[1] + "'";
+                    issues.push({
+                        found: match[0],
+                        suggestion: replacement,
+                        autoFix: replacement,
+                        position: match.index,
+                        rule: this
+                    });
+                }
+            }
+            return issues;
+        }
+    },
+    {
+        id: 'punct-comma-inside-quotes',
+        name: 'Comma inside closing quotation mark',
+        category: 'punctuation',
+        description: 'Place commas and full stops inside closing quotation marks only when they are part of the quoted material. Place them outside when they are not.',
+        link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/punctuation/quotation-marks',
+        check: function(text) {
+            const issues = [];
+            // Match single-quoted text ending with comma, followed by space and lowercase letter
+            // This pattern catches American-style punctuation where the comma is not part of the quote
+            // Pattern: 'word,' followed by lowercase continuation
+            const regex = /'([^']+),'\s+([a-z])/g;
+            let match;
+            while ((match = regex.exec(text)) !== null) {
+                const quotedText = match[1];
+                // Only flag if it's a short phrase (likely a term, not quoted speech)
+                // Quoted speech like 'Stop,' she said is correct
+                const wordCount = quotedText.trim().split(/\s+/).length;
+                if (wordCount <= 3) {
+                    const replacement = "'" + quotedText + "', " + match[2];
                     issues.push({
                         found: match[0],
                         suggestion: replacement,

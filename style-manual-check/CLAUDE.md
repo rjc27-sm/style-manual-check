@@ -7,7 +7,7 @@ Style Manual Check is a Microsoft Word add-in that checks documents against the 
 ## Current status
 
 **Completed:**
-- Core rule engine with 40 rules across 7 categories
+- Core rule engine with 41 rules across 7 categories
 - Browser-based demo (demo.html) for testing rules
 - Comprehensive word lists in src/spellings.js
 - Rule definitions in src/rules.js
@@ -26,7 +26,7 @@ style-manual-check/
 ├── README.md           # User-facing documentation
 ├── demo.html           # Browser demo for testing rules
 ├── src/
-│   ├── rules.js        # Rule definitions (24 rules)
+│   ├── rules.js        # Rule definitions (41 rules)
 │   └── spellings.js    # Word dictionaries (US→AU, common errors)
 └── docs/
     └── (documentation files)
@@ -37,7 +37,7 @@ style-manual-check/
 1. **Spelling** (7 rules) - US to Australian English conversions (-ize→-ise, -or→-our, etc.)
 2. **Common errors** (2 rules) - Always-wrong phrases (would of, irregardless, etc.)
 3. **Latin abbreviations** (5 rules) - e.g.→for example, i.e.→that is, etc.
-4. **Punctuation** (9 rules) - Dashes (including date ranges), quotes, ampersands, superscript ordinals
+4. **Punctuation** (10 rules) - Dashes (including date ranges), quotes, ampersands, superscript ordinals
 5. **Dates and time** (11 rules) - Date formats, time formats, decades, year spans, ordinals in dates
 6. **Headings** (4 rules) - Title case, length, full stops, all caps
 7. **Readability** (1 rule) - Sentence length over 25 words
@@ -45,7 +45,8 @@ style-manual-check/
 ## Key Style Manual principles to follow
 
 - Use Australian English spellings (organise, colour, centre)
-- Use single quotation marks, not double
+- Use single quotation marks, not double (double only for quotes within quotes)
+- Place commas/full stops outside closing quotes unless part of quoted material
 - Use sentence case for headings, not title case
 - Avoid Latin abbreviations in general content
 - Write dates as '15 January 2024' not 'January 15, 2024'
@@ -66,6 +67,7 @@ The add-in's own interface text must follow Style Manual rules:
 - Style Manual: https://www.stylemanual.gov.au
 - Spelling: https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/spelling
 - Headings: https://www.stylemanual.gov.au/structuring-content/headings
+- Quotation marks: https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/punctuation/quotation-marks
 
 ## Technical notes
 
