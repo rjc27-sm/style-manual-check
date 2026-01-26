@@ -448,18 +448,19 @@ const RULES = [
         link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/punctuation/quotation-marks',
         check: function(text) {
             const issues = [];
-            // Match single-quoted text ending with comma, followed by space and lowercase letter
+            // Match single-quoted text ending with comma, followed by space and lowercase word
             // This pattern catches American-style punctuation where the comma is not part of the quote
-            // Pattern: 'word,' followed by lowercase continuation
-            const regex = /'([^']+),'\s+([a-z])/g;
+            // Pattern: 'word,' followed by lowercase word continuation
+            const regex = /'([^']+),'\s+([a-z][a-z]*)/g;
             let match;
             while ((match = regex.exec(text)) !== null) {
                 const quotedText = match[1];
+                const nextWord = match[2];
                 // Only flag if it's a short phrase (likely a term, not quoted speech)
                 // Quoted speech like 'Stop,' she said is correct
                 const wordCount = quotedText.trim().split(/\s+/).length;
                 if (wordCount <= 3) {
-                    const replacement = "'" + quotedText + "', " + match[2];
+                    const replacement = "'" + quotedText + "', " + nextWord;
                     issues.push({
                         found: match[0],
                         suggestion: replacement,
