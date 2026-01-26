@@ -394,7 +394,7 @@ const RULES = [
         id: 'punct-spaced-slash',
         name: 'Spaced forward slash',
         category: 'punctuation',
-        description: 'Don\'t add spaces around forward slashes. Write \'and/or\' not \'and / or\'.',
+        description: 'Don\'t add spaces around forward slashes. Write \'and/or\', not \'and / or\'.',
         link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/punctuation/forward-slashes',
         check: function(text) {
             const issues = [];
@@ -441,12 +441,12 @@ const RULES = [
         }
     },
 
-    // ==================== DATE RULES ====================
+    // ==================== DATES AND TIME RULES ====================
     {
         id: 'date-us-format',
         name: 'US date format',
-        category: 'dates',
-        description: 'Write dates as \'15 January 2024\' not \'January 15, 2024\'. Day comes before month in Australian style.',
+        category: 'dates-and-time',
+        description: 'Write dates as \'15 January 2024\', not \'January 15, 2024\'. Day comes before month in Australian style.',
         link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/numbers-and-measurements/dates-and-time',
         check: function(text) {
             const issues = [];
@@ -474,7 +474,7 @@ const RULES = [
     {
         id: 'date-numeric-ambiguous',
         name: 'Ambiguous numeric date',
-        category: 'dates',
+        category: 'dates-and-time',
         description: 'Numeric dates like \'12/03/2024\' are ambiguous. Write dates in full: \'12 March 2024\'.',
         link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/numbers-and-measurements/dates-and-time',
         check: function(text) {
@@ -515,13 +515,229 @@ const RULES = [
             return issues;
         }
     },
+    {
+        id: 'date-ordinal-in-date',
+        name: 'Ordinal number in date',
+        category: 'dates-and-time',
+        description: 'Don\'t use ordinal numbers (1st, 2nd, 3rd) when writing dates. Write \'1 May\', not \'1st May\'.',
+        link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/numbers-and-measurements/dates-and-time',
+        check: function(text) {
+            const issues = [];
+            const months = ['January', 'February', 'March', 'April', 'May', 'June',
+                          'July', 'August', 'September', 'October', 'November', 'December'];
+            // Match ordinal + month (1st January, 2nd Feb, 23rd March, etc.)
+            const monthPattern = months.join('|') + '|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sept?|Oct|Nov|Dec';
+            const regex = new RegExp('\\b(\\d{1,2})(st|nd|rd|th)\\s+(' + monthPattern + ')\\b', 'gi');
+            let match;
+            while ((match = regex.exec(text)) !== null) {
+                const day = match[1];
+                const month = match[3];
+                const replacement = day + ' ' + month;
+                issues.push({
+                    found: match[0],
+                    suggestion: replacement,
+                    autoFix: replacement,
+                    position: match.index,
+                    rule: this
+                });
+            }
+            return issues;
+        }
+    },
+    {
+        id: 'date-decade-apostrophe',
+        name: 'Apostrophe in decade',
+        category: 'dates-and-time',
+        description: 'Don\'t use an apostrophe for decades. Write \'1980s\', not \'1980\'s\'.',
+        link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/numbers-and-measurements/dates-and-time',
+        check: function(text) {
+            const issues = [];
+            // Match decades with apostrophe before s (1980's, 2010's)
+            const regex = /\b(\d{4})'s\b/g;
+            let match;
+            while ((match = regex.exec(text)) !== null) {
+                const replacement = match[1] + 's';
+                issues.push({
+                    found: match[0],
+                    suggestion: replacement,
+                    autoFix: replacement,
+                    position: match.index,
+                    rule: this
+                });
+            }
+            return issues;
+        }
+    },
+    {
+        id: 'time-12-ambiguous',
+        name: '12 am or 12 pm',
+        category: 'dates-and-time',
+        description: 'Use \'noon\', \'midday\' or \'midnight\' instead of \'12 am\' or \'12 pm\' to avoid confusion.',
+        link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/numbers-and-measurements/dates-and-time',
+        check: function(text) {
+            const issues = [];
+            // Match 12 am, 12 pm, 12:00 am, 12:00 pm
+            const regex = /\b12(?::00)?\s*(am|pm)\b/gi;
+            let match;
+            while ((match = regex.exec(text)) !== null) {
+                const ampm = match[1].toLowerCase();
+                const suggestion = ampm === 'am' ? 'midnight' : 'noon or midday';
+                issues.push({
+                    found: match[0],
+                    suggestion: suggestion,
+                    // No autoFix - user should choose between noon/midday
+                    position: match.index,
+                    rule: this
+                });
+            }
+            return issues;
+        }
+    },
+    {
+        id: 'time-full-stop',
+        name: 'Full stop in time',
+        category: 'dates-and-time',
+        description: 'Use a colon between hours and minutes, not a full stop. Write \'10:30 am\', not \'10.30 am\'.',
+        link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/numbers-and-measurements/dates-and-time',
+        check: function(text) {
+            const issues = [];
+            // Match time with full stop (10.30 am, 2.45 pm)
+            const regex = /\b(\d{1,2})\.(\d{2})\s*(am|pm)\b/gi;
+            let match;
+            while ((match = regex.exec(text)) !== null) {
+                const replacement = match[1] + ':' + match[2] + ' ' + match[3].toLowerCase();
+                issues.push({
+                    found: match[0],
+                    suggestion: replacement,
+                    autoFix: replacement,
+                    position: match.index,
+                    rule: this
+                });
+            }
+            return issues;
+        }
+    },
+    {
+        id: 'time-redundant-ampm',
+        name: 'Redundant am/pm qualifier',
+        category: 'dates-and-time',
+        description: 'Don\'t use \'am\' or \'pm\' with words that duplicate their meaning, such as \'morning\' or \'afternoon\'.',
+        link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/numbers-and-measurements/dates-and-time',
+        check: function(text) {
+            const issues = [];
+            // Match "10 am in the morning", "10:30 am this morning", "6 pm in the evening", etc.
+            const patterns = [
+                { regex: /\b(\d{1,2}(?:[.:]\d{2})?\s*am)\s+(?:in the |this )?morning\b/gi },
+                { regex: /\b(\d{1,2}(?:[.:]\d{2})?\s*pm)\s+(?:in the |this )?(?:afternoon|evening)\b/gi }
+            ];
+            for (const pattern of patterns) {
+                let match;
+                while ((match = pattern.regex.exec(text)) !== null) {
+                    issues.push({
+                        found: match[0],
+                        suggestion: match[1],
+                        autoFix: match[1],
+                        position: match.index,
+                        rule: this
+                    });
+                }
+            }
+            return issues;
+        }
+    },
+    {
+        id: 'date-comma-after-day',
+        name: 'Comma after day name',
+        category: 'dates-and-time',
+        description: 'Don\'t use a comma after the day name in dates. Write \'Thursday 31 December\', not \'Thursday, 31 December\'.',
+        link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/numbers-and-measurements/dates-and-time',
+        check: function(text) {
+            const issues = [];
+            const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+            // Match day name followed by comma and a number
+            const dayPattern = days.join('|');
+            const regex = new RegExp('\\b(' + dayPattern + '),\\s+(\\d{1,2})\\b', 'gi');
+            let match;
+            while ((match = regex.exec(text)) !== null) {
+                const replacement = match[1] + ' ' + match[2];
+                issues.push({
+                    found: match[0],
+                    suggestion: replacement,
+                    autoFix: replacement,
+                    position: match.index,
+                    rule: this
+                });
+            }
+            return issues;
+        }
+    },
+    {
+        id: 'date-slash-year-span',
+        name: 'Forward slash in year span',
+        category: 'dates-and-time',
+        description: 'Use an en dash for year spans, not a forward slash. Write \'2018–19\', not \'2018/19\'.',
+        link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/numbers-and-measurements/dates-and-time',
+        check: function(text) {
+            const issues = [];
+            // Match year spans with forward slash (2018/19, 2020/2021)
+            const regex = /\b(\d{4})\/(\d{2,4})\b/g;
+            let match;
+            while ((match = regex.exec(text)) !== null) {
+                const startYear = parseInt(match[1]);
+                const endPart = match[2];
+                // Check if it looks like a year span (not a date like 4/6/2021)
+                if (startYear >= 1800 && startYear <= 2100) {
+                    const replacement = match[1] + '–' + endPart;
+                    issues.push({
+                        found: match[0],
+                        suggestion: replacement,
+                        autoFix: replacement,
+                        position: match.index,
+                        rule: this
+                    });
+                }
+            }
+            return issues;
+        }
+    },
+    {
+        id: 'time-confusing-bi',
+        name: 'Confusing \'bi\' time term',
+        category: 'dates-and-time',
+        description: 'Avoid \'bimonthly\', \'biweekly\' and \'biannual\' as they can mean either \'every 2 [time periods]\' or \'twice per [time period]\'. Be specific instead.',
+        link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/numbers-and-measurements/dates-and-time',
+        check: function(text) {
+            const issues = [];
+            const biTerms = {
+                'bimonthly': '\'every 2 months\' or \'twice a month\'',
+                'biweekly': '\'every 2 weeks\' or \'twice a week\'',
+                'biannual': '\'every 6 months\' or \'twice a year\'',
+                'biannually': '\'every 6 months\' or \'twice a year\'',
+                'biennially': '\'every 2 years\''
+            };
+            for (const [term, alternatives] of Object.entries(biTerms)) {
+                const regex = new RegExp('\\b' + term + '\\b', 'gi');
+                let match;
+                while ((match = regex.exec(text)) !== null) {
+                    issues.push({
+                        found: match[0],
+                        suggestion: 'Be specific: ' + alternatives,
+                        // No autoFix - user must choose the intended meaning
+                        position: match.index,
+                        rule: this
+                    });
+                }
+            }
+            return issues;
+        }
+    },
 
     // ==================== CAPITALISATION RULES ====================
     {
         id: 'caps-title-case-heading',
         name: 'Possible title case heading',
         category: 'capitalisation',
-        description: 'Australian Government style uses sentence case for headings, not title case. In sentence case, only the first word and proper nouns are capitalised. For example, \'Managing your account settings\' not \'Managing Your Account Settings\'.',
+        description: 'Australian Government style uses sentence case for headings, not title case. In sentence case, only the first word and proper nouns are capitalised. For example, \'Managing your account settings\', not \'Managing Your Account Settings\'.',
         link: 'https://www.stylemanual.gov.au/structuring-content/headings',
         check: function(text) {
             const issues = [];
@@ -807,8 +1023,8 @@ const RULES = [
     {
         id: 'date-timezone-position',
         name: 'Time zone before time',
-        category: 'dates',
-        description: 'Write the time zone after the time, not before. For example, \'13:45 AEST\' not \'AEST 13:45\'.',
+        category: 'dates-and-time',
+        description: 'Write the time zone after the time, not before. For example, \'13:45 AEST\', not \'AEST 13:45\'.',
         link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/numbers-and-measurements/dates-and-time',
         check: function(text) {
             const issues = [];
