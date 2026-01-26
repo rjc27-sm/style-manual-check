@@ -732,39 +732,39 @@ const RULES = [
         }
     },
 
-    // ==================== CAPITALISATION RULES ====================
+    // ==================== HEADINGS RULES ====================
     {
-        id: 'caps-title-case-heading',
-        name: 'Possible title case heading',
-        category: 'capitalisation',
-        description: 'Australian Government style uses sentence case for headings, not title case. In sentence case, only the first word and proper nouns are capitalised. For example, \'Managing your account settings\', not \'Managing Your Account Settings\'.',
+        id: 'heading-title-case',
+        name: 'Title case heading',
+        category: 'headings',
+        description: 'Use sentence case for headings, not title case. Only capitalise the first word and proper nouns. Note: you may need to adjust the suggested fix for proper nouns.',
         link: 'https://www.stylemanual.gov.au/structuring-content/headings',
         check: function(text) {
             const issues = [];
-            
+
             // Words that are typically lowercase in title case (so don't count them)
-            const smallWords = ['a', 'an', 'the', 'and', 'but', 'or', 'for', 'nor', 
+            const smallWords = ['a', 'an', 'the', 'and', 'but', 'or', 'for', 'nor',
                                'on', 'at', 'to', 'by', 'of', 'in', 'is', 'it', 'as', 'if'];
-            
+
             // Common proper nouns/acronyms to exclude from counting
-            const likelyProperNouns = ['australia', 'australian', 'government', 'monday', 
+            const likelyProperNouns = ['australia', 'australian', 'government', 'monday',
                 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday',
-                'january', 'february', 'march', 'april', 'may', 'june', 'july', 
+                'january', 'february', 'march', 'april', 'may', 'june', 'july',
                 'august', 'september', 'october', 'november', 'december'];
-            
+
             // Split into lines
             const lines = text.split('\n');
             let position = 0;
-            
+
             for (const line of lines) {
                 const trimmed = line.trim();
-                
+
                 // Skip empty lines
                 if (!trimmed) {
                     position += line.length + 1;
                     continue;
                 }
-                
+
                 // Heading heuristics:
                 // - Short (under 12 words)
                 // - Doesn't end with . ? ! ; (headings typically don't)
@@ -772,42 +772,172 @@ const RULES = [
                 const words = trimmed.split(/\s+/);
                 const endsWithPunctuation = /[.?!;,]$/.test(trimmed);
                 const isAllCaps = trimmed === trimmed.toUpperCase() && /[A-Z]/.test(trimmed);
-                
+
                 if (words.length >= 3 && words.length <= 12 && !endsWithPunctuation && !isAllCaps) {
                     // Count words that start with capitals (excluding first word and small words)
                     let capitalizedCount = 0;
                     let significantWords = 0;
-                    
+
                     for (let i = 1; i < words.length; i++) {
                         const word = words[i];
                         const wordLower = word.toLowerCase().replace(/[^a-z]/g, '');
-                        
+
                         // Skip small words and likely proper nouns
                         if (smallWords.includes(wordLower)) continue;
                         if (likelyProperNouns.includes(wordLower)) continue;
                         if (word === word.toUpperCase() && word.length <= 5) continue; // Likely acronym
-                        
+
                         significantWords++;
-                        
+
                         // Check if word starts with capital
                         if (/^[A-Z]/.test(word)) {
                             capitalizedCount++;
                         }
                     }
-                    
+
                     // If most significant words (after the first) are capitalised, likely title case
                     // Need at least 2 capitalised words and >50% of significant words capitalised
-                    if (capitalizedCount >= 2 && significantWords >= 2 && 
+                    if (capitalizedCount >= 2 && significantWords >= 2 &&
                         capitalizedCount / significantWords >= 0.5) {
+                        // Convert to sentence case: first letter caps, rest lowercase (except acronyms)
+                        const sentenceCase = toSentenceCase(trimmed);
                         issues.push({
                             found: trimmed,
-                            suggestion: 'Check: is this a heading? If so, use sentence case',
+                            suggestion: sentenceCase,
+                            autoFix: sentenceCase,
                             position: position + line.indexOf(trimmed),
                             rule: this
                         });
                     }
                 }
-                
+
+                position += line.length + 1;
+            }
+            return issues;
+        }
+    },
+    {
+        id: 'heading-too-long',
+        name: 'Heading too long',
+        category: 'headings',
+        description: 'Longer headings are more difficult to read and can be confusing. They might also suggest that you have too many ideas in a section.',
+        link: 'https://www.stylemanual.gov.au/structuring-content/headings',
+        check: function(text) {
+            const issues = [];
+            const lines = text.split('\n');
+            let position = 0;
+
+            for (const line of lines) {
+                const trimmed = line.trim();
+
+                // Skip empty lines
+                if (!trimmed) {
+                    position += line.length + 1;
+                    continue;
+                }
+
+                // Heading heuristics: short-ish line, doesn't end with sentence punctuation
+                const words = trimmed.split(/\s+/);
+                const endsWithPunctuation = /[.?!;,]$/.test(trimmed);
+
+                // Consider it a heading if it's 3-20 words and doesn't end with punctuation
+                // (Long headings that exceed 70 chars are likely to have more words)
+                if (words.length >= 3 && words.length <= 20 && !endsWithPunctuation) {
+                    if (trimmed.length > 70) {
+                        issues.push({
+                            found: trimmed,
+                            suggestion: 'This heading is ' + trimmed.length + ' characters. Keep headings to 70 characters or fewer',
+                            // No autoFix - user must rewrite
+                            position: position + line.indexOf(trimmed),
+                            rule: this
+                        });
+                    }
+                }
+
+                position += line.length + 1;
+            }
+            return issues;
+        }
+    },
+    {
+        id: 'heading-full-stop',
+        name: 'Full stop at end of heading',
+        category: 'headings',
+        description: 'Don\'t use a full stop to end headings. Even if the heading is a sentence, it doesn\'t need a full stop at the end.',
+        link: 'https://www.stylemanual.gov.au/structuring-content/headings',
+        check: function(text) {
+            const issues = [];
+            const lines = text.split('\n');
+            let position = 0;
+
+            for (const line of lines) {
+                const trimmed = line.trim();
+
+                // Skip empty lines
+                if (!trimmed) {
+                    position += line.length + 1;
+                    continue;
+                }
+
+                // Heading heuristics: short line ending with full stop (but not ? or !)
+                const words = trimmed.split(/\s+/);
+
+                // Consider it a heading if it's 2-12 words and ends with a full stop
+                // (Longer lines are probably paragraphs)
+                if (words.length >= 2 && words.length <= 12 && /\.$/.test(trimmed) && !/\.{2,}$/.test(trimmed)) {
+                    const replacement = trimmed.slice(0, -1);
+                    issues.push({
+                        found: trimmed,
+                        suggestion: replacement,
+                        autoFix: replacement,
+                        position: position + line.indexOf(trimmed),
+                        rule: this
+                    });
+                }
+
+                position += line.length + 1;
+            }
+            return issues;
+        }
+    },
+    {
+        id: 'heading-all-caps',
+        name: 'All caps heading',
+        category: 'headings',
+        description: 'Don\'t write headings in all capital letters as users could misread words. For example, \'ACT\' could be \'act\' (the verb) rather than the initialism for the Australian Capital Territory.',
+        link: 'https://www.stylemanual.gov.au/structuring-content/headings',
+        check: function(text) {
+            const issues = [];
+            const lines = text.split('\n');
+            let position = 0;
+
+            for (const line of lines) {
+                const trimmed = line.trim();
+
+                // Skip empty lines
+                if (!trimmed) {
+                    position += line.length + 1;
+                    continue;
+                }
+
+                // Check if line is all caps (and has letters)
+                const hasLetters = /[A-Z]/.test(trimmed);
+                const isAllCaps = trimmed === trimmed.toUpperCase() && hasLetters;
+                const words = trimmed.split(/\s+/);
+
+                // Consider it a heading if it's 2-12 words, all caps, and doesn't end with typical sentence punctuation
+                if (isAllCaps && words.length >= 2 && words.length <= 12) {
+                    // Convert to sentence case
+                    const sentenceCase = toSentenceCase(trimmed);
+                    issues.push({
+                        found: trimmed,
+                        suggestion: sentenceCase,
+                        autoFix: sentenceCase,
+                        position: position + line.indexOf(trimmed),
+                        rule: this
+                    });
+                }
+
                 position += line.length + 1;
             }
             return issues;
@@ -1086,6 +1216,40 @@ const RULES = [
         }
     }
 ];
+
+// Helper: preserve case when replacing
+// Helper: convert text to sentence case (first letter caps, rest lowercase)
+// Preserves all-caps words that are likely acronyms (2-5 chars) but not common words
+function toSentenceCase(text) {
+    // Common words that should not be treated as acronyms even when all caps
+    const commonWords = ['a', 'an', 'the', 'and', 'but', 'or', 'for', 'nor', 'so', 'yet',
+                        'on', 'at', 'to', 'by', 'of', 'in', 'is', 'it', 'as', 'if', 'be',
+                        'am', 'are', 'was', 'were', 'been', 'has', 'have', 'had', 'do', 'does',
+                        'did', 'will', 'would', 'could', 'should', 'may', 'might', 'must',
+                        'can', 'this', 'that', 'these', 'those', 'my', 'your', 'his', 'her',
+                        'its', 'our', 'their', 'who', 'what', 'which', 'when', 'where', 'why',
+                        'how', 'all', 'each', 'every', 'both', 'few', 'more', 'most', 'other',
+                        'some', 'such', 'no', 'not', 'only', 'own', 'same', 'than', 'too',
+                        'very', 'just', 'also', 'now', 'new', 'one', 'two', 'first', 'last',
+                        'long', 'great', 'little', 'own', 'other', 'old', 'right', 'big',
+                        'high', 'different', 'small', 'large', 'next', 'early', 'young',
+                        'important', 'public', 'bad', 'same', 'able'];
+    const words = text.split(/\s+/);
+    return words.map((word, index) => {
+        const wordLower = word.toLowerCase();
+        // Preserve acronyms (all caps, 2-5 characters) but not common words
+        if (word === word.toUpperCase() && word.length >= 2 && word.length <= 5 &&
+            /^[A-Z]+$/.test(word) && !commonWords.includes(wordLower)) {
+            return word;
+        }
+        // First word: capitalize first letter, lowercase rest
+        if (index === 0) {
+            return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+        }
+        // Other words: all lowercase
+        return word.toLowerCase();
+    }).join(' ');
+}
 
 // Helper: preserve case when replacing
 function preserveCase(original, replacement) {
