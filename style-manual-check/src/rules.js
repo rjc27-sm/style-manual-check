@@ -1346,6 +1346,29 @@ const RULES = [
         }
     },
     {
+        id: 'govt-generic-minister',
+        name: 'Generic minister reference',
+        category: 'government-terms',
+        description: 'Use lower case for generic references to ministers. Write \'the minister\', not \'the Minister\'.',
+        link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/names-and-terms/government-terms',
+        check: function(text) {
+            const issues = [];
+            // Match "the Minister" NOT followed by "for" (which would indicate a formal title)
+            const regex = /\bthe Minister\b(?!\s+for\b)/g;
+            let match;
+            while ((match = regex.exec(text)) !== null) {
+                issues.push({
+                    found: match[0],
+                    suggestion: 'the minister',
+                    autoFix: 'the minister',
+                    position: match.index,
+                    rule: this
+                });
+            }
+            return issues;
+        }
+    },
+    {
         id: 'govt-generic-agency',
         name: 'Generic agency reference',
         category: 'government-terms',
