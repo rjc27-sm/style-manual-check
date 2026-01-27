@@ -1370,15 +1370,32 @@ const RULES = [
     },
     {
         id: 'govt-generic-agency',
-        name: 'Generic agency reference',
+        name: 'Generic government body reference',
         category: 'government-terms',
-        description: 'Use lower case for generic references to agencies, authorities and commissions.',
+        description: 'Use lower case for generic references to government bodies (for example, \'the agency\', \'the board\', \'the commission\').',
         link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/names-and-terms/government-terms',
         check: function(text) {
             const issues = [];
-            // Match "the Agency", "the Authority", "the Commission" when standalone
+            // Match "the [Term]" when standalone (generic reference)
             // Don't flag if followed by "of", "for", or another capital letter (formal name)
-            const terms = ['Agency', 'Authority', 'Commission'];
+            const terms = [
+                'Agency', 'Alliance', 'Archives', 'Authority',
+                'Board', 'Body', 'Bureau',
+                'Centre', 'College', 'Commission', 'Committee', 'Corporation', 'Council', 'Court',
+                'Directorate', 'Division',
+                'Facility', 'Federation', 'Force', 'Forum', 'Foundation',
+                'Gallery', 'Government',
+                'Inspectorate', 'Institute',
+                'Laboratory', 'Library',
+                'Museum',
+                'Network',
+                'Office', 'Organisation',
+                'Panel', 'Partnership', 'Program',
+                'Registry', 'Regulator',
+                'Scheme', 'School', 'Secretariat', 'Service',
+                'Taskforce', 'Tribunal', 'Trust',
+                'Unit', 'University'
+            ];
             for (const term of terms) {
                 const regex = new RegExp('\\bthe ' + term + '\\b(?!\\s+(?:of|for|[A-Z]))', 'g');
                 let match;
