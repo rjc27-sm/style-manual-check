@@ -7,7 +7,7 @@ Style Manual Check is a Microsoft Word add-in that checks documents against the 
 ## Current status
 
 **Completed:**
-- Core rule engine with 48 rules across 9 categories
+- Core rule engine with 56 rules across 10 categories
 - Browser-based demo (demo.html) for testing rules
 - Comprehensive word lists in src/spellings.js
 - Rule definitions in src/rules.js
@@ -37,12 +37,13 @@ style-manual-check/
 1. **Spelling** (7 rules) - US to Australian English conversions (-ize→-ise, -or→-our, etc.)
 2. **Common errors** (2 rules) - Always-wrong phrases (would of, irregardless, etc.)
 3. **Latin abbreviations** (5 rules) - e.g.→for example, i.e.→that is, etc.
-4. **Punctuation** (11 rules) - Dashes, quotes, serial comma, ampersands, superscript ordinals
+4. **Punctuation** (10 rules) - Dashes, quotes, serial comma, ampersands
 5. **Dates and time** (11 rules) - Date formats, time formats, decades, year spans, ordinals in dates
 6. **Headings** (4 rules) - Title case, length, full stops, all caps
 7. **Government terms** (6 rules) - Commonwealth government, minister/secretary prepositions, generic references
 8. **Watch words** (1 rule) - Plain language alternatives for jargon and complex phrases
 9. **Readability** (1 rule) - Sentence length over 25 words
+10. **Numbers and measurements** (9 rules) - Zero/one as words, percentages, decimals, units, imperial warnings
 
 ## Key Style Manual principles to follow
 
@@ -58,6 +59,9 @@ style-manual-check/
 - Keep sentences under 25 words for readability
 - Use 'Australian Government', not 'Commonwealth government'
 - Use 'Minister for [portfolio]', not 'Minister of [portfolio]'
+- Write 'zero' and 'one' as words, use numerals for 2 and above
+- Use 'per cent' (two words) not 'percent'
+- Use metric units, not imperial
 
 ## UI text requirements
 
@@ -73,6 +77,7 @@ The add-in's own interface text must follow Style Manual rules:
 - Headings: https://www.stylemanual.gov.au/structuring-content/headings
 - Quotation marks: https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/punctuation/quotation-marks
 - Government terms: https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/names-and-terms/government-terms
+- Numbers and measurements: https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/numbers-and-measurements
 
 ## Technical notes
 

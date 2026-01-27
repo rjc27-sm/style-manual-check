@@ -1185,7 +1185,7 @@ const RULES = [
     {
         id: 'punct-superscript-ordinal',
         name: 'Superscript ordinal',
-        category: 'punctuation',
+        category: 'numbers-and-measurements',
         description: 'Use plain text for ordinal indicators (1st, 2nd, 3rd), not superscript (1ˢᵗ, 2ⁿᵈ, 3ʳᵈ). Superscript ordinals can cause accessibility issues.',
         link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/numbers-and-measurements/ordinal-numbers',
         check: function(text) {
@@ -1448,6 +1448,314 @@ const RULES = [
             }
             return issues;
         }
+    },
+
+    // ==================== NUMBERS AND MEASUREMENTS ====================
+    {
+        id: 'numbers-zero-one',
+        name: 'Use words for zero and one',
+        category: 'numbers-and-measurements',
+        description: 'Write \'zero\' and \'one\' as words, not numerals. The numerals \'0\' and \'1\' can be hard to distinguish from letters in some fonts.',
+        link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/numbers-and-measurements/choosing-numerals-or-words',
+        check: function(text) {
+            const issues = [];
+            // Match standalone 0 or 1 in body text contexts
+            // Avoid: measurements (1 km), currency ($1), decimals (0.5), times (1 pm),
+            // dates (1 January), larger numbers (10, 100), ranges (1-5, 1–5)
+
+            // Pattern for "0" - standalone zero not part of larger number or special context
+            const zeroRegex = /(?<![0-9.$€£¥,])(?<!\d[.:])0(?![0-9.:,]|\s*(?:am|pm|%|km|m|cm|mm|kg|g|mg|mL|L|ha|°))\b/g;
+            let match;
+            while ((match = zeroRegex.exec(text)) !== null) {
+                // Check context - skip if preceded by $ or other currency, or followed by decimal
+                const before = text.substring(Math.max(0, match.index - 5), match.index);
+                const after = text.substring(match.index + 1, Math.min(text.length, match.index + 10));
+
+                // Skip currency contexts
+                if (/[$€£¥A]\s*$/.test(before)) continue;
+                // Skip if part of a decimal or time
+                if (/^[.:]/.test(after) || /[.:]$/.test(before)) continue;
+
+                issues.push({
+                    found: '0',
+                    suggestion: 'zero',
+                    autoFix: 'zero',
+                    position: match.index,
+                    rule: this
+                });
+            }
+
+            // Pattern for "1" - standalone one not part of larger number or special context
+            // More complex because "1" appears in many valid contexts
+            const oneRegex = /(?<![0-9.$€£¥,])(?<!\d[.:])(?<![–-])\b1\b(?![0-9.:,–-]|\s*(?:am|pm|%|km|m|cm|mm|kg|g|mg|mL|L|ha|°|January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec))/gi;
+            while ((match = oneRegex.exec(text)) !== null) {
+                const before = text.substring(Math.max(0, match.index - 10), match.index);
+                const after = text.substring(match.index + 1, Math.min(text.length, match.index + 15));
+
+                // Skip currency contexts
+                if (/[$€£¥A]\s*$/.test(before)) continue;
+                // Skip if part of time, decimal, or measurement
+                if (/^[.:]/.test(after) || /[.:]$/.test(before)) continue;
+                // Skip "1 million", "1 billion" etc (valid per Style Manual)
+                if (/^\s*(million|billion|trillion)/i.test(after)) continue;
+                // Skip step/point references like "step 1", "point 1"
+                if (/(?:step|point|item|number|no\.?|#)\s*$/i.test(before)) continue;
+
+                issues.push({
+                    found: '1',
+                    suggestion: 'one',
+                    autoFix: 'one',
+                    position: match.index,
+                    rule: this
+                });
+            }
+            return issues;
+        }
+    },
+    {
+        id: 'numbers-percent-spelling',
+        name: 'Percent spelling',
+        category: 'numbers-and-measurements',
+        description: 'Use \'per cent\' (two words) in Australian English, not \'percent\'.',
+        link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/numbers-and-measurements/percentages',
+        check: function(text) {
+            const issues = [];
+            // Match "percent" as one word (not "per cent" or "percentage")
+            const regex = /\bpercent\b(?!age)/gi;
+            let match;
+            while ((match = regex.exec(text)) !== null) {
+                const replacement = preserveCase(match[0], 'per cent');
+                issues.push({
+                    found: match[0],
+                    suggestion: replacement,
+                    autoFix: replacement,
+                    position: match.index,
+                    rule: this
+                });
+            }
+            return issues;
+        }
+    },
+    {
+        id: 'numbers-percent-space',
+        name: 'Space before percentage sign',
+        category: 'numbers-and-measurements',
+        description: 'Don\'t use a space between a number and the percentage sign. Write \'15%\', not \'15 %\'.',
+        link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/numbers-and-measurements/percentages',
+        check: function(text) {
+            const issues = [];
+            // Match number followed by space(s) and %
+            const regex = /(\d)\s+%/g;
+            let match;
+            while ((match = regex.exec(text)) !== null) {
+                const replacement = match[1] + '%';
+                issues.push({
+                    found: match[0],
+                    suggestion: replacement,
+                    autoFix: replacement,
+                    position: match.index,
+                    rule: this
+                });
+            }
+            return issues;
+        }
+    },
+    {
+        id: 'numbers-leading-zero',
+        name: 'Missing leading zero',
+        category: 'numbers-and-measurements',
+        description: 'Decimal values less than one should have a \'0\' before the decimal point. Write \'0.5\', not \'.5\'.',
+        link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/numbers-and-measurements/fractions-and-decimals',
+        check: function(text) {
+            const issues = [];
+            // Match decimal starting with . (not preceded by digit or another decimal point)
+            const regex = /(?<![0-9.])\.(\d+)/g;
+            let match;
+            while ((match = regex.exec(text)) !== null) {
+                const replacement = '0.' + match[1];
+                issues.push({
+                    found: match[0],
+                    suggestion: replacement,
+                    autoFix: replacement,
+                    position: match.index,
+                    rule: this
+                });
+            }
+            return issues;
+        }
+    },
+    {
+        id: 'numbers-start-sentence',
+        name: 'Numeral at start of sentence',
+        category: 'numbers-and-measurements',
+        description: 'Don\'t start a sentence with a numeral. Write the number in words, or rephrase the sentence.',
+        link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/numbers-and-measurements/choosing-numerals-or-words',
+        check: function(text) {
+            const issues = [];
+            // Match numeral at start of sentence (after . ! ? or start of text, followed by space and capital context)
+            const regex = /(?:^|[.!?]\s+)(\d+)(?:\s+[a-zA-Z])/gm;
+            let match;
+            while ((match = regex.exec(text)) !== null) {
+                const num = match[1];
+                const numInt = parseInt(num);
+                // Only flag if it's a reasonable number to write out (up to 100)
+                // Very large numbers should prompt rephrasing
+                if (numInt <= 100) {
+                    const words = numberToWords(numInt);
+                    const capitalised = words.charAt(0).toUpperCase() + words.slice(1);
+                    issues.push({
+                        found: num,
+                        suggestion: capitalised,
+                        autoFix: capitalised,
+                        position: match.index + match[0].indexOf(num),
+                        rule: this
+                    });
+                } else {
+                    issues.push({
+                        found: num,
+                        suggestion: 'Rephrase to avoid starting with a numeral',
+                        position: match.index + match[0].indexOf(num),
+                        rule: this
+                    });
+                }
+            }
+            return issues;
+        }
+    },
+    {
+        id: 'numbers-comma-thousands',
+        name: 'Missing comma in large number',
+        category: 'numbers-and-measurements',
+        description: 'Use commas in numbers with 4 or more digits. Write \'2,500\', not \'2500\'.',
+        link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/numbers-and-measurements/choosing-numerals-or-words',
+        check: function(text) {
+            const issues = [];
+            // Match 4+ digit numbers without commas
+            // Avoid: years (1900-2100), phone numbers, postcodes, ID numbers
+            const regex = /\b(\d{4,})\b/g;
+            let match;
+            while ((match = regex.exec(text)) !== null) {
+                const num = match[1];
+                const numInt = parseInt(num);
+
+                // Skip if already has commas or is clearly a year
+                if (num.includes(',')) continue;
+                if (numInt >= 1800 && numInt <= 2100 && num.length === 4) continue;
+
+                // Skip if it looks like a postcode (4 digits in Australia)
+                if (num.length === 4) {
+                    const before = text.substring(Math.max(0, match.index - 20), match.index).toLowerCase();
+                    if (/(?:postcode|post code|zip|suburb|\b[A-Z]{2,3}\s+)$/i.test(before)) continue;
+                }
+
+                // Skip phone number patterns
+                const before = text.substring(Math.max(0, match.index - 5), match.index);
+                const after = text.substring(match.index + num.length, Math.min(text.length, match.index + num.length + 5));
+                if (/(?:tel|phone|fax|call|mobile|\d)\s*$/i.test(before)) continue;
+                if (/^\s*\d/.test(after)) continue; // Part of longer number sequence
+
+                // Format with commas
+                const formatted = numInt.toLocaleString('en-AU');
+                if (formatted !== num) {
+                    issues.push({
+                        found: num,
+                        suggestion: formatted,
+                        autoFix: formatted,
+                        position: match.index,
+                        rule: this
+                    });
+                }
+            }
+            return issues;
+        }
+    },
+    {
+        id: 'numbers-measurement-words',
+        name: 'Word number with unit symbol',
+        category: 'numbers-and-measurements',
+        description: 'Always use numerals with units of measurement. Write \'5 km\', not \'five km\'.',
+        link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/numbers-and-measurements/measurement-and-units',
+        check: function(text) {
+            const issues = [];
+            const wordNumbers = {
+                'one': '1', 'two': '2', 'three': '3', 'four': '4', 'five': '5',
+                'six': '6', 'seven': '7', 'eight': '8', 'nine': '9', 'ten': '10',
+                'eleven': '11', 'twelve': '12', 'fifteen': '15', 'twenty': '20',
+                'thirty': '30', 'forty': '40', 'fifty': '50', 'hundred': '100'
+            };
+            // Common unit symbols
+            const units = ['km', 'km/h', 'm', 'cm', 'mm', 'kg', 'g', 'mg', 'μg', 'mcg',
+                          'mL', 'ml', 'L', 'l', 'ha', 'kW', 'MW', 'GW', 'kWh', 'MWh',
+                          'Hz', 'kHz', 'MHz', 'GHz', 'KB', 'MB', 'GB', 'TB', 'Mbps',
+                          'metres', 'meters', 'kilometres', 'kilometers', 'kilograms',
+                          'grams', 'litres', 'liters', 'hectares', 'watts', 'degrees'];
+
+            for (const [word, numeral] of Object.entries(wordNumbers)) {
+                const unitPattern = units.join('|');
+                const regex = new RegExp('\\b(' + word + ')\\s+(' + unitPattern + ')\\b', 'gi');
+                let match;
+                while ((match = regex.exec(text)) !== null) {
+                    const replacement = numeral + ' ' + match[2];
+                    issues.push({
+                        found: match[0],
+                        suggestion: replacement,
+                        autoFix: replacement,
+                        position: match.index,
+                        rule: this
+                    });
+                }
+            }
+            return issues;
+        }
+    },
+    {
+        id: 'numbers-imperial-units',
+        name: 'Imperial units',
+        category: 'numbers-and-measurements',
+        description: 'Australia uses the metric system. Consider using metric units unless you have a specific reason for imperial (for example, historical quotes, US audience).',
+        link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/numbers-and-measurements/measurement-and-units',
+        check: function(text) {
+            const issues = [];
+            const imperialUnits = {
+                'inches': 'centimetres (cm)',
+                'inch': 'centimetres (cm)',
+                'feet': 'metres (m)',
+                'foot': 'metres (m)',
+                'yards': 'metres (m)',
+                'yard': 'metres (m)',
+                'miles': 'kilometres (km)',
+                'mile': 'kilometres (km)',
+                'ounces': 'grams (g)',
+                'ounce': 'grams (g)',
+                'pounds': 'kilograms (kg)',
+                'pound': 'kilograms (kg)',
+                'gallons': 'litres (L)',
+                'gallon': 'litres (L)',
+                'pints': 'millilitres (mL)',
+                'pint': 'millilitres (mL)',
+                'quarts': 'litres (L)',
+                'quart': 'litres (L)',
+                'fahrenheit': 'Celsius',
+                '°F': '°C'
+            };
+
+            for (const [imperial, metric] of Object.entries(imperialUnits)) {
+                // Match the imperial unit preceded by a number
+                const escaped = imperial.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                const regex = new RegExp('\\b(\\d+(?:\\.\\d+)?\\s*)(' + escaped + ')\\b', 'gi');
+                let match;
+                while ((match = regex.exec(text)) !== null) {
+                    // Don't auto-fix - just warn, as imperial may be intentional
+                    issues.push({
+                        found: match[0],
+                        suggestion: 'Consider metric: ' + metric,
+                        position: match.index,
+                        rule: this
+                    });
+                }
+            }
+            return issues;
+        }
     }
 ];
 
@@ -1494,6 +1802,27 @@ function preserveCase(original, replacement) {
         return replacement[0].toUpperCase() + replacement.slice(1);
     }
     return replacement;
+}
+
+// Helper: convert number to words (for numbers 0-100)
+function numberToWords(num) {
+    const ones = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine',
+                  'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen',
+                  'seventeen', 'eighteen', 'nineteen'];
+    const tens = ['', '', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety'];
+
+    if (num < 20) {
+        return ones[num];
+    }
+    if (num < 100) {
+        const ten = Math.floor(num / 10);
+        const one = num % 10;
+        return one === 0 ? tens[ten] : tens[ten] + '-' + ones[one];
+    }
+    if (num === 100) {
+        return 'one hundred';
+    }
+    return num.toString(); // Fall back for numbers > 100
 }
 
 // Main function to check text against all rules
