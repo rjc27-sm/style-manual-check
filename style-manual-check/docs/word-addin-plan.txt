@@ -1,0 +1,123 @@
+STYLE MANUAL CHECK - WORD ADD-IN CONVERSION PLAN
+=================================================
+
+OVERVIEW
+--------
+Your deployment path has three stages:
+1. Home testing - Sideload on personal laptop with Microsoft 365
+2. Team testing - Share with Style Manual team for feedback
+3. Enterprise deployment - Work with IT for APS network approval
+
+
+WHAT NEEDS TO CHANGE
+--------------------
+Good news: Your rule engine (rules.js, spellings.js) requires ZERO changes.
+It's already decoupled from the UI.
+
+New files to create:
+- manifest.xml     - Tells Word about your add-in (name, permissions, location)
+- taskpane.html    - The UI panel (adapted from demo.html right panel)
+- taskpane.js      - Office.js integration code
+- taskpane.css     - Styles (mostly copied from demo.html)
+
+
+STAGE 1: HOME TESTING (SIDELOADING ON WORD DESKTOP)
+---------------------------------------------------
+
+What you need:
+- Microsoft 365 subscription (you have this)
+- Word desktop app on Windows
+- The add-in files in a local folder
+
+Folder structure:
+  C:\Users\[you]\Documents\StyleManualAddin\
+  ├── manifest.xml
+  ├── taskpane.html
+  ├── taskpane.css
+  ├── taskpane.js
+  ├── rules.js        (copied from src/)
+  └── spellings.js    (copied from src/)
+
+How to sideload on Word Desktop (Windows):
+
+ONE-TIME SETUP:
+1. Create a folder for your add-in (e.g., C:\Users\[you]\Documents\StyleManualAddin\)
+2. Open Word → File → Options → Trust Center → Trust Center Settings
+3. Click "Trusted Add-in Catalogs"
+4. In "Catalog URL" box, enter your folder path:
+   \\localhost\C$\Users\[you]\Documents\StyleManualAddin\
+5. Click "Add catalog" → Check "Show in Menu" → OK → OK
+6. Restart Word
+
+TO LOAD THE ADD-IN:
+1. Open Word
+2. Home tab → Add-ins (or Insert → My Add-ins)
+3. Click "Shared Folder" tab
+4. Select "Style Manual Check"
+5. The task pane appears on the right
+
+After making changes:
+- Close and reopen the task pane to see updates
+- No need to repeat the Trust Center setup
+
+
+STAGE 2: SHARING WITH STYLE MANUAL TEAM
+---------------------------------------
+
+Option A: Network shared folder
+- Put manifest + files on a shared network drive
+- Team members add the shared folder to their Trusted Catalogs
+- Pros: No server needed, works offline
+- Cons: Manual setup per person, updates require re-adding
+
+Option B: Web hosting (recommended)
+- Host files on any HTTPS web server (GitHub Pages, Azure, AWS, etc.)
+- Share the manifest URL with team
+- Pros: Easy updates (just update files), simple install
+- Cons: Requires HTTPS (can use free Let's Encrypt cert)
+
+Option C: Centralized Deployment (if team has M365 admin)
+- M365 admin uploads manifest to Admin Center
+- Assigns add-in to specific users/groups
+- Pros: One-click install for users, automatic updates
+- Cons: Needs admin access
+
+
+STAGE 3: ENTERPRISE DEPLOYMENT (APS NETWORKS)
+---------------------------------------------
+
+This requires IT department involvement. Typical process:
+
+Security review - IT will want to know:
+- What permissions does it need? → ReadWriteDocument (reads and modifies text)
+- Where is data sent? → Nowhere (all processing is local, no external API calls)
+- Where are files hosted? → [Your answer - internal server or approved cloud]
+
+Deployment methods for government networks:
+1. Centralized Deployment via Microsoft 365 Admin Center
+2. Group Policy to push trusted catalog locations
+3. Internal app catalog on SharePoint (note: being deprecated April 2026)
+
+What IT typically needs from you:
+- The manifest.xml file
+- Documentation of what the add-in does
+- Confirmation of security posture (no data exfiltration)
+- Hosting location for the files
+
+
+VERIFICATION CHECKLIST
+----------------------
+1. Basic test: Open Word, sideload add-in, click "Scan document", see issues
+2. Fix test: Click "Accept" on an issue, verify document text changes
+3. Fix all test: Click "Fix all", verify all instances replaced
+4. Platform test: Verify works in Word Online and Word desktop
+5. Team test: Have someone else install from shared location
+
+
+DECISIONS FOR LATER
+-------------------
+These don't need to be decided now - address them when ready to share with team:
+
+1. Hosting: Where to host files for team access (GitHub Pages, government server, etc.)
+2. Branding: Whether to add official Australian Government branding
+3. Distribution: How to make it easy for team members to install
