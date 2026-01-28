@@ -1450,6 +1450,326 @@ const RULES = [
         }
     },
 
+    // ==================== LISTS ====================
+    {
+        id: 'list-semicolon',
+        name: 'Semicolon at end of list item',
+        category: 'lists',
+        description: 'Don\'t use semicolons at the end of list items. Use minimal punctuation in lists.',
+        link: 'https://www.stylemanual.gov.au/structuring-content/lists',
+        check: function(text) {
+            const issues = [];
+            // Match semicolon at end of line, followed by a bullet or number on the next line
+            // Bullet markers: •●○◦▪▸-* or numbered 1. 1) a. a)
+            const regex = /;[ \t]*\r?\n[ \t]*[•●○◦▪▸\-\*]|;[ \t]*\r?\n[ \t]*\d+[.)]\s|;[ \t]*\r?\n[ \t]*[a-z][.)]\s/gi;
+            let match;
+            while ((match = regex.exec(text)) !== null) {
+                issues.push({
+                    found: ';',
+                    suggestion: 'Remove the semicolon',
+                    autoFix: '',
+                    position: match.index,
+                    rule: this
+                });
+            }
+            return issues;
+        }
+    },
+    {
+        id: 'list-trailing-comma',
+        name: 'Comma at end of list item',
+        category: 'lists',
+        description: 'Don\'t use commas at the end of list items. Use minimal punctuation in lists.',
+        link: 'https://www.stylemanual.gov.au/structuring-content/lists',
+        check: function(text) {
+            const issues = [];
+            // Match comma at end of line, followed by a bullet or number on the next line
+            const regex = /,[ \t]*\r?\n[ \t]*[•●○◦▪▸\-\*]|,[ \t]*\r?\n[ \t]*\d+[.)]\s|,[ \t]*\r?\n[ \t]*[a-z][.)]\s/gi;
+            let match;
+            while ((match = regex.exec(text)) !== null) {
+                issues.push({
+                    found: ',',
+                    suggestion: 'Remove the comma',
+                    autoFix: '',
+                    position: match.index,
+                    rule: this
+                });
+            }
+            return issues;
+        }
+    },
+    {
+        id: 'list-and-or',
+        name: '\'And\' or \'or\' at end of list item',
+        category: 'lists',
+        description: 'Don\'t use \'and\' or \'or\' at the end of list items. The bullet or number structure makes these unnecessary.',
+        link: 'https://www.stylemanual.gov.au/structuring-content/lists',
+        check: function(text) {
+            const issues = [];
+            // Match 'and' or 'or' at end of line (possibly after punctuation), followed by bullet/number
+            // Pattern: word boundary + and/or + optional punctuation + line break + bullet marker
+            const regex = /\b(and|or)[;,]?[ \t]*\r?\n[ \t]*[•●○◦▪▸\-\*]|\b(and|or)[;,]?[ \t]*\r?\n[ \t]*\d+[.)]\s|\b(and|or)[;,]?[ \t]*\r?\n[ \t]*[a-z][.)]\s/gi;
+            let match;
+            while ((match = regex.exec(text)) !== null) {
+                const found = match[1] || match[2] || match[3];
+                issues.push({
+                    found: found,
+                    suggestion: 'Remove \'' + found + '\' from end of list item',
+                    position: match.index,
+                    rule: this
+                });
+            }
+            return issues;
+        }
+    },
+    {
+        id: 'list-etc',
+        name: '\'Etc.\' in list',
+        category: 'lists',
+        description: 'Don\'t write \'etc.\' at the end of a list to show the list is incomplete. Use a lead-in like \'including\' or \'for example\' instead.',
+        link: 'https://www.stylemanual.gov.au/structuring-content/lists',
+        check: function(text) {
+            const issues = [];
+            // Match 'etc.' or 'etc' as a list item (after bullet/number marker)
+            // Also match 'etc.' at end of a list item before a new bullet
+            const patterns = [
+                // etc. as standalone list item: "• etc." or "• etc" or "1. etc."
+                /[•●○◦▪▸\-\*]\s*etc\.?(?:\s*\r?\n|$)/gi,
+                /\d+[.)]\s*etc\.?(?:\s*\r?\n|$)/gi,
+                /[a-z][.)]\s*etc\.?(?:\s*\r?\n|$)/gi,
+                // etc. at end of list item before another bullet
+                /etc\.?[ \t]*\r?\n[ \t]*[•●○◦▪▸\-\*]/gi,
+                /etc\.?[ \t]*\r?\n[ \t]*\d+[.)]\s/gi
+            ];
+            for (const regex of patterns) {
+                let match;
+                while ((match = regex.exec(text)) !== null) {
+                    // Find the position of 'etc' within the match
+                    const etcPos = match[0].toLowerCase().indexOf('etc');
+                    issues.push({
+                        found: 'etc.',
+                        suggestion: 'Remove \'etc.\' and use a lead-in like \'including\' or \'for example\' instead',
+                        position: match.index + etcPos,
+                        rule: this
+                    });
+                }
+            }
+            return issues;
+        }
+    },
+    {
+        id: 'list-inconsistent-caps',
+        name: 'Inconsistent capitalisation in list',
+        category: 'lists',
+        description: 'List items should have consistent capitalisation. Either all items should start with a capital letter (sentence list or stand-alone list) or all should start with lowercase (fragment list).',
+        link: 'https://www.stylemanual.gov.au/structuring-content/lists',
+        check: function(text) {
+            const issues = [];
+            // Find list blocks (2+ consecutive lines with bullet/number markers)
+            const lines = text.split(/\r?\n/);
+            const bulletPattern = /^[ \t]*([•●○◦▪▸\-\*]|\d+[.)]|[a-z][.)])\s*(.+)/i;
+
+            let listItems = [];
+            let listStartPos = 0;
+            let currentPos = 0;
+
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i];
+                const match = bulletPattern.exec(line);
+
+                if (match) {
+                    const itemText = match[2].trim();
+                    if (itemText.length > 0) {
+                        if (listItems.length === 0) {
+                            listStartPos = currentPos;
+                        }
+                        listItems.push({
+                            text: itemText,
+                            position: currentPos + line.indexOf(itemText),
+                            startsWithCapital: /^[A-Z]/.test(itemText),
+                            startsWithLower: /^[a-z]/.test(itemText)
+                        });
+                    }
+                } else {
+                    // End of list block - check for inconsistency
+                    if (listItems.length >= 2) {
+                        const capsCount = listItems.filter(item => item.startsWithCapital).length;
+                        const lowerCount = listItems.filter(item => item.startsWithLower).length;
+
+                        // If there's a mix (not all caps and not all lower), flag it
+                        if (capsCount > 0 && lowerCount > 0) {
+                            // Flag the minority items
+                            const shouldBeCaps = capsCount > lowerCount;
+                            for (const item of listItems) {
+                                if (shouldBeCaps && item.startsWithLower) {
+                                    issues.push({
+                                        found: item.text.substring(0, Math.min(30, item.text.length)) + (item.text.length > 30 ? '...' : ''),
+                                        suggestion: 'Other items start with capitals. Consider: ' + item.text.charAt(0).toUpperCase() + item.text.slice(1).substring(0, 25) + '...',
+                                        position: item.position,
+                                        rule: this
+                                    });
+                                } else if (!shouldBeCaps && item.startsWithCapital) {
+                                    // Check if it might be a proper noun (skip if so)
+                                    const firstWord = item.text.split(/\s+/)[0];
+                                    const likelyProperNoun = /^[A-Z][a-z]+$/.test(firstWord) &&
+                                        ['Australia', 'Australian', 'Government', 'Monday', 'Tuesday', 'Wednesday',
+                                         'Thursday', 'Friday', 'Saturday', 'Sunday', 'January', 'February', 'March',
+                                         'April', 'May', 'June', 'July', 'August', 'September', 'October',
+                                         'November', 'December'].includes(firstWord);
+                                    if (!likelyProperNoun) {
+                                        issues.push({
+                                            found: item.text.substring(0, Math.min(30, item.text.length)) + (item.text.length > 30 ? '...' : ''),
+                                            suggestion: 'Other items start with lowercase. Consider: ' + item.text.charAt(0).toLowerCase() + item.text.slice(1).substring(0, 25) + '...',
+                                            position: item.position,
+                                            rule: this
+                                        });
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    listItems = [];
+                }
+
+                currentPos += line.length + 1; // +1 for newline
+            }
+
+            // Check final list block if file doesn't end with non-list line
+            if (listItems.length >= 2) {
+                const capsCount = listItems.filter(item => item.startsWithCapital).length;
+                const lowerCount = listItems.filter(item => item.startsWithLower).length;
+
+                if (capsCount > 0 && lowerCount > 0) {
+                    const shouldBeCaps = capsCount > lowerCount;
+                    for (const item of listItems) {
+                        if (shouldBeCaps && item.startsWithLower) {
+                            issues.push({
+                                found: item.text.substring(0, Math.min(30, item.text.length)) + (item.text.length > 30 ? '...' : ''),
+                                suggestion: 'Other items start with capitals. Consider: ' + item.text.charAt(0).toUpperCase() + item.text.slice(1).substring(0, 25) + '...',
+                                position: item.position,
+                                rule: this
+                            });
+                        } else if (!shouldBeCaps && item.startsWithCapital) {
+                            const firstWord = item.text.split(/\s+/)[0];
+                            const likelyProperNoun = /^[A-Z][a-z]+$/.test(firstWord) &&
+                                ['Australia', 'Australian', 'Government', 'Monday', 'Tuesday', 'Wednesday',
+                                 'Thursday', 'Friday', 'Saturday', 'Sunday', 'January', 'February', 'March',
+                                 'April', 'May', 'June', 'July', 'August', 'September', 'October',
+                                 'November', 'December'].includes(firstWord);
+                            if (!likelyProperNoun) {
+                                issues.push({
+                                    found: item.text.substring(0, Math.min(30, item.text.length)) + (item.text.length > 30 ? '...' : ''),
+                                    suggestion: 'Other items start with lowercase. Consider: ' + item.text.charAt(0).toLowerCase() + item.text.slice(1).substring(0, 25) + '...',
+                                    position: item.position,
+                                    rule: this
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+
+            return issues;
+        }
+    },
+    {
+        id: 'list-inconsistent-periods',
+        name: 'Inconsistent punctuation in list',
+        category: 'lists',
+        description: 'List items should have consistent punctuation. Sentence lists have full stops on all items. Fragment lists have a full stop on the last item only. Stand-alone lists have no full stops.',
+        link: 'https://www.stylemanual.gov.au/structuring-content/lists',
+        check: function(text) {
+            const issues = [];
+            // Find list blocks and check punctuation consistency
+            const lines = text.split(/\r?\n/);
+            const bulletPattern = /^[ \t]*([•●○◦▪▸\-\*]|\d+[.)]|[a-z][.)])\s*(.+)/i;
+
+            let listItems = [];
+            let currentPos = 0;
+
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i];
+                const match = bulletPattern.exec(line);
+
+                if (match) {
+                    const itemText = match[2].trim();
+                    if (itemText.length > 0) {
+                        listItems.push({
+                            text: itemText,
+                            position: currentPos + line.indexOf(itemText),
+                            endsWithPeriod: /\.$/.test(itemText),
+                            isLast: false // Will set this when we find end of list
+                        });
+                    }
+                } else {
+                    // End of list block - check for inconsistency
+                    if (listItems.length >= 2) {
+                        listItems[listItems.length - 1].isLast = true;
+                        checkListPunctuation(listItems, issues, this);
+                    }
+                    listItems = [];
+                }
+
+                currentPos += line.length + 1;
+            }
+
+            // Check final list block
+            if (listItems.length >= 2) {
+                listItems[listItems.length - 1].isLast = true;
+                checkListPunctuation(listItems, issues, this);
+            }
+
+            function checkListPunctuation(items, issues, rule) {
+                const periodCount = items.filter(item => item.endsWithPeriod).length;
+                const noPeriodCount = items.length - periodCount;
+
+                // Valid patterns:
+                // 1. All have periods (sentence list) - periodCount === items.length
+                // 2. Only last has period (fragment list) - periodCount === 1 && items[items.length-1].endsWithPeriod
+                // 3. None have periods (stand-alone list) - periodCount === 0
+
+                const allPeriods = periodCount === items.length;
+                const onlyLastPeriod = periodCount === 1 && items[items.length - 1].endsWithPeriod;
+                const noPeriods = periodCount === 0;
+
+                if (!allPeriods && !onlyLastPeriod && !noPeriods) {
+                    // Inconsistent - try to determine intended pattern and flag deviations
+                    // If most have periods, suggest adding to those without
+                    // If most don't have periods, suggest removing (except potentially last)
+
+                    if (periodCount > noPeriodCount) {
+                        // Most have periods - likely sentence list, flag items without
+                        for (const item of items) {
+                            if (!item.endsWithPeriod) {
+                                issues.push({
+                                    found: item.text.substring(0, Math.min(30, item.text.length)) + (item.text.length > 30 ? '...' : ''),
+                                    suggestion: 'Other items end with full stops. Add one here, or remove from others for consistency.',
+                                    position: item.position,
+                                    rule: rule
+                                });
+                            }
+                        }
+                    } else {
+                        // Most don't have periods - check if only issue is non-last items with periods
+                        const nonLastWithPeriods = items.filter(item => !item.isLast && item.endsWithPeriod);
+                        if (nonLastWithPeriods.length > 0) {
+                            for (const item of nonLastWithPeriods) {
+                                issues.push({
+                                    found: item.text.substring(0, Math.min(30, item.text.length)) + (item.text.length > 30 ? '...' : ''),
+                                    suggestion: 'In fragment lists, only the last item should have a full stop. Remove from this item.',
+                                    position: item.position,
+                                    rule: rule
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+
+            return issues;
+        }
+    },
+
     // ==================== NUMBERS AND MEASUREMENTS ====================
     {
         id: 'numbers-zero-one',

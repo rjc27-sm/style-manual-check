@@ -6,14 +6,20 @@ Style Manual Check is a Microsoft Word add-in that checks documents against the 
 
 ## Current status
 
+**Development approach:** We are building this in two phases:
+1. **Phase 1 (current):** Build and test all style rules using the browser-based demo
+2. **Phase 2 (next):** Convert to a Microsoft Word add-in using Office.js
+
+This approach allows rapid iteration on rules without the overhead of Word add-in deployment.
+
 **Completed:**
-- Core rule engine with 56 rules across 10 categories
+- Core rule engine with 62 rules across 11 categories
 - Browser-based demo (demo.html) for testing rules
 - Comprehensive word lists in src/spellings.js
 - Rule definitions in src/rules.js
 - Complete word list documentation (can be regenerated)
 
-**Next phase:**
+**Next phase (Word add-in):**
 - Convert to a working Microsoft Word add-in (Office.js)
 - Package for sideloading and testing
 - Eventually publish to AppSource or internal distribution
@@ -44,6 +50,7 @@ style-manual-check/
 8. **Watch words** (1 rule) - Plain language alternatives for jargon and complex phrases
 9. **Readability** (1 rule) - Sentence length over 25 words
 10. **Numbers and measurements** (9 rules) - Zero/one as words, percentages, decimals, units, imperial warnings
+11. **Lists** (6 rules) - No semicolons/commas/and/or at end of items, no 'etc.', consistent capitalisation and punctuation
 
 ## Key Style Manual principles to follow
 
@@ -62,6 +69,8 @@ style-manual-check/
 - Write 'zero' and 'one' as words, use numerals for 2 and above
 - Use 'per cent' (two words) not 'percent'
 - Use metric units, not imperial
+- Use minimal punctuation in lists (no semicolons, commas, 'and' or 'or' at end of items)
+- Don't use 'etc.' at the end of lists
 
 ## UI text requirements
 
@@ -78,6 +87,7 @@ The add-in's own interface text must follow Style Manual rules:
 - Quotation marks: https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/punctuation/quotation-marks
 - Government terms: https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/names-and-terms/government-terms
 - Numbers and measurements: https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/numbers-and-measurements
+- Lists: https://www.stylemanual.gov.au/structuring-content/lists
 
 ## Technical notes
 
