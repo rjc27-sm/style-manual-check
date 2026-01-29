@@ -154,11 +154,12 @@ class DocumentAdapter {
   async replaceInBlock(blockId, oldText, newText) { throw new Error('Not implemented'); }
 
   /**
-   * Navigate to and highlight a specific block
+   * Navigate to and highlight a specific block or specific text within it
    * @param {string} blockId - The block to navigate to
+   * @param {object|null} issue - Optional issue object for precise text selection
    * @returns {Promise<void>}
    */
-  async navigateToBlock(blockId) { throw new Error('Not implemented'); }
+  async navigateToBlock(blockId, issue = null) { throw new Error('Not implemented'); }
 
   /**
    * Get display-friendly location string
@@ -234,7 +235,7 @@ class WordAdapter extends DocumentAdapter {
     return true;
   }
 
-  async navigateToBlock(blockId) {
+  async navigateToBlock(blockId, issue = null) {
     const index = parseInt(blockId.replace('para-', ''));
 
     await Word.run(async (context) => {
@@ -243,7 +244,22 @@ class WordAdapter extends DocumentAdapter {
       await context.sync();
 
       const para = paragraphs.items[index];
-      para.select();
+
+      if (issue && issue.found) {
+        // Search for and select the specific problematic text
+        const searchResults = para.search(issue.found, { matchCase: true });
+        searchResults.load('items');
+        await context.sync();
+
+        if (searchResults.items.length > 0) {
+          searchResults.items[0].select();
+        } else {
+          para.select();  // Fallback if text not found
+        }
+      } else {
+        para.select();
+      }
+
       await context.sync();
     });
   }
@@ -358,7 +374,7 @@ class PowerPointAdapter extends DocumentAdapter {
     return true;
   }
 
-  async navigateToBlock(blockId) {
+  async navigateToBlock(blockId, issue = null) {
     const [slideIndex, shapeIndex] = this._parseBlockId(blockId);
 
     await PowerPoint.run(async (context) => {
@@ -370,6 +386,8 @@ class PowerPointAdapter extends DocumentAdapter {
       await context.sync();
 
       // Select the shape's text
+      // Note: PowerPoint API doesn't support selecting specific text within a shape,
+      // so we select the entire text range regardless of issue parameter
       const textRange = shape.textFrame.textRange;
       textRange.setSelected();
       await context.sync();
@@ -433,8 +451,15 @@ class DemoAdapter extends DocumentAdapter {
     return true;
   }
 
-  async navigateToBlock(blockId) {
+  async navigateToBlock(blockId, issue = null) {
     this.textarea.focus();
+
+    if (issue && issue.found && typeof issue.position === 'number') {
+      // Select the specific text in the textarea
+      const start = issue.position;
+      const end = start + issue.found.length;
+      this.textarea.setSelectionRange(start, end);
+    }
   }
 
   getLocationString(block) {
@@ -564,7 +589,7 @@ class StyleManualTaskPane {
     if (!issue) return;
 
     try {
-      await this.adapter.navigateToBlock(issue.blockId);
+      await this.adapter.navigateToBlock(issue.blockId, issue);
     } catch (error) {
       console.error('Navigation failed:', error);
     }
@@ -823,6 +848,17 @@ For initial development, you can avoid a build step by using ES modules:
 
 ## Known limitations
 
+### General (text content only)
+
+The rule engine checks **text content** only, not document formatting. The following cannot be detected:
+
+| Item | Reason | Workaround |
+|------|--------|------------|
+| Bullet point styles (for example, en dashes for second-level lists) | Bullet characters are formatting metadata, not text content | Check manually; Style Manual recommends en dashes for second-level bullets, not hollow circles |
+| Font styling (bold, italic, underline) | Formatting metadata | Check manually |
+| Paragraph spacing and alignment | Formatting metadata | Check manually |
+| Table structure and formatting | Would require separate table-aware checker | Check manually |
+
 ### PowerPoint-specific
 
 | Limitation | Impact | Workaround |
@@ -838,9 +874,20 @@ For initial development, you can avoid a build step by using ES modules:
 |---------|------|------------|
 | Text structure | Paragraphs, tables, headers | Slides, shapes, text frames |
 | Find/replace | Native `search()` method | Manual string replacement |
-| Navigation | `paragraph.select()` | `textRange.setSelected()` |
+| Navigation | `paragraph.select()` or `searchResults.items[0].select()` | `textRange.setSelected()` |
+| Precise text selection | Yes, via `para.search()` | No, selects entire shape text |
 | Heading detection | Style-based | Shape name/position heuristics |
 | Speaker notes | Not applicable | Not supported by API |
+
+### Click-to-navigate considerations
+
+| Item | Notes |
+|------|-------|
+| API requirement | Requires WordApi 1.3+ (add to manifest) |
+| Word 2016 | `select()` may not work reliably - works on Office 2019+ and Web |
+| Multiple occurrences | If same text appears twice in a paragraph, selects first instance |
+| Task pane focus | Selection visible when document has focus |
+| PowerPoint | Cannot select specific text within a shape - selects entire text range |
 
 ## Migration path
 
