@@ -2,15 +2,14 @@
 
 ## Project overview
 
-Style Manual Check is a Microsoft Word add-in that checks documents against the Australian Government Style Manual (https://www.stylemanual.gov.au). The goal is to help government staff apply Style Manual rules consistently.
+Style Manual Check is a tool that checks documents against the Australian Government Style Manual (https://www.stylemanual.gov.au). The goal is to help government staff apply Style Manual rules consistently. It will be available as both a Microsoft Word add-in and a PowerPoint add-in, sharing a common rule engine.
 
 ## Current status
 
-**Development approach:** We are building this in two phases:
-1. **Phase 1 (current):** Build and test all style rules using the browser-based demo
-2. **Phase 2 (next):** Convert to a Microsoft Word add-in using Office.js
-
-This approach allows rapid iteration on rules without the overhead of Word add-in deployment.
+**Development approach:** We are building this in phases:
+1. **Phase 1 (complete):** Build and test all style rules using the browser-based demo
+2. **Phase 2 (next):** Refactor into shared architecture, then build Word add-in
+3. **Phase 3 (planned):** Build PowerPoint add-in using the same architecture
 
 **Completed:**
 - Core rule engine with 62 rules across 11 categories
@@ -18,24 +17,58 @@ This approach allows rapid iteration on rules without the overhead of Word add-i
 - Comprehensive word lists in src/spellings.js
 - Rule definitions in src/rules.js
 - Complete word list documentation (can be regenerated)
+- Shared architecture design for Word + PowerPoint (see docs/shared-architecture.md)
 
-**Next phase (Word add-in):**
-- Convert to a working Microsoft Word add-in (Office.js)
-- Package for sideloading and testing
-- Eventually publish to AppSource or internal distribution
+**Next phase (shared architecture + Word add-in):**
+1. Refactor code into layered structure with adapter pattern
+2. Build WordAdapter for Office.js integration
+3. Package Word add-in for sideloading and testing
+
+**Future phase (PowerPoint add-in):**
+- Build PowerPointAdapter using same architecture
+- Note: Speaker notes are NOT accessible via Office.js (known API limitation)
 
 ## Project structure
 
+**Current structure:**
 ```
 style-manual-check/
 ├── CLAUDE.md           # This file - project context for Claude
 ├── README.md           # User-facing documentation
 ├── demo.html           # Browser demo for testing rules
 ├── src/
-│   ├── rules.js        # Rule definitions (48 rules)
+│   ├── rules.js        # Rule definitions (62 rules)
 │   └── spellings.js    # Word dictionaries (US→AU, common errors)
 └── docs/
-    └── (documentation files)
+    ├── PROJECT_HISTORY.md
+    ├── shared-architecture.md   # Architecture for Word + PowerPoint
+    └── word-addin-plan.txt
+```
+
+**Planned structure after refactoring (see docs/shared-architecture.md):**
+```
+style-manual-check/
+├── src/
+│   ├── core/                    # Shared rule engine (100% reusable)
+│   │   ├── rules.js
+│   │   ├── spellings.js
+│   │   └── checker.js           # checkText() extracted here
+│   ├── adapters/                # Document access abstraction
+│   │   ├── document-adapter.js  # Interface definition
+│   │   ├── word-adapter.js      # Word Office.js implementation
+│   │   ├── powerpoint-adapter.js# PowerPoint Office.js implementation
+│   │   └── demo-adapter.js      # Browser demo (textarea)
+│   ├── ui/                      # Shared UI components
+│   │   ├── taskpane.html
+│   │   ├── taskpane.css
+│   │   └── taskpane.js
+│   └── app/                     # Entry points per application
+│       ├── word/
+│       ├── powerpoint/
+│       └── demo/
+└── manifests/
+    ├── word-manifest.xml
+    └── powerpoint-manifest.xml
 ```
 
 ## Rule categories
@@ -97,7 +130,24 @@ The add-in's own interface text must follow Style Manual rules:
 - Each rule has: id, name, category, description, link, check function
 - The preserveCase() helper maintains capitalisation when suggesting replacements
 
-## Word add-in requirements (for next phase)
+## Shared architecture approach
+
+The Word and PowerPoint add-ins share a common architecture using the adapter pattern:
+
+- **Core rule engine** (100% shared) - rules.js, spellings.js, checker.js
+- **Document adapters** (app-specific) - Abstract Office.js differences behind a common interface
+- **Shared UI** (~90% shared) - Task pane HTML/CSS/JS works for both apps
+- **Entry points** (app-specific) - Initialise correct adapter per application
+
+Key adapter interface methods:
+- `getTextBlocks()` - Extract all text from document/presentation
+- `replaceInBlock(blockId, oldText, newText)` - Apply a fix
+- `navigateToBlock(blockId)` - Jump to location in document
+- `getLocationString(block)` - Human-readable location (e.g. 'Slide 3, Title')
+
+See docs/shared-architecture.md for complete implementation details.
+
+## Word add-in requirements
 
 - Must work with Word on Windows, Mac, and Word Online
 - Use Office.js API to access document content
@@ -105,3 +155,16 @@ The add-in's own interface text must follow Style Manual rules:
 - Support checking selected text or full document
 - Allow users to accept, ignore, or fix all instances of each issue
 - Must detect both styled headings AND manually formatted headings for title case rule
+
+## PowerPoint add-in requirements
+
+- Must work with PowerPoint on Windows, Mac, and PowerPoint Online
+- Requires PowerPoint API 1.4+ (for TextFrame access)
+- Access text via: Presentation → Slides → Shapes → TextFrame → TextRange
+- Navigate by slide and shape rather than paragraph
+
+**Known limitations (Office.js API):**
+- Speaker notes are NOT accessible - users must check these manually
+- No native find/replace - must replace entire textRange.text
+- No paragraph-level iteration within shapes
+- iPad support is minimal (API 1.1 only, no text frame access)

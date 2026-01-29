@@ -38,3 +38,44 @@ All 'Learn more' links point to correct Style Manual pages:
 - Convert to Microsoft Word add-in using Office.js
 - Support both styled headings and manually formatted headings
 - Package for sideloading/testing
+
+## 2025-01-29: PowerPoint add-in research and shared architecture
+
+### Research findings
+
+Investigated the feasibility of creating a PowerPoint add-in alongside the planned Word add-in.
+
+**PowerPoint Office.js API capabilities:**
+- Mature API with 10 requirement set versions (1.1 through 1.10)
+- Full support on Office Web, Windows (Microsoft 365), and Mac
+- Text access via Slide → Shape → TextFrame → TextRange hierarchy
+- Requires API 1.4+ for text frame access
+
+**Key limitation discovered:**
+- Speaker notes (presenter notes) are NOT accessible via Office.js
+- This is a known feature request that Microsoft has not implemented
+- Users will need to check speaker notes manually
+
+### Architecture decision
+
+Designed a shared architecture to support both Word and PowerPoint add-ins with maximum code reuse. Key design:
+
+1. **Adapter pattern** - Abstract document access behind a common interface (`DocumentAdapter`)
+2. **Layered structure**:
+   - Layer 1: Core rule engine (100% shared)
+   - Layer 2: Document adapters (app-specific)
+   - Layer 3: Shared UI
+   - Layer 4: App entry points
+
+3. **Code reuse estimates**:
+   - Rule engine: 100%
+   - UI code: ~90%
+   - Only adapters and manifests are app-specific
+
+### Files created
+- docs/shared-architecture.md - Comprehensive architecture document with code examples
+
+### Next steps
+- Phase 1: Refactor existing code into layered structure
+- Phase 2: Build Word add-in with WordAdapter
+- Phase 3: Build PowerPoint add-in with PowerPointAdapter

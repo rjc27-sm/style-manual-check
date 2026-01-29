@@ -4,7 +4,7 @@ A tool to check documents against the [Australian Government Style Manual](https
 
 ## Current status
 
-This project is in active development. The rule engine is complete and can be tested via the browser demo. The next phase is converting it to a Microsoft Word add-in.
+This project is in active development. The rule engine is complete and can be tested via the browser demo. The next phase is converting it to Microsoft Office add-ins for both Word and PowerPoint.
 
 ## Quick start (browser demo)
 
