@@ -806,7 +806,7 @@ const RULES = [
         id: 'heading-title-case',
         name: 'Title case heading',
         category: 'headings',
-        description: 'Use sentence case for headings, not title case. Only capitalise the first word and proper nouns. Note: you may need to adjust the suggested fix for proper nouns.',
+        description: 'Use sentence case for headings, not title case. Only capitalise the first word and proper nouns. Note: you may need to adjust the suggested fix if the heading contains proper nouns.',
         link: 'https://www.stylemanual.gov.au/structuring-content/headings',
         check: function(text) {
             const issues = [];
@@ -1561,7 +1561,7 @@ const RULES = [
         id: 'list-inconsistent-caps',
         name: 'Inconsistent capitalisation in list',
         category: 'lists',
-        description: 'List items should have consistent capitalisation. Either all items should start with a capital letter (sentence list or stand-alone list) or all should start with lowercase (fragment list).',
+        description: 'List items should have consistent capitalisation. For sentence lists or stand-alone lists, start each item with a capital letter. For fragment lists, start each item with a lowercase letter, unless the first word is a proper noun.',
         link: 'https://www.stylemanual.gov.au/structuring-content/lists',
         check: function(text) {
             const issues = [];
