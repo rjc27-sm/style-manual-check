@@ -663,8 +663,11 @@ Required equipment:
             const lineHeight = 22; // Approximate line height
             elements.documentText.scrollTop = Math.max(0, (linesBefore - 3) * lineHeight);
 
-            // Remove this issue from the list
-            allIssues = allIssues.filter(i => i.id !== issueId);
+            // Rescan to get fresh positions (user may edit after navigating)
+            allIssues = checkText(elements.documentText.value);
+            allIssues.forEach((issue, i) => {
+                issue.id = 'issue-' + i;
+            });
             displayResults();
         }
 
@@ -680,14 +683,16 @@ Required equipment:
                 fixedReplacement = replacement.charAt(0).toUpperCase() + replacement.slice(1);
             }
 
-            // Replace in the textarea
+            // Replace in the textarea using string replace (same approach as acceptFix)
+            // This replaces the first occurrence, which is reliable
             const text = elements.documentText.value;
-            const before = text.substring(0, issue.position);
-            const after = text.substring(issue.position + issue.found.length);
-            elements.documentText.value = before + fixedReplacement + after;
+            elements.documentText.value = text.replace(issue.found, fixedReplacement);
 
-            // Remove from issues
-            allIssues = allIssues.filter(i => i.id !== issueId);
+            // Rescan to get fresh positions for remaining issues
+            allIssues = checkText(elements.documentText.value);
+            allIssues.forEach((issue, i) => {
+                issue.id = 'issue-' + i;
+            });
             fixedCount++;
             displayResults();
         }
