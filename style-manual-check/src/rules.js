@@ -939,11 +939,20 @@ const RULES = [
             const lines = text.split('\n');
             let position = 0;
 
+            // Pattern to detect list item markers at start of line
+            const bulletPattern = /^[•●○◦▪▸\-\*]\s|^\d+[.)]\s|^[a-z][.)]\s/i;
+
             for (const line of lines) {
                 const trimmed = line.trim();
 
                 // Skip empty lines
                 if (!trimmed) {
+                    position += line.length + 1;
+                    continue;
+                }
+
+                // Skip lines that are list items (start with bullet or number marker)
+                if (bulletPattern.test(trimmed)) {
                     position += line.length + 1;
                     continue;
                 }
@@ -1072,10 +1081,28 @@ const RULES = [
             const regex = /\betc\.?(?!\w)/gi;
             let match;
             while ((match = regex.exec(text)) !== null) {
+                const afterPos = match.index + match[0].length;
+                const after = text.substring(afterPos, afterPos + 3);
+
+                // Check if etc. is at end of sentence:
+                // - followed by space then capital letter
+                // - followed by newline
+                // - at end of string
+                // - followed by closing quote/bracket then sentence-end indicator
+                const atEndOfSentence = /^\s*$/.test(after) ||
+                    /^\s+[A-Z]/.test(after) ||
+                    /^[\s]*[\r\n]/.test(after) ||
+                    /^['"'"\)\]]\s*$/.test(after) ||
+                    /^['"'"\)\]]\s+[A-Z]/.test(after);
+
+                // If etc. ends with period and is at end of sentence, keep the period
+                const hasPeriod = match[0].endsWith('.');
+                const replacement = (hasPeriod && atEndOfSentence) ? 'and so on.' : 'and so on';
+
                 issues.push({
                     found: match[0],
-                    suggestion: 'and so on',
-                    autoFix: 'and so on',
+                    suggestion: replacement,
+                    autoFix: replacement,
                     position: match.index,
                     rule: this
                 });
@@ -1143,9 +1170,15 @@ const RULES = [
                 const regex = new RegExp('\\b' + escaped + '\\b', 'gi');
                 let match;
                 while ((match = regex.exec(text)) !== null) {
+                    // Extract replacement options from the suggestion (words in single quotes)
+                    const replacementMatches = suggestion.match(/'([^']+)'/g);
+                    const replacements = replacementMatches
+                        ? replacementMatches.map(m => m.replace(/'/g, ''))
+                        : [];
                     issues.push({
                         found: match[0],
                         suggestion: suggestion,
+                        replacements: replacements,
                         position: match.index,
                         rule: this
                     });
@@ -1515,6 +1548,7 @@ const RULES = [
                 issues.push({
                     found: found,
                     suggestion: 'Remove \'' + found + '\' from end of list item',
+                    autoFix: '',
                     position: match.index,
                     rule: this
                 });
@@ -1562,7 +1596,7 @@ const RULES = [
         name: 'Inconsistent capitalisation in list',
         category: 'lists',
         description: 'List items should have consistent capitalisation. For sentence lists or stand-alone lists, start each item with a capital letter. For fragment lists, start each item with a lowercase letter, unless the first word is a proper noun.',
-        link: 'https://www.stylemanual.gov.au/structuring-content/lists',
+        link: 'https://www.stylemanual.gov.au/style-manual-resources/quick-guides/quick-guide-lists',
         check: function(text) {
             const issues = [];
             // Find list blocks (2+ consecutive lines with bullet/number markers)
@@ -1604,7 +1638,7 @@ const RULES = [
                                 if (shouldBeCaps && item.startsWithLower) {
                                     issues.push({
                                         found: item.text.substring(0, Math.min(30, item.text.length)) + (item.text.length > 30 ? '...' : ''),
-                                        suggestion: 'Other items start with capitals. Consider: ' + item.text.charAt(0).toUpperCase() + item.text.slice(1).substring(0, 25) + '...',
+                                        suggestion: 'Other items start with capitals',
                                         position: item.position,
                                         rule: this
                                     });
@@ -1619,7 +1653,7 @@ const RULES = [
                                     if (!likelyProperNoun) {
                                         issues.push({
                                             found: item.text.substring(0, Math.min(30, item.text.length)) + (item.text.length > 30 ? '...' : ''),
-                                            suggestion: 'Other items start with lowercase. Consider: ' + item.text.charAt(0).toLowerCase() + item.text.slice(1).substring(0, 25) + '...',
+                                            suggestion: 'Other items start with lowercase',
                                             position: item.position,
                                             rule: this
                                         });
@@ -1645,7 +1679,7 @@ const RULES = [
                         if (shouldBeCaps && item.startsWithLower) {
                             issues.push({
                                 found: item.text.substring(0, Math.min(30, item.text.length)) + (item.text.length > 30 ? '...' : ''),
-                                suggestion: 'Other items start with capitals. Consider: ' + item.text.charAt(0).toUpperCase() + item.text.slice(1).substring(0, 25) + '...',
+                                suggestion: 'Other items start with capitals',
                                 position: item.position,
                                 rule: this
                             });
@@ -1659,7 +1693,7 @@ const RULES = [
                             if (!likelyProperNoun) {
                                 issues.push({
                                     found: item.text.substring(0, Math.min(30, item.text.length)) + (item.text.length > 30 ? '...' : ''),
-                                    suggestion: 'Other items start with lowercase. Consider: ' + item.text.charAt(0).toLowerCase() + item.text.slice(1).substring(0, 25) + '...',
+                                    suggestion: 'Other items start with lowercase',
                                     position: item.position,
                                     rule: this
                                 });
@@ -1779,53 +1813,83 @@ const RULES = [
         link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/numbers-and-measurements/choosing-numerals-or-words',
         check: function(text) {
             const issues = [];
-            // Match standalone 0 or 1 in body text contexts
-            // Avoid: measurements (1 km), currency ($1), decimals (0.5), times (1 pm),
-            // dates (1 January), larger numbers (10, 100), ranges (1-5, 1–5)
 
-            // Pattern for "0" - standalone zero not part of larger number or special context
-            const zeroRegex = /(?<![0-9.$€£¥,])(?<!\d[.:])0(?![0-9.:,]|\s*(?:am|pm|%|km|m|cm|mm|kg|g|mg|mL|L|ha|°))\b/g;
+            // Helper to check if character is a digit
+            const isDigit = (ch) => ch >= '0' && ch <= '9';
+
+            // Words that when followed by "1" or "0" should be skipped (stage 1, phase 0, etc.)
+            const skipPrecedingWords = /(?:stage|phase|section|chapter|step|part|level|tier|grade|version|volume|appendix|annex|figure|table|item|option|priority|round|wave|track|point|number|no\.?|#)\s*$/i;
+
+            // Units and time indicators that follow numbers
+            const skipFollowingPatterns = /^\s*(?:am|pm|%|km|m|cm|mm|kg|g|mg|mL|L|ha|°|January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec|million|billion|trillion)/i;
+
+            // Find all standalone 0 and 1 using simple pattern, then validate with context
+            // Use word boundary approach: space/punctuation + digit + space/punctuation
+            const regex = /(?:^|[^0-9])([01])(?=[^0-9]|$)/g;
             let match;
-            while ((match = zeroRegex.exec(text)) !== null) {
-                // Check context - skip if preceded by $ or other currency, or followed by decimal
-                const before = text.substring(Math.max(0, match.index - 5), match.index);
-                const after = text.substring(match.index + 1, Math.min(text.length, match.index + 10));
 
-                // Skip currency contexts
-                if (/[$€£¥A]\s*$/.test(before)) continue;
-                // Skip if part of a decimal or time
-                if (/^[.:]/.test(after) || /[.:]$/.test(before)) continue;
+            while ((match = regex.exec(text)) !== null) {
+                // The digit is in capture group 1, but we need to find its actual position
+                const fullMatch = match[0];
+                const digit = match[1];
+                // Position of digit is match.index + position of digit in fullMatch
+                const digitPosInMatch = fullMatch.indexOf(digit);
+                const pos = match.index + digitPosInMatch;
 
+                // Get surrounding context
+                const charBefore = pos > 0 ? text.charAt(pos - 1) : '';
+                const charAfter = pos + 1 < text.length ? text.charAt(pos + 1) : '';
+                const before = text.substring(Math.max(0, pos - 30), pos);
+                const after = text.substring(pos + 1, Math.min(text.length, pos + 30));
+
+                // Skip if adjacent to another digit (part of larger number like 15, 10, 21)
+                if (isDigit(charBefore) || isDigit(charAfter)) continue;
+
+                // Skip if part of a decimal (0.5, 1.5)
+                if (charBefore === '.' || charAfter === '.') continue;
+
+                // Skip if part of a time (1:30, 10:00)
+                if (charBefore === ':' || charAfter === ':') continue;
+
+                // Skip if preceded by currency symbols
+                if (/[$€£¥]\s*$/.test(before)) continue;
+
+                // Skip dates: digit followed by month name (1 January, 15 August)
+                if (skipFollowingPatterns.test(after)) continue;
+
+                // Skip if part of date format (15 August, January 15)
+                if (/,\s*$/.test(before) && /^\s*\d{4}/.test(after)) continue;  // ", 2024"
+                if (/(?:January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)\s*$/i.test(before)) continue;
+
+                // Skip year spans and fiscal years (2018/19, 2020-2023)
+                if (/\d{4}[\/\-–]\s*$/.test(before)) continue;  // "2018/" before "19"
+                if (/^\s*[\/\-–]\d/.test(after)) continue;      // "/19" after year
+
+                // Skip decades (1980s, 1990s)
+                if (/\d{3}$/.test(before) && /^s\b/i.test(after)) continue;
+
+                // Skip ordinals (1st, 21st)
+                if (/^(?:st|nd|rd|th)\b/i.test(after)) continue;
+
+                // Skip ranges (1-5, 1–5, 0-10)
+                if (/[–\-]\s*$/.test(before) || /^\s*[–\-]/.test(after)) continue;
+
+                // Skip if preceded by stage/phase/section/chapter etc.
+                if (skipPrecedingWords.test(before)) continue;
+
+                // Skip times (10.30 am, 12 pm) - digit followed by am/pm
+                if (/^\s*(?:am|pm)\b/i.test(after)) continue;
+
+                // Skip percentage and measurements
+                if (/^\s*(?:%|per\s*cent)/i.test(after)) continue;
+
+                // All checks passed - this looks like a standalone 0 or 1
+                const replacement = digit === '0' ? 'zero' : 'one';
                 issues.push({
-                    found: '0',
-                    suggestion: 'zero',
-                    autoFix: 'zero',
-                    position: match.index,
-                    rule: this
-                });
-            }
-
-            // Pattern for "1" - standalone one not part of larger number or special context
-            // More complex because "1" appears in many valid contexts
-            const oneRegex = /(?<![0-9.$€£¥,])(?<!\d[.:])(?<![–-])\b1\b(?![0-9.:,–-]|\s*(?:am|pm|%|km|m|cm|mm|kg|g|mg|mL|L|ha|°|January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec))/gi;
-            while ((match = oneRegex.exec(text)) !== null) {
-                const before = text.substring(Math.max(0, match.index - 10), match.index);
-                const after = text.substring(match.index + 1, Math.min(text.length, match.index + 15));
-
-                // Skip currency contexts
-                if (/[$€£¥A]\s*$/.test(before)) continue;
-                // Skip if part of time, decimal, or measurement
-                if (/^[.:]/.test(after) || /[.:]$/.test(before)) continue;
-                // Skip "1 million", "1 billion" etc (valid per Style Manual)
-                if (/^\s*(million|billion|trillion)/i.test(after)) continue;
-                // Skip step/point references like "step 1", "point 1"
-                if (/(?:step|point|item|number|no\.?|#)\s*$/i.test(before)) continue;
-
-                issues.push({
-                    found: '1',
-                    suggestion: 'one',
-                    autoFix: 'one',
-                    position: match.index,
+                    found: digit,
+                    suggestion: replacement,
+                    autoFix: replacement,
+                    position: pos,
                     rule: this
                 });
             }
