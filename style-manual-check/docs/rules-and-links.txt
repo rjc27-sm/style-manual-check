@@ -355,7 +355,7 @@ Link: https://www.stylemanual.gov.au/structuring-content/lists
 Rule: list-inconsistent-caps
 Name: Inconsistent capitalisation in list
 Description: List items should have consistent capitalisation. Either all items should start with a capital letter (sentence list or stand-alone list) or all should start with lowercase (fragment list).
-Link: https://www.stylemanual.gov.au/structuring-content/lists
+Link: https://www.stylemanual.gov.au/style-manual-resources/quick-guides/quick-guide-lists
 
 Rule: list-inconsistent-periods
 Name: Inconsistent punctuation in list
