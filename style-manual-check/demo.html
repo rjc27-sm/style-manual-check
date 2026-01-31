@@ -632,14 +632,19 @@ Required equipment:
         
         function acceptFix(issueId) {
             const issue = allIssues.find(i => i.id === issueId);
-            if (!issue || !issue.autoFix) return;
+            if (!issue || issue.autoFix === undefined) return;
 
-            // Replace in the textarea using autoFix (the actual replacement text)
+            // Use position-based replacement to fix the exact occurrence
             const text = elements.documentText.value;
-            elements.documentText.value = text.replace(issue.found, issue.autoFix);
+            const before = text.substring(0, issue.position);
+            const after = text.substring(issue.position + issue.found.length);
+            elements.documentText.value = before + issue.autoFix + after;
 
-            // Remove from issues
-            allIssues = allIssues.filter(i => i.id !== issueId);
+            // Rescan to get fresh positions for remaining issues
+            allIssues = checkText(elements.documentText.value);
+            allIssues.forEach((issue, i) => {
+                issue.id = 'issue-' + i;
+            });
             fixedCount++;
             displayResults();
         }
@@ -683,10 +688,11 @@ Required equipment:
                 fixedReplacement = replacement.charAt(0).toUpperCase() + replacement.slice(1);
             }
 
-            // Replace in the textarea using string replace (same approach as acceptFix)
-            // This replaces the first occurrence, which is reliable
+            // Use position-based replacement to fix the exact occurrence
             const text = elements.documentText.value;
-            elements.documentText.value = text.replace(issue.found, fixedReplacement);
+            const before = text.substring(0, issue.position);
+            const after = text.substring(issue.position + issue.found.length);
+            elements.documentText.value = before + fixedReplacement + after;
 
             // Rescan to get fresh positions for remaining issues
             allIssues = checkText(elements.documentText.value);
@@ -698,16 +704,27 @@ Required equipment:
         }
         
         function fixAllOfType(ruleId) {
-            // Only fix issues that have autoFix
-            const toFix = allIssues.filter(i => i.rule.id === ruleId && i.autoFix);
+            // Only fix issues that have autoFix defined (including empty string)
+            const toFix = allIssues.filter(i => i.rule.id === ruleId && i.autoFix !== undefined);
+            if (toFix.length === 0) return;
+
+            // Sort by position descending so we replace from end to start
+            // This avoids position shifts affecting subsequent replacements
+            toFix.sort((a, b) => b.position - a.position);
 
             let text = elements.documentText.value;
             for (const issue of toFix) {
-                text = text.split(issue.found).join(issue.autoFix);
+                const before = text.substring(0, issue.position);
+                const after = text.substring(issue.position + issue.found.length);
+                text = before + issue.autoFix + after;
             }
             elements.documentText.value = text;
 
-            allIssues = allIssues.filter(i => !(i.rule.id === ruleId && i.autoFix));
+            // Rescan to get fresh positions for remaining issues
+            allIssues = checkText(elements.documentText.value);
+            allIssues.forEach((issue, i) => {
+                issue.id = 'issue-' + i;
+            });
             fixedCount += toFix.length;
             displayResults();
         }

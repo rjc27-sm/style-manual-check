@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en-AU">
+<head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Style Manual Check</title>
+
+    <!-- Office JavaScript API -->
+    <script type="text/javascript" src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+
+    <!-- Fluent UI for consistent Office styling -->
+    <link rel="stylesheet" href="https://res-1.cdn.office.net/files/fabric-cdn-prod_20230815.002/office-ui-fabric-core/11.1.0/css/fabric.min.css"/>
+
+    <link href="taskpane.css" rel="stylesheet" type="text/css" />
+</head>
+
+<body class="ms-font-m">
+    <!-- Loading state while Office.js initialises -->
+    <section id="sideload-msg" class="loading-panel">
+        <p>Loading Style Manual Check...</p>
+    </section>
+
+    <!-- Main app content -->
+    <main id="app-body" style="display: none;">
+        <!-- Header -->
+        <header class="header">
+            <h1>Style Manual Check</h1>
+            <p>Australian Government Style Manual</p>
+        </header>
+
+        <!-- Scan button -->
+        <button id="scan-btn" class="scan-btn">
+            Check document
+        </button>
+
+        <!-- Status bar -->
+        <div id="status" class="status"></div>
+
+        <!-- Summary stats -->
+        <div id="summary" class="summary" style="display: none;">
+            <div class="stat">
+                <span id="issues-count" class="stat-value">0</span>
+                <span class="stat-label">Issues</span>
+            </div>
+            <div class="stat">
+                <span id="fixed-count" class="stat-value">0</span>
+                <span class="stat-label">Fixed</span>
+            </div>
+        </div>
+
+        <!-- Filter dropdown -->
+        <div id="filter-container" class="filter-container" style="display: none;">
+            <label for="category-filter">Show:</label>
+            <select id="category-filter" class="category-filter">
+                <option value="all">All issues</option>
+            </select>
+        </div>
+
+        <!-- Issues list -->
+        <div id="issues-list" class="issues-list"></div>
+
+        <!-- Footer with link -->
+        <footer class="footer">
+            <a href="https://www.stylemanual.gov.au" target="_blank">Style Manual website</a>
+        </footer>
+    </main>
+</body>
+</html>

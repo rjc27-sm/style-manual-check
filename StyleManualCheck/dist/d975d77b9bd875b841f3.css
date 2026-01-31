@@ -1,0 +1,291 @@
+/*
+ * Style Manual Check - Task Pane Styles
+ */
+
+:root {
+    --primary: #1a365d;
+    --primary-light: #2c5282;
+    --success: #276749;
+    --warning: #c05621;
+    --error: #c53030;
+    --gray-50: #f7fafc;
+    --gray-100: #edf2f7;
+    --gray-200: #e2e8f0;
+    --gray-300: #cbd5e0;
+    --gray-600: #718096;
+    --gray-700: #4a5568;
+    --gray-800: #2d3748;
+    --white: #ffffff;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html, body {
+    width: 100%;
+    height: 100%;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--gray-800);
+    background: var(--gray-50);
+}
+
+/* Loading panel */
+.loading-panel {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    color: var(--gray-600);
+}
+
+/* Main app body */
+#app-body {
+    padding: 16px;
+    height: 100vh;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Header */
+.header {
+    margin-bottom: 16px;
+}
+
+.header h1 {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--primary);
+    margin-bottom: 2px;
+}
+
+.header p {
+    font-size: 11px;
+    color: var(--gray-600);
+}
+
+/* Scan button */
+.scan-btn {
+    width: 100%;
+    padding: 10px 16px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--white);
+    background: var(--primary);
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.2s;
+    margin-bottom: 12px;
+}
+
+.scan-btn:hover:not(:disabled) {
+    background: var(--primary-light);
+}
+
+.scan-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* Status bar */
+.status {
+    padding: 8px 12px;
+    background: var(--gray-100);
+    border-radius: 4px;
+    font-size: 12px;
+    color: var(--gray-700);
+    margin-bottom: 12px;
+}
+
+.status.success {
+    background: #c6f6d5;
+    color: var(--success);
+}
+
+.status.error {
+    background: #fed7d7;
+    color: var(--error);
+}
+
+/* Summary stats */
+.summary {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.stat {
+    flex: 1;
+    padding: 8px;
+    background: var(--white);
+    border: 1px solid var(--gray-200);
+    border-radius: 4px;
+    text-align: center;
+}
+
+.stat-value {
+    display: block;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--primary);
+}
+
+.stat-label {
+    font-size: 10px;
+    color: var(--gray-600);
+    text-transform: uppercase;
+}
+
+/* Filter container */
+.filter-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.filter-container label {
+    font-size: 12px;
+    color: var(--gray-600);
+}
+
+.category-filter {
+    flex: 1;
+    padding: 6px 8px;
+    font-size: 12px;
+    border: 1px solid var(--gray-300);
+    border-radius: 4px;
+    background: var(--white);
+}
+
+/* Issues list */
+.issues-list {
+    flex: 1;
+    overflow-y: auto;
+}
+
+/* Issue card */
+.issue-card {
+    background: var(--white);
+    border: 1px solid var(--gray-200);
+    border-radius: 6px;
+    padding: 12px;
+    margin-bottom: 8px;
+}
+
+.issue-header {
+    margin-bottom: 8px;
+}
+
+.issue-rule {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--primary);
+}
+
+.issue-found, .issue-suggestion {
+    font-size: 12px;
+    margin-bottom: 4px;
+}
+
+.found-label, .suggestion-label {
+    color: var(--gray-600);
+}
+
+.found-text {
+    font-family: 'Consolas', 'Monaco', monospace;
+    background: #fef3c7;
+    padding: 1px 4px;
+    border-radius: 2px;
+}
+
+.suggestion-text {
+    color: var(--success);
+}
+
+.issue-description {
+    font-size: 11px;
+    color: var(--gray-600);
+    margin: 8px 0;
+    padding-top: 8px;
+    border-top: 1px solid var(--gray-100);
+}
+
+/* Action buttons */
+.issue-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 8px;
+}
+
+.btn {
+    padding: 5px 10px;
+    font-size: 11px;
+    font-weight: 500;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background 0.2s;
+}
+
+.btn-accept {
+    background: #c6f6d5;
+    color: var(--success);
+}
+
+.btn-accept:hover {
+    background: #9ae6b4;
+}
+
+.btn-ignore {
+    background: var(--gray-100);
+    color: var(--gray-700);
+}
+
+.btn-ignore:hover {
+    background: var(--gray-200);
+}
+
+.btn-goto {
+    background: #bee3f8;
+    color: #2b6cb0;
+}
+
+.btn-goto:hover {
+    background: #90cdf4;
+}
+
+.btn-learn {
+    background: var(--gray-100);
+    color: var(--gray-600);
+}
+
+.btn-learn:hover {
+    background: var(--gray-200);
+}
+
+/* Footer */
+.footer {
+    margin-top: 16px;
+    padding-top: 12px;
+    border-top: 1px solid var(--gray-200);
+    text-align: center;
+}
+
+.footer a {
+    font-size: 11px;
+    color: var(--primary);
+    text-decoration: none;
+}
+
+.footer a:hover {
+    text-decoration: underline;
+}

@@ -3,6 +3,8 @@
  * Each rule has: id, name, category, description, link, check function
  */
 
+import { SPELLINGS, COMMON_ERRORS, ERRORS_WITH_NOTES, WATCH_WORDS } from './spellings.js';
+
 const RULES = [
     // ==================== SPELLING RULES ====================
     {
@@ -2271,3 +2273,12 @@ function checkText(text) {
     allIssues.sort((a, b) => a.position - b.position);
     return allIssues;
 }
+
+// Get all unique categories
+function getCategories() {
+    const categories = [...new Set(RULES.map(r => r.category))];
+    return categories.sort();
+}
+
+// Export for use in add-in
+export { RULES, checkText, getCategories, preserveCase };
