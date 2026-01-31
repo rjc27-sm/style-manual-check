@@ -584,10 +584,10 @@ Required equipment:
                 const card = document.createElement('div');
                 card.className = `issue-card ${issue.rule.category}`;
 
-                // Only count fixable issues for "Fix all" button
-                const fixableOfType = allIssues.filter(i => i.rule.id === issue.rule.id && i.autoFix);
+                // Only count fixable issues for "Fix all" button (autoFix can be empty string for deletions)
+                const fixableOfType = allIssues.filter(i => i.rule.id === issue.rule.id && i.autoFix !== undefined);
                 const sameTypeCount = fixableOfType.length;
-                const canAutoFix = !!issue.autoFix;
+                const canAutoFix = issue.autoFix !== undefined;
 
                 // Check for watch word replacements
                 const hasReplacements = issue.replacements && issue.replacements.length > 0;

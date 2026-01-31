@@ -248,8 +248,8 @@ Description: Write 'zero' and 'one' as words, not numerals. The numerals '0' and
 Link: https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/numbers-and-measurements/choosing-numerals-or-words
 
 Rule: numbers-percent-spelling
-Name: Percent spelling
-Description: Use 'per cent' (two words) in Australian English, not 'percent'.
+Name: Percent with numeral
+Description: Use the percentage sign (%) with numerals. Write '85%', not '85 percent' or '85 per cent'.
 Link: https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/numbers-and-measurements/percentages
 
 Rule: numbers-percent-space
@@ -357,7 +357,7 @@ Name: Inconsistent capitalisation in list
 Description: List items should have consistent capitalisation. Either all items should start with a capital letter (sentence list or stand-alone list) or all should start with lowercase (fragment list).
 Link: https://www.stylemanual.gov.au/style-manual-resources/quick-guides/quick-guide-lists
 
-Rule: list-inconsistent-periods
-Name: Inconsistent punctuation in list
-Description: List items should have consistent punctuation. Sentence lists have full stops on all items. Fragment lists have a full stop on the last item only. Stand-alone lists have no full stops.
-Link: https://www.stylemanual.gov.au/structuring-content/lists
+Rule: list-inconsistent-punctuation
+Name: Inconsistent or incorrect punctuation in list
+Description: List punctuation depends on list type. Sentence lists (capital, complete sentences): full stop on every item. Fragment lists (lower case, completing a lead-in): full stop on last item only. Stand-alone lists (capital, under heading): no full stops.
+Link: https://www.stylemanual.gov.au/style-manual-resources/quick-guides/quick-guide-lists

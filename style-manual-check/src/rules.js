@@ -1571,6 +1571,8 @@ const RULES = [
                 /[•●○◦▪▸\-\*]\s*etc\.?(?:\s*\r?\n|$)/gi,
                 /\d+[.)]\s*etc\.?(?:\s*\r?\n|$)/gi,
                 /[a-z][.)]\s*etc\.?(?:\s*\r?\n|$)/gi,
+                // etc. at end of list item (after semicolon or other punctuation)
+                /[;,]\s*etc\.?(?:\s*\r?\n|$)/gi,
                 // etc. at end of list item before another bullet
                 /etc\.?[ \t]*\r?\n[ \t]*[•●○◦▪▸\-\*]/gi,
                 /etc\.?[ \t]*\r?\n[ \t]*\d+[.)]\s/gi
@@ -1707,18 +1709,18 @@ const RULES = [
         }
     },
     {
-        id: 'list-inconsistent-periods',
-        name: 'Inconsistent punctuation in list',
+        id: 'list-inconsistent-punctuation',
+        name: 'Inconsistent or incorrect punctuation in list',
         category: 'lists',
-        description: 'List items should have consistent punctuation. Sentence lists have full stops on all items. Fragment lists have a full stop on the last item only. Stand-alone lists have no full stops.',
-        link: 'https://www.stylemanual.gov.au/structuring-content/lists',
+        description: 'List punctuation depends on list type. Sentence lists (capital, complete sentences): full stop on every item. Fragment lists (lower case, completing a lead-in): full stop on last item only. Stand-alone lists (capital, under heading): no full stops.',
+        link: 'https://www.stylemanual.gov.au/style-manual-resources/quick-guides/quick-guide-lists',
         check: function(text) {
             const issues = [];
-            // Find list blocks and check punctuation consistency
             const lines = text.split(/\r?\n/);
             const bulletPattern = /^[ \t]*([•●○◦▪▸\-\*]|\d+[.)]|[a-z][.)])\s*(.+)/i;
 
             let listItems = [];
+            let leadInLine = null;
             let currentPos = 0;
 
             for (let i = 0; i < lines.length; i++) {
@@ -1728,19 +1730,26 @@ const RULES = [
                 if (match) {
                     const itemText = match[2].trim();
                     if (itemText.length > 0) {
+                        // Check first letter for case (skip quotes, brackets, etc.)
+                        const firstLetterMatch = itemText.match(/[a-zA-Z]/);
+                        const firstLetter = firstLetterMatch ? firstLetterMatch[0] : null;
+
                         listItems.push({
                             text: itemText,
                             position: currentPos + line.indexOf(itemText),
                             endsWithPeriod: /\.$/.test(itemText),
-                            isLast: false // Will set this when we find end of list
+                            startsWithCapital: firstLetter ? firstLetter === firstLetter.toUpperCase() : null,
+                            isLast: false
                         });
                     }
                 } else {
-                    // End of list block - check for inconsistency
+                    // Non-bullet line - end of list block
                     if (listItems.length >= 2) {
                         listItems[listItems.length - 1].isLast = true;
-                        checkListPunctuation(listItems, issues, this);
+                        checkListPunctuation(listItems, leadInLine, issues, this);
                     }
+                    // Store as potential lead-in for next list
+                    leadInLine = line.trim();
                     listItems = [];
                 }
 
@@ -1750,47 +1759,102 @@ const RULES = [
             // Check final list block
             if (listItems.length >= 2) {
                 listItems[listItems.length - 1].isLast = true;
-                checkListPunctuation(listItems, issues, this);
+                checkListPunctuation(listItems, leadInLine, issues, this);
             }
 
-            function checkListPunctuation(items, issues, rule) {
-                const periodCount = items.filter(item => item.endsWithPeriod).length;
-                const noPeriodCount = items.length - periodCount;
+            function checkListPunctuation(items, leadIn, issues, rule) {
+                // Count patterns
+                const withPeriod = items.filter(item => item.endsWithPeriod).length;
+                const withCapital = items.filter(item => item.startsWithCapital === true).length;
+                const withLowercase = items.filter(item => item.startsWithCapital === false).length;
 
-                // Valid patterns:
-                // 1. All have periods (sentence list) - periodCount === items.length
-                // 2. Only last has period (fragment list) - periodCount === 1 && items[items.length-1].endsWithPeriod
-                // 3. None have periods (stand-alone list) - periodCount === 0
+                // Determine likely intended list type based on capitalisation
+                const likelyFragment = withLowercase > withCapital;
+                const likelyStandAloneOrSentence = withCapital > withLowercase;
 
-                const allPeriods = periodCount === items.length;
-                const onlyLastPeriod = periodCount === 1 && items[items.length - 1].endsWithPeriod;
-                const noPeriods = periodCount === 0;
+                // Valid punctuation patterns
+                const allPeriods = withPeriod === items.length;
+                const onlyLastPeriod = withPeriod === 1 && items[items.length - 1].endsWithPeriod;
+                const noPeriods = withPeriod === 0;
 
-                if (!allPeriods && !onlyLastPeriod && !noPeriods) {
-                    // Inconsistent - try to determine intended pattern and flag deviations
-                    // If most have periods, suggest adding to those without
-                    // If most don't have periods, suggest removing (except potentially last)
+                // If punctuation pattern is valid, check for capitalisation mismatches
+                if (allPeriods || onlyLastPeriod || noPeriods) {
 
-                    if (periodCount > noPeriodCount) {
-                        // Most have periods - likely sentence list, flag items without
+                    // Capitalised items with only last full stop = ambiguous
+                    if (onlyLastPeriod && likelyStandAloneOrSentence) {
+                        if (withCapital === items.length) {
+                            issues.push({
+                                found: 'List with capitals and full stop on last item only',
+                                suggestion: 'Fragment lists should start items in lower case (unless proper nouns). If this is a stand-alone list, remove the final full stop. If a sentence list, add full stops to all items.',
+                                position: items[0].position,
+                                rule: rule
+                            });
+                        }
+                    }
+
+                    // Lowercase items with no full stops = likely fragment list missing final stop
+                    if (noPeriods && likelyFragment) {
+                        issues.push({
+                            found: items[items.length - 1].text.substring(0, Math.min(30, items[items.length - 1].text.length)) + (items[items.length - 1].text.length > 30 ? '...' : ''),
+                            suggestion: 'Items starting in lower case suggest a fragment list, which needs a full stop on the last item.',
+                            position: items[items.length - 1].position,
+                            rule: rule
+                        });
+                    }
+
+                    return; // Pattern is otherwise valid
+                }
+
+                // INCONSISTENT PATTERN - determine best advice based on capitalisation
+
+                if (likelyFragment) {
+                    // Lowercase items suggest fragment list
+                    // Valid pattern: only last item has full stop
+
+                    // Flag non-last items with full stops
+                    const nonLastWithPeriods = items.filter(item => !item.isLast && item.endsWithPeriod);
+                    for (const item of nonLastWithPeriods) {
+                        issues.push({
+                            found: item.text.substring(0, Math.min(30, item.text.length)) + (item.text.length > 30 ? '...' : ''),
+                            suggestion: 'In fragment lists, only the last item has a full stop. Remove the full stop from this item.',
+                            position: item.position,
+                            rule: rule
+                        });
+                    }
+
+                    // Flag if last item is missing full stop
+                    if (!items[items.length - 1].endsWithPeriod) {
+                        issues.push({
+                            found: items[items.length - 1].text.substring(0, Math.min(30, items[items.length - 1].text.length)) + (items[items.length - 1].text.length > 30 ? '...' : ''),
+                            suggestion: 'In fragment lists, the last item needs a full stop.',
+                            position: items[items.length - 1].position,
+                            rule: rule
+                        });
+                    }
+
+                } else {
+                    // Capitalised items suggest sentence list or stand-alone list
+                    // Distinguish based on whether most items have full stops or not
+
+                    if (withPeriod > items.length / 2) {
+                        // Most have full stops - likely sentence list with some missing
                         for (const item of items) {
                             if (!item.endsWithPeriod) {
                                 issues.push({
                                     found: item.text.substring(0, Math.min(30, item.text.length)) + (item.text.length > 30 ? '...' : ''),
-                                    suggestion: 'Other items end with full stops. Add one here, or remove from others for consistency.',
+                                    suggestion: 'In sentence lists, every item ends with a full stop. Add a full stop, or remove full stops from all items for a stand-alone list.',
                                     position: item.position,
                                     rule: rule
                                 });
                             }
                         }
                     } else {
-                        // Most don't have periods - check if only issue is non-last items with periods
-                        const nonLastWithPeriods = items.filter(item => !item.isLast && item.endsWithPeriod);
-                        if (nonLastWithPeriods.length > 0) {
-                            for (const item of nonLastWithPeriods) {
+                        // Few have full stops - likely stand-alone list with errant full stops
+                        for (const item of items) {
+                            if (item.endsWithPeriod) {
                                 issues.push({
                                     found: item.text.substring(0, Math.min(30, item.text.length)) + (item.text.length > 30 ? '...' : ''),
-                                    suggestion: 'In fragment lists, only the last item should have a full stop. Remove from this item.',
+                                    suggestion: 'In stand-alone lists, items don\'t have full stops. Remove this full stop, or add full stops to all items for a sentence list.',
                                     position: item.position,
                                     rule: rule
                                 });
@@ -1860,6 +1924,8 @@ const RULES = [
                 // Skip if part of date format (15 August, January 15)
                 if (/,\s*$/.test(before) && /^\s*\d{4}/.test(after)) continue;  // ", 2024"
                 if (/(?:January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)\s*$/i.test(before)) continue;
+                // Skip if digit is part of a multi-digit number in a date context (January 15)
+                if (/(?:January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)\s+\d*$/i.test(before)) continue;
 
                 // Skip year spans and fiscal years (2018/19, 2020-2023)
                 if (/\d{4}[\/\-–]\s*$/.test(before)) continue;  // "2018/" before "19"
@@ -1898,17 +1964,18 @@ const RULES = [
     },
     {
         id: 'numbers-percent-spelling',
-        name: 'Percent spelling',
+        name: 'Percent with numeral',
         category: 'numbers-and-measurements',
-        description: 'Use \'per cent\' (two words) in Australian English, not \'percent\'.',
+        description: 'Use the percentage sign (%) with numerals. Write \'85%\', not \'85 percent\' or \'85 per cent\'.',
         link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/numbers-and-measurements/percentages',
         check: function(text) {
             const issues = [];
-            // Match "percent" as one word (not "per cent" or "percentage")
-            const regex = /\bpercent\b(?!age)/gi;
+            // Match "number + percent" or "number + per cent" and suggest using %
+            const regex = /(\d+)\s*(?:percent|per\s*cent)\b/gi;
             let match;
             while ((match = regex.exec(text)) !== null) {
-                const replacement = preserveCase(match[0], 'per cent');
+                const num = match[1];
+                const replacement = num + '%';
                 issues.push({
                     found: match[0],
                     suggestion: replacement,
@@ -1982,6 +2049,14 @@ const RULES = [
             while ((match = regex.exec(text)) !== null) {
                 const num = match[1];
                 const numInt = parseInt(num);
+                const pos = match.index + match[0].indexOf(num);
+                const after = text.substring(pos + num.length, pos + num.length + 20);
+
+                // Skip if this is a date (number followed by month name)
+                if (/^\s+(?:January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)\b/i.test(after)) {
+                    continue;
+                }
+
                 // Only flag if it's a reasonable number to write out (up to 100)
                 // Very large numbers should prompt rephrasing
                 if (numInt <= 100) {
@@ -1991,14 +2066,14 @@ const RULES = [
                         found: num,
                         suggestion: capitalised,
                         autoFix: capitalised,
-                        position: match.index + match[0].indexOf(num),
+                        position: pos,
                         rule: this
                     });
                 } else {
                     issues.push({
                         found: num,
                         suggestion: 'Rephrase to avoid starting with a numeral',
-                        position: match.index + match[0].indexOf(num),
+                        position: pos,
                         rule: this
                     });
                 }
