@@ -41,8 +41,8 @@ Office.onReady((info) => {
             displayResults();
         };
 
-        // Initial status
-        elements.status.textContent = 'Click "Check document" to scan for style issues.';
+        // Hide status initially (no message needed)
+        elements.status.style.display = 'none';
     }
 });
 
@@ -55,15 +55,24 @@ async function scanDocument() {
 
     try {
         await Word.run(async (context) => {
-            // Get all text from the document body
-            const body = context.document.body;
-            body.load('text');
+            // Get all paragraphs from the document to preserve paragraph boundaries
+            const paragraphs = context.document.body.paragraphs;
+            paragraphs.load('items');
             await context.sync();
 
-            const text = body.text;
+            // Build text with paragraph markers so sentence detection works correctly
+            let fullText = '';
+            for (let i = 0; i < paragraphs.items.length; i++) {
+                paragraphs.items[i].load('text');
+            }
+            await context.sync();
+
+            // Join paragraphs with newlines to preserve boundaries
+            const paragraphTexts = paragraphs.items.map(p => p.text);
+            fullText = paragraphTexts.join('\n');
 
             // Run style checks
-            allIssues = checkText(text);
+            allIssues = checkText(fullText);
 
             // Assign IDs to issues
             allIssues.forEach((issue, i) => {
@@ -133,7 +142,7 @@ function displayResults() {
 
     // Update status
     if (allIssues.length === 0) {
-        elements.status.textContent = 'No issues found.';
+        elements.status.textContent = 'Check complete.';
         elements.status.className = 'status success';
         elements.summary.style.display = 'none';
         elements.filterContainer.style.display = 'none';
@@ -160,37 +169,48 @@ function displayResults() {
 // Create an issue card element
 function createIssueCard(issue) {
     const card = document.createElement('div');
-    card.className = 'issue-card';
+    card.className = 'issue-card ' + issue.rule.category;
     card.id = issue.id;
 
     // Check if this issue has autoFix
     const canAutoFix = issue.autoFix !== undefined;
+
+    // Check for watch word replacements (suggestion contains alternatives)
+    const hasReplacements = issue.replacements && issue.replacements.length > 0;
+
+    // Count how many fixable issues of the same type exist
+    const fixableOfType = allIssues.filter(i => i.rule.id === issue.rule.id && i.autoFix !== undefined);
+    const sameTypeCount = fixableOfType.length;
 
     // Build card HTML
     let html = `
         <div class="issue-header">
             <span class="issue-rule">${escapeHtml(issue.rule.name)}</span>
         </div>
-        <div class="issue-found">
-            <span class="found-label">Found:</span>
-            <span class="found-text">'${escapeHtml(issue.found)}'</span>
-        </div>
-        <div class="issue-suggestion">
-            <span class="suggestion-label">Suggestion:</span>
+        <div class="issue-text">
+            <span class="found-text">${escapeHtml(issue.found)}</span>
+            <span class="issue-arrow">\u2192</span>
             <span class="suggestion-text">${escapeHtml(issue.suggestion)}</span>
         </div>
-        <div class="issue-description">${escapeHtml(issue.rule.description)}</div>
+        <div class="issue-description">
+            ${escapeHtml(issue.rule.description)}
+            ${issue.rule.link ? `<a class="link-learn" href="${issue.rule.link}" target="_blank">Learn more \u2192</a>` : ''}
+        </div>
         <div class="issue-actions">
     `;
 
     if (canAutoFix) {
         html += `<button class="btn btn-accept" data-action="accept" data-id="${issue.id}">Accept</button>`;
+    } else if (hasReplacements) {
+        // For watch words, add "Use [first option]" button
+        html += `<button class="btn btn-accept" data-action="usereplacement" data-id="${issue.id}" data-index="0">Use '${escapeHtml(issue.replacements[0])}'</button>`;
     }
     html += `<button class="btn btn-ignore" data-action="ignore" data-id="${issue.id}">Ignore</button>`;
     html += `<button class="btn btn-goto" data-action="goto" data-id="${issue.id}">Go to issue</button>`;
 
-    if (issue.rule.link) {
-        html += `<a class="btn btn-learn" href="${issue.rule.link}" target="_blank">Learn more</a>`;
+    // Add "Fix all" button if there are multiple instances of this rule type
+    if (canAutoFix && sameTypeCount > 1) {
+        html += `<button class="btn btn-fix-all" data-action="fixall" data-ruleid="${issue.rule.id}">Fix all ${sameTypeCount}</button>`;
     }
 
     html += '</div>';
@@ -198,26 +218,32 @@ function createIssueCard(issue) {
 
     // Attach event handlers
     card.querySelectorAll('button[data-action]').forEach(btn => {
-        btn.onclick = () => handleAction(btn.dataset.action, btn.dataset.id);
+        btn.onclick = () => handleAction(btn.dataset.action, btn.dataset.id, btn.dataset.ruleid, btn.dataset.index);
     });
 
     return card;
 }
 
 // Handle button actions
-async function handleAction(action, issueId) {
-    const issue = allIssues.find(i => i.id === issueId);
-    if (!issue) return;
-
+async function handleAction(action, issueId, ruleId, replacementIndex) {
     switch (action) {
         case 'accept':
-            await acceptFix(issue);
+            const issue = allIssues.find(i => i.id === issueId);
+            if (issue) await acceptFix(issue);
+            break;
+        case 'usereplacement':
+            const replIssue = allIssues.find(i => i.id === issueId);
+            if (replIssue) await useReplacement(replIssue, parseInt(replacementIndex || '0'));
             break;
         case 'ignore':
-            ignoreIssue(issue);
+            ignoreIssue(issueId);
             break;
         case 'goto':
-            await goToIssue(issue);
+            const goToIssue2 = allIssues.find(i => i.id === issueId);
+            if (goToIssue2) await goToIssue(goToIssue2);
+            break;
+        case 'fixall':
+            await fixAllOfType(ruleId);
             break;
     }
 }
@@ -238,7 +264,6 @@ async function acceptFix(issue) {
 
             if (searchResults.items.length > 0) {
                 // Replace the first occurrence
-                // Note: In a more sophisticated version, we'd track exact positions
                 searchResults.items[0].insertText(issue.autoFix, Word.InsertLocation.replace);
                 await context.sync();
 
@@ -255,9 +280,82 @@ async function acceptFix(issue) {
     }
 }
 
+// Use a replacement from watch words
+async function useReplacement(issue, replacementIndex) {
+    if (!issue.replacements || !issue.replacements[replacementIndex]) return;
+
+    const replacement = issue.replacements[replacementIndex];
+
+    // Preserve the case of the original word
+    let fixedReplacement = replacement;
+    if (issue.found.charAt(0) === issue.found.charAt(0).toUpperCase()) {
+        fixedReplacement = replacement.charAt(0).toUpperCase() + replacement.slice(1);
+    }
+
+    try {
+        await Word.run(async (context) => {
+            const searchResults = context.document.body.search(issue.found, {
+                matchCase: true,
+                matchWholeWord: false
+            });
+            searchResults.load('items');
+            await context.sync();
+
+            if (searchResults.items.length > 0) {
+                searchResults.items[0].insertText(fixedReplacement, Word.InsertLocation.replace);
+                await context.sync();
+
+                allIssues = allIssues.filter(i => i.id !== issue.id);
+                fixedCount++;
+                displayResults();
+            }
+        });
+    } catch (error) {
+        console.error('Error applying replacement:', error);
+        elements.status.textContent = 'Error applying replacement: ' + error.message;
+        elements.status.className = 'status error';
+    }
+}
+
+// Fix all issues of a specific rule type
+async function fixAllOfType(ruleId) {
+    const toFix = allIssues.filter(i => i.rule.id === ruleId && i.autoFix !== undefined);
+    if (toFix.length === 0) return;
+
+    try {
+        await Word.run(async (context) => {
+            // Process each issue
+            for (const issue of toFix) {
+                const searchResults = context.document.body.search(issue.found, {
+                    matchCase: true,
+                    matchWholeWord: false
+                });
+                searchResults.load('items');
+                await context.sync();
+
+                // Replace all occurrences
+                for (const item of searchResults.items) {
+                    item.insertText(issue.autoFix, Word.InsertLocation.replace);
+                }
+                await context.sync();
+            }
+
+            // Remove fixed issues and update display
+            const fixedIds = new Set(toFix.map(i => i.id));
+            allIssues = allIssues.filter(i => !fixedIds.has(i.id));
+            fixedCount += toFix.length;
+            displayResults();
+        });
+    } catch (error) {
+        console.error('Error applying fixes:', error);
+        elements.status.textContent = 'Error applying fixes: ' + error.message;
+        elements.status.className = 'status error';
+    }
+}
+
 // Ignore an issue (remove from list)
-function ignoreIssue(issue) {
-    allIssues = allIssues.filter(i => i.id !== issue.id);
+function ignoreIssue(issueId) {
+    allIssues = allIssues.filter(i => i.id !== issueId);
     displayResults();
 }
 

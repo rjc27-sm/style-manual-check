@@ -939,14 +939,18 @@ const RULES = [
             const lines = text.split('\n');
             let position = 0;
 
-            // Pattern to detect list item markers at start of line
-            const bulletPattern = /^[•●○◦▪▸\-\*]\s|^\d+[.)]\s|^[a-z][.)]\s/i;
+            // Pattern to detect list item markers at start of line (including indented)
+            const bulletPattern = /^[\t ]*[•●○◦▪▸►→‣⁃\-\*]\s*|^[\t ]*\d+[.)]\s|^[\t ]*[a-z][.)]\s/i;
+
+            // Track consecutive short lines to detect sentence lists
+            let consecutiveShortLines = 0;
 
             for (const line of lines) {
                 const trimmed = line.trim();
 
-                // Skip empty lines
+                // Skip empty lines (reset consecutive counter)
                 if (!trimmed) {
+                    consecutiveShortLines = 0;
                     position += line.length + 1;
                     continue;
                 }
@@ -960,6 +964,19 @@ const RULES = [
                 // Heading heuristics: short line ending with full stop (but not ? or !)
                 const words = trimmed.split(/\s+/);
 
+                // Track consecutive short lines (likely a list without bullets)
+                if (words.length <= 12) {
+                    consecutiveShortLines++;
+                } else {
+                    consecutiveShortLines = 0;
+                }
+
+                // If we're seeing 3+ consecutive short lines, likely a sentence list - skip
+                if (consecutiveShortLines >= 3) {
+                    position += line.length + 1;
+                    continue;
+                }
+
                 // Consider it a heading if it's 2-12 words and ends with a full stop
                 // (Longer lines are probably paragraphs)
                 if (words.length >= 2 && words.length <= 12 && /\.$/.test(trimmed) && !/\.{2,}$/.test(trimmed)) {
@@ -967,7 +984,7 @@ const RULES = [
                     issues.push({
                         found: trimmed,
                         suggestion: replacement,
-                        autoFix: replacement,
+                        // No autoFix - let user decide if this is really a heading
                         position: position + line.indexOf(trimmed),
                         rule: this
                     });
@@ -1456,28 +1473,41 @@ const RULES = [
         link: 'https://www.stylemanual.gov.au/accessible-and-inclusive-content/how-people-read',
         check: function(text) {
             const issues = [];
-            // Split text into sentences using common sentence-ending punctuation
-            // This regex matches sentence-ending punctuation followed by space or end of string
-            const sentenceRegex = /[^.!?]*[.!?]+(?:\s|$)/g;
-            let match;
-            let position = 0;
 
-            while ((match = sentenceRegex.exec(text)) !== null) {
-                const sentence = match[0].trim();
-                if (!sentence) continue;
+            // Split text into paragraphs first (paragraph breaks are sentence boundaries)
+            const paragraphs = text.split(/\r?\n/);
+            let currentPosition = 0;
 
-                // Count words (split on whitespace, filter out empty strings)
-                const words = sentence.split(/\s+/).filter(w => w.length > 0);
-                const wordCount = words.length;
-
-                if (wordCount > 25) {
-                    issues.push({
-                        found: sentence,
-                        suggestion: 'This sentence is ' + wordCount + ' words long',
-                        position: match.index,
-                        rule: this
-                    });
+            for (const paragraph of paragraphs) {
+                if (!paragraph.trim()) {
+                    currentPosition += paragraph.length + 1; // +1 for the newline
+                    continue;
                 }
+
+                // Split paragraph into sentences using sentence-ending punctuation
+                // Match sentences ending with . ! ? or end of paragraph
+                const sentenceRegex = /[^.!?]+[.!?]+|[^.!?]+$/g;
+                let match;
+
+                while ((match = sentenceRegex.exec(paragraph)) !== null) {
+                    const sentence = match[0].trim();
+                    if (!sentence) continue;
+
+                    // Count words (split on whitespace, filter out empty strings)
+                    const words = sentence.split(/\s+/).filter(w => w.length > 0);
+                    const wordCount = words.length;
+
+                    if (wordCount > 25) {
+                        issues.push({
+                            found: sentence,
+                            suggestion: 'This sentence is ' + wordCount + ' words long',
+                            position: currentPosition + match.index,
+                            rule: this
+                        });
+                    }
+                }
+
+                currentPosition += paragraph.length + 1; // +1 for the newline
             }
             return issues;
         }
@@ -2025,6 +2055,21 @@ const RULES = [
 
                 // Skip if preceded by comma (like "Thursday, 15 August" - number is part of date, not start of sentence)
                 if (/,\s*$/.test(before)) {
+                    continue;
+                }
+
+                // Skip if part of a year range (preceded by year and dash, like "2025–26")
+                if (/\d{4}[–\-]\s*$/.test(before)) {
+                    continue;
+                }
+
+                // Skip if followed by a dash and more digits (start of year range like "2025–26")
+                if (/^[–\-]\d+/.test(after)) {
+                    continue;
+                }
+
+                // Skip if this looks like a year (4-digit number between 1900-2100)
+                if (num.length === 4 && numInt >= 1900 && numInt <= 2100) {
                     continue;
                 }
 

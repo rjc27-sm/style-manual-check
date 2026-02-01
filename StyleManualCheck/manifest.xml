@@ -73,8 +73,8 @@
       </bt:Urls>
       <bt:ShortStrings>
         <bt:String id="GetStarted.Title" DefaultValue="Style Manual Check is ready"/>
-        <bt:String id="CommandsGroup.Label" DefaultValue="Style Manual"/>
-        <bt:String id="TaskpaneButton.Label" DefaultValue="Style Manual Check"/>
+        <bt:String id="CommandsGroup.Label" DefaultValue="Aus Gov"/>
+        <bt:String id="TaskpaneButton.Label" DefaultValue="Style check"/>
       </bt:ShortStrings>
       <bt:LongStrings>
         <bt:String id="GetStarted.Description" DefaultValue="Click 'Style Manual Check' on the Home tab to check your document against the Australian Government Style Manual."/>
