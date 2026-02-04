@@ -202,7 +202,7 @@ function createIssueCard(issue) {
             <span class="suggestion-text">${escapeHtml(issue.suggestion)}</span>
         </div>
         <div class="issue-description">
-            ${escapeHtml(issue.rule.description)}
+            ${escapeHtml(issue.description || issue.rule.description)}
             ${issue.rule.link ? `<a class="link-learn" href="${issue.rule.link}" target="_blank">Learn more \u2192</a>` : ''}
         </div>
         <div class="issue-actions">

@@ -252,7 +252,7 @@ const RULES = [
                 issues.push({
                     found: match[0],
                     suggestion: preserveCase(match[0], replacement),
-                    // No autoFix - user must decide if this is a legal context
+                    replacements: [preserveCase(match[0], replacement)],
                     position: match.index,
                     rule: this
                 });
@@ -373,7 +373,7 @@ const RULES = [
         id: 'punct-double-space',
         name: 'Double space after full stop',
         category: 'punctuation',
-        description: 'Use a single space after full stops, not two.',
+        description: 'Use a single space after a full stop, not a double space.',
         link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/punctuation/punctuation-and-capitalisation',
         check: function(text) {
             const issues = [];
@@ -877,13 +877,17 @@ const RULES = [
                         capitalizedCount / significantWords >= 0.5) {
                         // Convert to sentence case: first letter caps, rest lowercase (except acronyms)
                         const sentenceCase = toSentenceCase(trimmed);
-                        issues.push({
+                        const issue = {
                             found: trimmed,
                             suggestion: sentenceCase,
                             autoFix: sentenceCase,
                             position: position + line.indexOf(trimmed),
                             rule: this
-                        });
+                        };
+                        if (!hasHeadingStyle) {
+                            issue.description = 'Is this a heading? If so, apply a heading style. Use sentence case for headings, not title case.';
+                        }
+                        issues.push(issue);
                     }
                 }
 
@@ -925,13 +929,17 @@ const RULES = [
 
                 if (isLikelyHeading || hasHeadingStyle) {
                     if (trimmed.length > 70) {
-                        issues.push({
+                        const issue = {
                             found: trimmed,
                             suggestion: 'This heading is ' + trimmed.length + ' characters. Keep headings to 70 characters or fewer',
                             // No autoFix - user must rewrite
                             position: position + line.indexOf(trimmed),
                             rule: this
-                        });
+                        };
+                        if (!hasHeadingStyle) {
+                            issue.description = 'Is this a heading? If so, apply a heading style. Keep headings to 70 characters or fewer.';
+                        }
+                        issues.push(issue);
                     }
                 }
 
@@ -1003,13 +1011,17 @@ const RULES = [
 
                     if (isLikelyHeading || hasHeadingStyle) {
                         const replacement = trimmed.slice(0, -1);
-                        issues.push({
+                        const issue = {
                             found: trimmed,
                             suggestion: replacement,
                             autoFix: hasHeadingStyle ? replacement : undefined,
                             position: position + line.indexOf(trimmed),
                             rule: this
-                        });
+                        };
+                        if (!hasHeadingStyle) {
+                            issue.description = 'Is this a heading? If so, apply a heading style. Don\'t use a full stop to end headings.';
+                        }
+                        issues.push(issue);
                     }
                 }
 
@@ -1052,13 +1064,17 @@ const RULES = [
                 if (isAllCaps && (isLikelyHeading || hasHeadingStyle)) {
                     // Convert to sentence case
                     const sentenceCase = toSentenceCase(trimmed);
-                    issues.push({
+                    const issue = {
                         found: trimmed,
                         suggestion: sentenceCase,
                         autoFix: sentenceCase,
                         position: position + line.indexOf(trimmed),
                         rule: this
-                    });
+                    };
+                    if (!hasHeadingStyle) {
+                        issue.description = 'Is this a heading? If so, apply a heading style. Don\'t write headings in all capital letters.';
+                    }
+                    issues.push(issue);
                 }
 
                 position += line.length + 1;
@@ -1261,6 +1277,49 @@ const RULES = [
 
     // ==================== ORDINALS RULES ====================
     {
+        id: 'numbers-ordinal-words',
+        name: 'Ordinal numeral instead of word',
+        category: 'numbers-and-measurements',
+        description: 'Use words for ordinals up to \'ninth\'. Use numerals for 10th and above. Exceptions: centuries (\'1st century\'), reference editions (\'2nd edn\') and organisation names.',
+        link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/numbers-and-measurements/ordinal-numbers',
+        check: function(text) {
+            const issues = [];
+            const ordinalMap = {
+                '1st': 'first', '2nd': 'second', '3rd': 'third',
+                '4th': 'fourth', '5th': 'fifth', '6th': 'sixth',
+                '7th': 'seventh', '8th': 'eighth', '9th': 'ninth'
+            };
+
+            // Match standalone 1st-9th (not preceded by another digit)
+            const regex = /(?<!\d)(1st|2nd|3rd|4th|5th|6th|7th|8th|9th)\b/gi;
+            let match;
+            while ((match = regex.exec(text)) !== null) {
+                const found = match[1];
+                const pos = match.index;
+                const after = text.substring(pos + found.length, Math.min(text.length, pos + found.length + 30));
+
+                // Skip centuries (1st century, 9th-century)
+                if (/^\s*[-\u2010\u2011]?\s*centur/i.test(after)) continue;
+
+                // Skip dates (followed by month name) - already handled by date-ordinal-in-date
+                if (/^\s+(?:January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Sept?|Oct|Nov|Dec)\b/i.test(after)) continue;
+
+                // Skip reference editions (2nd edn, 3rd ed., 1st edition)
+                if (/^\s+(?:edn|ed\.|edition)\b/i.test(after)) continue;
+
+                const replacement = ordinalMap[found.toLowerCase()];
+                issues.push({
+                    found: found,
+                    suggestion: replacement,
+                    autoFix: replacement,
+                    position: pos,
+                    rule: this
+                });
+            }
+            return issues;
+        }
+    },
+    {
         id: 'punct-superscript-ordinal',
         name: 'Superscript ordinal',
         category: 'numbers-and-measurements',
@@ -1306,49 +1365,6 @@ const RULES = [
                     suggestion: replacement,
                     autoFix: replacement,
                     position: match.index,
-                    rule: this
-                });
-            }
-            return issues;
-        }
-    },
-    {
-        id: 'numbers-ordinal-words',
-        name: 'Ordinal numeral instead of word',
-        category: 'numbers-and-measurements',
-        description: 'Use words for ordinals up to \'ninth\'. Use numerals for 10th and above. Exceptions: centuries (\'1st century\'), reference editions (\'2nd edn\') and organisation names.',
-        link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/numbers-and-measurements/ordinal-numbers',
-        check: function(text) {
-            const issues = [];
-            const ordinalMap = {
-                '1st': 'first', '2nd': 'second', '3rd': 'third',
-                '4th': 'fourth', '5th': 'fifth', '6th': 'sixth',
-                '7th': 'seventh', '8th': 'eighth', '9th': 'ninth'
-            };
-
-            // Match standalone 1st-9th (not preceded by another digit)
-            const regex = /(?<!\d)(1st|2nd|3rd|4th|5th|6th|7th|8th|9th)\b/gi;
-            let match;
-            while ((match = regex.exec(text)) !== null) {
-                const found = match[1];
-                const pos = match.index;
-                const after = text.substring(pos + found.length, Math.min(text.length, pos + found.length + 30));
-
-                // Skip centuries (1st century, 9th-century)
-                if (/^\s*[-\u2010\u2011]?\s*centur/i.test(after)) continue;
-
-                // Skip dates (followed by month name) - already handled by date-ordinal-in-date
-                if (/^\s+(?:January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Sept?|Oct|Nov|Dec)\b/i.test(after)) continue;
-
-                // Skip reference editions (2nd edn, 3rd ed., 1st edition)
-                if (/^\s+(?:edn|ed\.|edition)\b/i.test(after)) continue;
-
-                const replacement = ordinalMap[found.toLowerCase()];
-                issues.push({
-                    found: found,
-                    suggestion: replacement,
-                    autoFix: replacement,
-                    position: pos,
                     rule: this
                 });
             }
@@ -2082,7 +2098,7 @@ const RULES = [
             // First pass: match compound numbers (twenty-one through ninety-nine)
             const tensPattern = tensWords.join('|');
             const onesPattern = onesWords.join('|');
-            const compoundRegex = new RegExp('\\b(' + tensPattern + ')[-\u2010\u2011](' + onesPattern + ')\\b', 'gi');
+            const compoundRegex = new RegExp('\\b(' + tensPattern + ')[-\u2010\u2011\u2012\u2013](' + onesPattern + ')\\b', 'gi');
 
             // Track ranges of compound matches to avoid double-flagging components
             const compoundRanges = [];
@@ -2134,8 +2150,8 @@ const RULES = [
                 const before = text.substring(Math.max(0, pos - 20), pos);
 
                 // Skip if part of an unmatched compound (hyphen-joined with tens/ones)
-                if (new RegExp('^[-\u2010\u2011](' + onesPattern + ')\\b', 'i').test(after)) continue;
-                if (new RegExp('(' + tensPattern + ')[-\u2010\u2011]$', 'i').test(before)) continue;
+                if (new RegExp('^[-\u2010\u2011\u2012\u2013](' + onesPattern + ')\\b', 'i').test(after)) continue;
+                if (new RegExp('(' + tensPattern + ')[-\u2010\u2011\u2012\u2013]$', 'i').test(before)) continue;
 
                 // Skip if at start of sentence
                 const beforeText = text.substring(Math.max(0, pos - 50), pos);
@@ -2267,6 +2283,11 @@ const RULES = [
 
                 // Skip if this is a date (number followed by month name)
                 if (/^\s+(?:January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)\b/i.test(after)) {
+                    continue;
+                }
+
+                // Skip if preceded by a preposition (mid-sentence date like "from 15 January")
+                if (/(?:from|on|by|since|until|before|after|of|to)\s+$/i.test(before)) {
                     continue;
                 }
 

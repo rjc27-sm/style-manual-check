@@ -424,14 +424,14 @@ The meeting is on Thursday, 15 August at 10.30 am in the morning. The deadline w
 
 Budget and statistics
 
-The success rate was 85 percent with a margin of error of .5 points. 15 people attended the workshop. We conducted twenty-three interviews and reviewed nine submissions. We allocated 2500 dollars to the project and achieved a 20 % improvement. The office is located five km from the city centre, approximately 10 miles by road.
+The success rate was 85 percent with a margin of error of .5 points. 15 people attended the workshop. We conducted twenty-three interviews and reviewed nine submissions. We allocated $2500 to the project and achieved a 20 % improvement. The office is located five km from the city centre, approximately 10 miles by road.
 
 Project deliverables
 
 The project will deliver:
 • phase 1 documentation;
 • phase 2 implementation;
-• phase 3 evaluation; etc.
+• phase 3 evaluation
 
 Staff responsibilities include:
 • Attending weekly meetings,
@@ -618,7 +618,7 @@ Required equipment:
                         <span class="issue-suggestion">${escapeHtml(issue.suggestion)}</span>
                     </div>
                     <div class="issue-explanation">
-                        ${escapeHtml(issue.rule.description)}
+                        ${escapeHtml(issue.description || issue.rule.description)}
                         ${issue.rule.link ? `<br><a href="${issue.rule.link}" target="_blank">Learn more →</a>` : ''}
                     </div>
                     <div class="issue-actions">
