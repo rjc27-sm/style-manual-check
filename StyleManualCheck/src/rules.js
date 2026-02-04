@@ -1259,21 +1259,26 @@ const RULES = [
         }
     },
 
-    // ==================== ORDINALS RULE ====================
+    // ==================== ORDINALS RULES ====================
     {
         id: 'punct-superscript-ordinal',
         name: 'Superscript ordinal',
         category: 'numbers-and-measurements',
-        description: 'Use plain text for ordinal indicators (1st, 2nd, 3rd), not superscript (1ˢᵗ, 2ⁿᵈ, 3ʳᵈ). Superscript ordinals can cause accessibility issues.',
+        description: 'Don\'t write ordinal suffixes in superscript. Superscript may not be accessible to people who use screen readers. Use words for ordinals up to \'ninth\' and plain text numerals for 10th and above.',
         link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/numbers-and-measurements/ordinal-numbers',
         check: function(text) {
             const issues = [];
+            const ordinalWords = {
+                1: 'first', 2: 'second', 3: 'third', 4: 'fourth', 5: 'fifth',
+                6: 'sixth', 7: 'seventh', 8: 'eighth', 9: 'ninth'
+            };
             // Match numbers followed by superscript ordinal indicators
             // Superscript characters: ˢ (U+02E2), ᵗ (U+1D57), ⁿ (U+207F), ᵈ (U+1D48), ʳ (U+02B3), ʰ (U+02B0)
             const regex = /(\d+)(ˢᵗ|ⁿᵈ|ʳᵈ|ᵗʰ)/g;
             let match;
             while ((match = regex.exec(text)) !== null) {
                 const num = match[1];
+                const numInt = parseInt(num);
                 const superscript = match[2];
                 let plain;
                 switch(superscript) {
@@ -1283,12 +1288,67 @@ const RULES = [
                     case 'ᵗʰ': plain = 'th'; break;
                     default: plain = superscript;
                 }
-                const replacement = num + plain;
+
+                let replacement;
+                const after = text.substring(match.index + match[0].length, match.index + match[0].length + 20);
+                const isCentury = /^\s*[-\u2010\u2011]?\s*centur/i.test(after);
+
+                if (numInt >= 1 && numInt <= 9 && !isCentury) {
+                    // For 1-9 (not centuries), suggest the word form directly
+                    replacement = ordinalWords[numInt];
+                } else {
+                    // For 10+ or centuries, use plain text numeral + suffix
+                    replacement = num + plain;
+                }
+
                 issues.push({
                     found: match[0],
                     suggestion: replacement,
                     autoFix: replacement,
                     position: match.index,
+                    rule: this
+                });
+            }
+            return issues;
+        }
+    },
+    {
+        id: 'numbers-ordinal-words',
+        name: 'Ordinal numeral instead of word',
+        category: 'numbers-and-measurements',
+        description: 'Use words for ordinals up to \'ninth\'. Use numerals for 10th and above. Exceptions: centuries (\'1st century\'), reference editions (\'2nd edn\') and organisation names.',
+        link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/numbers-and-measurements/ordinal-numbers',
+        check: function(text) {
+            const issues = [];
+            const ordinalMap = {
+                '1st': 'first', '2nd': 'second', '3rd': 'third',
+                '4th': 'fourth', '5th': 'fifth', '6th': 'sixth',
+                '7th': 'seventh', '8th': 'eighth', '9th': 'ninth'
+            };
+
+            // Match standalone 1st-9th (not preceded by another digit)
+            const regex = /(?<!\d)(1st|2nd|3rd|4th|5th|6th|7th|8th|9th)\b/gi;
+            let match;
+            while ((match = regex.exec(text)) !== null) {
+                const found = match[1];
+                const pos = match.index;
+                const after = text.substring(pos + found.length, Math.min(text.length, pos + found.length + 30));
+
+                // Skip centuries (1st century, 9th-century)
+                if (/^\s*[-\u2010\u2011]?\s*centur/i.test(after)) continue;
+
+                // Skip dates (followed by month name) - already handled by date-ordinal-in-date
+                if (/^\s+(?:January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Sept?|Oct|Nov|Dec)\b/i.test(after)) continue;
+
+                // Skip reference editions (2nd edn, 3rd ed., 1st edition)
+                if (/^\s+(?:edn|ed\.|edition)\b/i.test(after)) continue;
+
+                const replacement = ordinalMap[found.toLowerCase()];
+                issues.push({
+                    found: found,
+                    suggestion: replacement,
+                    autoFix: replacement,
+                    position: pos,
                     rule: this
                 });
             }
@@ -1987,6 +2047,125 @@ const RULES = [
                     rule: this
                 });
             }
+            return issues;
+        }
+    },
+    {
+        id: 'numbers-words-to-numerals',
+        name: 'Number word instead of numeral',
+        category: 'numbers-and-measurements',
+        description: 'Use numerals for numbers 2 and above in text. Write \'3 options\', not \'three options\'. Exceptions include the start of sentences, fractions and figures of speech.',
+        link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/numbers-and-measurements/choosing-numerals-or-words',
+        check: function(text) {
+            const issues = [];
+
+            // Number words to numeral mapping (2 through 90)
+            const numberWords = {
+                'two': 2, 'three': 3, 'four': 4, 'five': 5, 'six': 6,
+                'seven': 7, 'eight': 8, 'nine': 9, 'ten': 10,
+                'eleven': 11, 'twelve': 12, 'thirteen': 13, 'fourteen': 14,
+                'fifteen': 15, 'sixteen': 16, 'seventeen': 17, 'eighteen': 18,
+                'nineteen': 19, 'twenty': 20, 'thirty': 30, 'forty': 40,
+                'fifty': 50, 'sixty': 60, 'seventy': 70, 'eighty': 80, 'ninety': 90
+            };
+
+            const tensWords = ['twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety'];
+            const onesWords = ['one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'];
+            const onesValues = { 'one': 1, 'two': 2, 'three': 3, 'four': 4, 'five': 5, 'six': 6, 'seven': 7, 'eight': 8, 'nine': 9 };
+
+            // Fraction denominators to skip (e.g. two-thirds, three-quarters)
+            const fractionSuffixes = 'halves?|half|thirds?|quarters?|fifths?|sixths?|sevenths?|eighths?|ninths?|tenths?|fold';
+
+            // Units of measurement (skip - already handled by numbers-measurement-words rule)
+            const unitPattern = 'km|km\\/h|m|cm|mm|kg|g|mg|\u03BCg|mcg|mL|ml|L|ha|kW|MW|GW|kWh|MWh|Hz|kHz|MHz|GHz|KB|MB|GB|TB|Mbps|metres|meters|kilometres|kilometers|kilograms|grams|litres|liters|hectares|watts|degrees';
+
+            // First pass: match compound numbers (twenty-one through ninety-nine)
+            const tensPattern = tensWords.join('|');
+            const onesPattern = onesWords.join('|');
+            const compoundRegex = new RegExp('\\b(' + tensPattern + ')[-\u2010\u2011](' + onesPattern + ')\\b', 'gi');
+
+            // Track ranges of compound matches to avoid double-flagging components
+            const compoundRanges = [];
+
+            let match;
+            while ((match = compoundRegex.exec(text)) !== null) {
+                const tensWord = match[1].toLowerCase();
+                const onesWord = match[2].toLowerCase();
+                const numeral = numberWords[tensWord] + onesValues[onesWord];
+                const pos = match.index;
+
+                // Skip if at start of sentence
+                const beforeText = text.substring(Math.max(0, pos - 50), pos);
+                if (pos === 0 || /^\s*$/.test(text.substring(0, pos)) ||
+                    /[.!?]\s+$/.test(beforeText) || /\n\s*$/.test(beforeText)) continue;
+
+                compoundRanges.push([pos, pos + match[0].length]);
+
+                issues.push({
+                    found: match[0],
+                    suggestion: String(numeral),
+                    autoFix: String(numeral),
+                    position: pos,
+                    rule: this
+                });
+            }
+
+            // Second pass: match simple number words
+            const simplePattern = Object.keys(numberWords).join('|');
+            const simpleRegex = new RegExp('\\b(' + simplePattern + ')\\b', 'gi');
+
+            while ((match = simpleRegex.exec(text)) !== null) {
+                const word = match[1].toLowerCase();
+                const numeral = numberWords[word];
+                const pos = match.index;
+                const end = pos + match[0].length;
+
+                // Skip if part of a compound number already matched
+                let isCompound = false;
+                for (const [cStart, cEnd] of compoundRanges) {
+                    if (pos >= cStart && end <= cEnd) {
+                        isCompound = true;
+                        break;
+                    }
+                }
+                if (isCompound) continue;
+
+                const after = text.substring(end, Math.min(text.length, end + 20));
+                const before = text.substring(Math.max(0, pos - 20), pos);
+
+                // Skip if part of an unmatched compound (hyphen-joined with tens/ones)
+                if (new RegExp('^[-\u2010\u2011](' + onesPattern + ')\\b', 'i').test(after)) continue;
+                if (new RegExp('(' + tensPattern + ')[-\u2010\u2011]$', 'i').test(before)) continue;
+
+                // Skip if at start of sentence
+                const beforeText = text.substring(Math.max(0, pos - 50), pos);
+                if (pos === 0 || /^\s*$/.test(text.substring(0, pos)) ||
+                    /[.!?]\s+$/.test(beforeText) || /\n\s*$/.test(beforeText)) continue;
+
+                // Skip fractions (two-thirds, three-quarters, etc.)
+                if (new RegExp('^[-\u2010\u2011](' + fractionSuffixes + ')\\b', 'i').test(after)) continue;
+
+                // Skip possessive/contraction forms (figures of speech: "two's company")
+                if (/^['\u2019]s\b/.test(after)) continue;
+
+                // Skip if followed by hundred/thousand/million etc. (complex multi-word numbers)
+                if (/^\s+(hundred|thousand|million|billion|trillion)\b/i.test(after)) continue;
+
+                // Skip if preceded by hundred/thousand (e.g. "hundred and two")
+                if (/(?:hundred|thousand)\s+(?:and\s+)?$/i.test(before)) continue;
+
+                // Skip if followed by a unit of measurement (handled by other rule)
+                if (new RegExp('^\\s+(' + unitPattern + ')\\b', 'i').test(after)) continue;
+
+                issues.push({
+                    found: match[0],
+                    suggestion: String(numeral),
+                    autoFix: String(numeral),
+                    position: pos,
+                    rule: this
+                });
+            }
+
             return issues;
         }
     },
