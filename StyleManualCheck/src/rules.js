@@ -810,7 +810,7 @@ const RULES = [
         category: 'headings',
         description: 'Use sentence case for headings, not title case. Only capitalise the first word and proper nouns. Note: you may need to adjust the suggested fix if the heading contains proper nouns.',
         link: 'https://www.stylemanual.gov.au/structuring-content/headings',
-        check: function(text) {
+        check: function(text, headingLines) {
             const issues = [];
 
             // Words that are typically lowercase in title case (so don't count them)
@@ -827,7 +827,8 @@ const RULES = [
             const lines = text.split('\n');
             let position = 0;
 
-            for (const line of lines) {
+            for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+                const line = lines[lineIndex];
                 const trimmed = line.trim();
 
                 // Skip empty lines
@@ -835,6 +836,8 @@ const RULES = [
                     position += line.length + 1;
                     continue;
                 }
+
+                const hasHeadingStyle = headingLines && headingLines.has(lineIndex);
 
                 // Heading heuristics:
                 // - Short (under 12 words)
@@ -844,7 +847,9 @@ const RULES = [
                 const endsWithPunctuation = /[.?!;,]$/.test(trimmed);
                 const isAllCaps = trimmed === trimmed.toUpperCase() && /[A-Z]/.test(trimmed);
 
-                if (words.length >= 3 && words.length <= 12 && !endsWithPunctuation && !isAllCaps) {
+                const isLikelyHeading = words.length >= 3 && words.length <= 12 && !endsWithPunctuation && !isAllCaps;
+
+                if (isLikelyHeading || hasHeadingStyle) {
                     // Count words that start with capitals (excluding first word and small words)
                     let capitalizedCount = 0;
                     let significantWords = 0;
@@ -893,12 +898,13 @@ const RULES = [
         category: 'headings',
         description: 'Longer headings are more difficult to read and can be confusing. They might also suggest that you have too many ideas in a section.',
         link: 'https://www.stylemanual.gov.au/structuring-content/headings',
-        check: function(text) {
+        check: function(text, headingLines) {
             const issues = [];
             const lines = text.split('\n');
             let position = 0;
 
-            for (const line of lines) {
+            for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+                const line = lines[lineIndex];
                 const trimmed = line.trim();
 
                 // Skip empty lines
@@ -907,13 +913,17 @@ const RULES = [
                     continue;
                 }
 
+                const hasHeadingStyle = headingLines && headingLines.has(lineIndex);
+
                 // Heading heuristics: short-ish line, doesn't end with sentence punctuation
                 const words = trimmed.split(/\s+/);
                 const endsWithPunctuation = /[.?!;,]$/.test(trimmed);
 
-                // Consider it a heading if it's 3-20 words and doesn't end with punctuation
-                // (Long headings that exceed 70 chars are likely to have more words)
-                if (words.length >= 3 && words.length <= 20 && !endsWithPunctuation) {
+                // Consider it a heading if it's 3-20 words and doesn't end with punctuation,
+                // or if it has a Word heading style applied
+                const isLikelyHeading = words.length >= 3 && words.length <= 20 && !endsWithPunctuation;
+
+                if (isLikelyHeading || hasHeadingStyle) {
                     if (trimmed.length > 70) {
                         issues.push({
                             found: trimmed,
@@ -936,7 +946,7 @@ const RULES = [
         category: 'headings',
         description: 'Don\'t use a full stop to end headings. Even if the heading is a sentence, it doesn\'t need a full stop at the end.',
         link: 'https://www.stylemanual.gov.au/structuring-content/headings',
-        check: function(text) {
+        check: function(text, headingLines) {
             const issues = [];
             const lines = text.split('\n');
             let position = 0;
@@ -948,7 +958,8 @@ const RULES = [
             // Track consecutive short lines ending with full stops (likely a list)
             let consecutiveShortLines = 0;
 
-            for (const line of lines) {
+            for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+                const line = lines[lineIndex];
                 const trimmed = line.trim();
 
                 // Skip empty lines
@@ -958,8 +969,11 @@ const RULES = [
                     continue;
                 }
 
+                const hasHeadingStyle = headingLines && headingLines.has(lineIndex);
+
                 // Skip lines that are list items (start with bullet or number marker)
-                if (bulletPattern.test(line)) {
+                // but not if they have a heading style
+                if (!hasHeadingStyle && bulletPattern.test(line)) {
                     position += line.length + 1;
                     consecutiveShortLines++;
                     continue;
@@ -968,35 +982,35 @@ const RULES = [
                 // Heading heuristics: short line ending with full stop (but not ? or !)
                 const words = trimmed.split(/\s+/);
 
-                // Skip if this looks like it's part of a list (multiple consecutive short lines)
-                if (words.length >= 2 && words.length <= 12 && /\.$/.test(trimmed)) {
-                    consecutiveShortLines++;
-                    // If we've seen 2+ consecutive short lines ending with periods, it's likely a sentence list
-                    if (consecutiveShortLines >= 2) {
-                        position += line.length + 1;
-                        continue;
+                // Skip consecutive-line heuristic if the line has a heading style
+                if (!hasHeadingStyle) {
+                    if (words.length >= 2 && words.length <= 12 && /\.$/.test(trimmed)) {
+                        consecutiveShortLines++;
+                        if (consecutiveShortLines >= 2) {
+                            position += line.length + 1;
+                            continue;
+                        }
+                    } else {
+                        consecutiveShortLines = 0;
                     }
-                } else {
-                    consecutiveShortLines = 0;
                 }
 
-                // Consider it a heading if it's 2-10 words and ends with a full stop
-                // (Reduced from 12 to be more conservative)
-                if (words.length >= 2 && words.length <= 10 && /\.$/.test(trimmed) && !/\.{2,}$/.test(trimmed)) {
-                    // Skip if the line starts with lowercase (probably a continuation or list item)
-                    if (/^[a-z]/.test(trimmed)) {
-                        position += line.length + 1;
-                        continue;
-                    }
+                // Flag if it ends with a full stop and is either a likely heading or has a heading style
+                const endsWithFullStop = /\.$/.test(trimmed) && !/\.{2,}$/.test(trimmed);
 
-                    const replacement = trimmed.slice(0, -1);
-                    issues.push({
-                        found: trimmed,
-                        suggestion: replacement,
-                        // No autoFix - let user decide if this is really a heading
-                        position: position + line.indexOf(trimmed),
-                        rule: this
-                    });
+                if (endsWithFullStop) {
+                    const isLikelyHeading = words.length >= 2 && words.length <= 10 && !/^[a-z]/.test(trimmed);
+
+                    if (isLikelyHeading || hasHeadingStyle) {
+                        const replacement = trimmed.slice(0, -1);
+                        issues.push({
+                            found: trimmed,
+                            suggestion: replacement,
+                            autoFix: hasHeadingStyle ? replacement : undefined,
+                            position: position + line.indexOf(trimmed),
+                            rule: this
+                        });
+                    }
                 }
 
                 position += line.length + 1;
@@ -1010,12 +1024,13 @@ const RULES = [
         category: 'headings',
         description: 'Don\'t write headings in all capital letters as users could misread words. For example, \'ACT\' could be \'act\' (the verb) rather than the initialism for the Australian Capital Territory.',
         link: 'https://www.stylemanual.gov.au/structuring-content/headings',
-        check: function(text) {
+        check: function(text, headingLines) {
             const issues = [];
             const lines = text.split('\n');
             let position = 0;
 
-            for (const line of lines) {
+            for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+                const line = lines[lineIndex];
                 const trimmed = line.trim();
 
                 // Skip empty lines
@@ -1024,13 +1039,17 @@ const RULES = [
                     continue;
                 }
 
+                const hasHeadingStyle = headingLines && headingLines.has(lineIndex);
+
                 // Check if line is all caps (and has letters)
                 const hasLetters = /[A-Z]/.test(trimmed);
                 const isAllCaps = trimmed === trimmed.toUpperCase() && hasLetters;
                 const words = trimmed.split(/\s+/);
 
-                // Consider it a heading if it's 2-12 words, all caps, and doesn't end with typical sentence punctuation
-                if (isAllCaps && words.length >= 2 && words.length <= 12) {
+                // Consider it a heading if it's 2-12 words, all caps, or has a heading style and is all caps
+                const isLikelyHeading = isAllCaps && words.length >= 2 && words.length <= 12;
+
+                if (isAllCaps && (isLikelyHeading || hasHeadingStyle)) {
                     // Convert to sentence case
                     const sentenceCase = toSentenceCase(trimmed);
                     issues.push({
@@ -2315,10 +2334,11 @@ function numberToWords(num) {
 }
 
 // Main function to check text against all rules
-function checkText(text) {
+// headingLines: optional Set of line indices with a Word heading style applied
+function checkText(text, headingLines) {
     const allIssues = [];
     for (const rule of RULES) {
-        const issues = rule.check(text);
+        const issues = rule.check(text, headingLines);
         allIssues.push(...issues);
     }
     // Sort by position in text

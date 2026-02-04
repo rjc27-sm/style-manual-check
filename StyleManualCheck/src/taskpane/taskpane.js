@@ -60,10 +60,10 @@ async function scanDocument() {
             paragraphs.load('items');
             await context.sync();
 
-            // Build text with paragraph markers so sentence detection works correctly
+            // Load text and style for each paragraph
             let fullText = '';
             for (let i = 0; i < paragraphs.items.length; i++) {
-                paragraphs.items[i].load('text');
+                paragraphs.items[i].load('text,style');
             }
             await context.sync();
 
@@ -71,8 +71,17 @@ async function scanDocument() {
             const paragraphTexts = paragraphs.items.map(p => p.text);
             fullText = paragraphTexts.join('\n');
 
+            // Build a set of line indices that have a Word heading style applied
+            const headingLines = new Set();
+            for (let i = 0; i < paragraphs.items.length; i++) {
+                const style = (paragraphs.items[i].style || '').toLowerCase();
+                if (style.startsWith('heading') || style.startsWith('title') || style.startsWith('subtitle')) {
+                    headingLines.add(i);
+                }
+            }
+
             // Run style checks
-            allIssues = checkText(fullText);
+            allIssues = checkText(fullText, headingLines);
 
             // Assign IDs to issues
             allIssues.forEach((issue, i) => {
