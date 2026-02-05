@@ -1760,13 +1760,11 @@ const RULES = [
                     const wordCount = words.length;
 
                     if (wordCount > 25) {
-                        // Use first ~50 chars for navigation (long sentences break Word search)
-                        const excerpt = sentence.length > 50
-                            ? sentence.substring(0, 50).trim() + '...'
-                            : sentence;
+                        // Use first 8 words for navigation (long sentences break Word search)
+                        const firstWords = words.slice(0, 8).join(' ');
                         issues.push({
-                            found: sentence.substring(0, Math.min(50, sentence.length)),
-                            suggestion: 'This sentence is ' + wordCount + ' words long. ' + excerpt,
+                            found: firstWords,
+                            suggestion: 'This sentence is ' + wordCount + ' words long. Consider breaking it up.',
                             position: currentPosition + match.index,
                             rule: this
                         });
