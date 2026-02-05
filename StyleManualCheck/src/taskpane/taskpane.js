@@ -83,9 +83,15 @@ async function scanDocument() {
             // Run style checks
             allIssues = checkText(fullText, headingLines);
 
-            // Assign IDs to issues
+            // Assign IDs and calculate occurrence indices for navigation
             allIssues.forEach((issue, i) => {
                 issue.id = 'issue-' + i;
+                // Count how many times 'found' text appears before this position
+                // This tells us which occurrence to select in goToIssue
+                const textBefore = fullText.substring(0, issue.position);
+                const escapedFound = issue.found.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                const matches = textBefore.match(new RegExp(escapedFound, 'gi'));
+                issue.occurrenceIndex = matches ? matches.length : 0;
             });
 
             // Reset fixed count for new scan
@@ -272,8 +278,10 @@ async function acceptFix(issue) {
             await context.sync();
 
             if (searchResults.items.length > 0) {
-                // Replace the first occurrence
-                searchResults.items[0].insertText(issue.autoFix, Word.InsertLocation.replace);
+                // Replace the correct occurrence based on stored index
+                const idx = issue.occurrenceIndex || 0;
+                const targetIdx = Math.min(idx, searchResults.items.length - 1);
+                searchResults.items[targetIdx].insertText(issue.autoFix, Word.InsertLocation.replace);
                 await context.sync();
 
                 // Remove from issues and update display
@@ -311,7 +319,10 @@ async function useReplacement(issue, replacementIndex) {
             await context.sync();
 
             if (searchResults.items.length > 0) {
-                searchResults.items[0].insertText(fixedReplacement, Word.InsertLocation.replace);
+                // Replace the correct occurrence based on stored index
+                const idx = issue.occurrenceIndex || 0;
+                const targetIdx = Math.min(idx, searchResults.items.length - 1);
+                searchResults.items[targetIdx].insertText(fixedReplacement, Word.InsertLocation.replace);
                 await context.sync();
 
                 allIssues = allIssues.filter(i => i.id !== issue.id);
@@ -381,8 +392,10 @@ async function goToIssue(issue) {
             await context.sync();
 
             if (searchResults.items.length > 0) {
-                // Select the first occurrence
-                searchResults.items[0].select();
+                // Select the correct occurrence based on stored index
+                const idx = issue.occurrenceIndex || 0;
+                const targetIdx = Math.min(idx, searchResults.items.length - 1);
+                searchResults.items[targetIdx].select();
                 await context.sync();
             }
         });

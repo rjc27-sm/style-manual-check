@@ -121,3 +121,105 @@ Designed a shared architecture to support both Word and PowerPoint add-ins with 
 ### Demo text updated
 
 Revised demo text to better test edge cases and avoid confusing the checker with multiple heading issues in sequence
+
+## 2026-01-31: Bug report fixes
+
+### Rule fixes
+
+1. **numbers-start-sentence** - Now skips dates (15 August) to avoid false positives
+
+2. **numbers-zero-one** - Now skips digits in date context (January 15)
+
+3. **numbers-percent-spelling** - Now suggests % with numerals (85%) rather than 'per cent'
+
+4. **list-etc** - Now detects 'etc.' after semicolon, not just at end of line
+
+5. **list-inconsistent-periods** - Replaced with improved version that uses capitalisation to identify list type and gives better guidance
+
+### Bug fix
+
+6. **autoFix check** - Fixed bug where empty string was incorrectly treated as no autofix (empty string is valid for deletions)
+
+## 2026-02-01: Word add-in
+
+### Word add-in created
+
+Built a Microsoft Word add-in (StyleManualCheck/) using Office.js:
+- Generated Office Add-in project using Yeoman
+- Integrated rules.js and spellings.js as ES modules
+- Built task pane UI matching browser demo
+- Uses Word JavaScript API for document access and manipulation
+
+### Demo bug fixes
+
+1. **Position-based replacement** - Fixed acceptFix, useReplacement, and fixAllOfType to use correct positions (was replacing first occurrence)
+
+2. **Superscript ordinal detection** - Fixed numbers-zero-one rule to properly detect superscript ordinals (1ˢᵗ)
+
+3. **numbers-start-sentence** - Now skips numbers after comma (Thursday, 15)
+
+4. **List punctuation rules** - Made semicolon, comma, and/or rules advisory-only (no autofix)
+
+### Feb 2026 bug report: UI improvements
+
+5. **Ribbon button** - Updated to 'Style check' in 'Aus Gov' group
+
+6. **Task pane** - Removed initial info message for cleaner UI
+
+7. **Watch words** - Added 'Use [replacement]' button
+
+8. **Learn more links** - Moved inside description area
+
+9. **Rule labels** - Changed to sentence case throughout
+
+10. **Ignore button** - Styled with red background for visibility
+
+11. **Typography** - Reduced found/suggestion font sizes; made arrow black
+
+12. **Icon assets** - Updated to new design
+
+### Feb 2026 bug report: Rule fixes
+
+13. **heading-full-stop** - Skip indented bullets, detect sentence lists, removed autofix to let user decide
+
+14. **numbers-start-sentence** - Skip year ranges (2025-26) and 4-digit years
+
+## 2026-02-04: Heading styles and number rules
+
+### Heading style detection
+
+Heading rules now detect paragraphs with Word heading/title/subtitle styles applied, not just lines matching text pattern heuristics. This improves accuracy when checking documents with proper heading styles.
+
+The headingLines parameter was added to checkText() to pass styled line indices from the Word add-in.
+
+### New rules
+
+1. **numbers-words-to-numerals** - Flags number words (two through ninety-nine) that should be numerals per Style Manual. Exceptions:
+   - Start of sentence
+   - Fractions (one-third)
+   - Figures of speech (one of a kind)
+   - Measurement units (ten per cent)
+   - Complex multi-word numbers (two hundred, three million)
+
+2. **numbers-ordinal-words** - Flags 1st–9th and suggests word forms (first–ninth). Exceptions:
+   - Centuries (21st century)
+   - Dates (1st January)
+   - Reference editions (1st edition)
+
+### Rule updates
+
+3. **Superscript ordinal rule** - Now suggests word forms for 1st–9th directly, and plain numerals for 10th+
+
+### Bug fixes from bug report
+
+4. **Ordinal rule ordering** - Reordered so word suggestion appears before superscript fix
+
+5. **Compound number words** - Fixed twenty-three etc. being split when en-dash used instead of hyphen (expanded dash character class)
+
+6. **numbers-start-sentence prepositions** - Added preposition check to reduce date false positives (for example, 'from 15 January')
+
+7. **judgement spelling rule** - Added 'Use judgement' replacement button
+
+8. **Heuristic heading descriptions** - Per-issue descriptions now prompt users to apply heading styles when matches are heuristic
+
+9. **Double space rule** - Updated description text for clarity

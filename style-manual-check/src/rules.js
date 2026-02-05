@@ -641,7 +641,7 @@ const RULES = [
         id: 'time-12-ambiguous',
         name: '12 am or 12 pm',
         category: 'dates-and-time',
-        description: 'Use \'noon\', \'midday\' or \'midnight\' instead of \'12 am\' or \'12 pm\' to avoid confusion.',
+        description: 'Use \'noon\', \'midday\' or \'midnight\' instead of \'12\u00A0am\' or \'12\u00A0pm\' to avoid confusion.',
         link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/numbers-and-measurements/dates-and-time',
         check: function(text) {
             const issues = [];
@@ -666,7 +666,7 @@ const RULES = [
         id: 'time-full-stop',
         name: 'Full stop in time',
         category: 'dates-and-time',
-        description: 'Use a colon between hours and minutes, not a full stop. Write \'10:30 am\', not \'10.30 am\'.',
+        description: 'Use a colon between hours and minutes, not a full stop. Write \'10:30\u00A0am\', not \'10.30\u00A0am\'.',
         link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/numbers-and-measurements/dates-and-time',
         check: function(text) {
             const issues = [];
@@ -1172,6 +1172,121 @@ const RULES = [
         }
     },
 
+    // ==================== ABBREVIATIONS ====================
+    {
+        id: 'abbrev-month-full-stop',
+        name: 'Full stop in month abbreviation',
+        category: 'abbreviations',
+        description: 'Don\'t put a full stop after abbreviations. Write \'Jan\', not \'Jan.\' (unless the abbreviation ends a sentence).',
+        link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/shortened-words-and-phrases/abbreviations',
+        check: function(text) {
+            const issues = [];
+            // Match month abbreviations with trailing full stop
+            const months = 'Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec';
+            const regex = new RegExp('\\b(' + months + ')\\.(?!\\s*$)(?![\\s]*[A-Z])', 'g');
+            let match;
+            while ((match = regex.exec(text)) !== null) {
+                const abbrev = match[1];
+                const afterPos = match.index + match[0].length;
+                const after = text.substring(afterPos, afterPos + 3);
+
+                // Skip if this ends a sentence (followed by space + capital, or end of text/line)
+                // The full stop is legitimate sentence-ending punctuation
+                if (/^\s*$/.test(after) || /^\s+[A-Z]/.test(after) || /^[\s]*[\r\n]/.test(after)) {
+                    continue;
+                }
+
+                issues.push({
+                    found: match[0],
+                    suggestion: abbrev,
+                    autoFix: abbrev,
+                    position: match.index,
+                    rule: this
+                });
+            }
+            return issues;
+        }
+    },
+    {
+        id: 'abbrev-day-full-stop',
+        name: 'Full stop in day abbreviation',
+        category: 'abbreviations',
+        description: 'Don\'t put a full stop after abbreviations. Write \'Mon\', not \'Mon.\' (unless the abbreviation ends a sentence).',
+        link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/shortened-words-and-phrases/abbreviations',
+        check: function(text) {
+            const issues = [];
+            // Match day abbreviations with trailing full stop
+            const days = 'Mon|Tue|Tues|Wed|Thu|Thur|Thurs|Fri|Sat|Sun';
+            const regex = new RegExp('\\b(' + days + ')\\.', 'g');
+            let match;
+            while ((match = regex.exec(text)) !== null) {
+                const abbrev = match[1];
+                const afterPos = match.index + match[0].length;
+                const after = text.substring(afterPos, afterPos + 3);
+
+                // Skip if this ends a sentence
+                if (/^\s*$/.test(after) || /^\s+[A-Z]/.test(after) || /^[\s]*[\r\n]/.test(after)) {
+                    continue;
+                }
+
+                issues.push({
+                    found: match[0],
+                    suggestion: abbrev,
+                    autoFix: abbrev,
+                    position: match.index,
+                    rule: this
+                });
+            }
+            return issues;
+        }
+    },
+    {
+        id: 'abbrev-common-full-stop',
+        name: 'Full stop in common abbreviation',
+        category: 'abbreviations',
+        description: 'Don\'t put a full stop after abbreviations (unless the abbreviation ends a sentence).',
+        link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/shortened-words-and-phrases/abbreviations',
+        check: function(text) {
+            const issues = [];
+            // Common abbreviations that shouldn't have full stops
+            // Excludes: n.d. (no date - exception), scientific name abbreviations
+            const abbrevs = [
+                // Honorifics and titles
+                'Dr', 'Mr', 'Mrs', 'Ms', 'Mx', 'Prof', 'Rev', 'Hon', 'Sr', 'Jr',
+                // Common abbreviations
+                'para', 'paras', 'vol', 'vols', 'misc', 'app', 'apps',
+                'cont', 'dept', 'depts', 'govt', 'govts', 'approx',
+                'assn', 'ave', 'bldg', 'blvd', 'corp', 'est', 'ext',
+                'inc', 'intl', 'max', 'min', 'natl', 'no', 'nos',
+                'org', 'pt', 'pts', 'qty', 'ref', 'refs',
+                'tel', 'temp', 'yr', 'yrs', 'ed', 'eds', 'fig', 'figs'
+            ];
+            const pattern = abbrevs.join('|');
+            const regex = new RegExp('\\b(' + pattern + ')\\.', 'gi');
+            let match;
+            while ((match = regex.exec(text)) !== null) {
+                const abbrev = match[1];
+                const afterPos = match.index + match[0].length;
+                const after = text.substring(afterPos, afterPos + 3);
+
+                // Skip if this ends a sentence
+                if (/^\s*$/.test(after) || /^\s+[A-Z]/.test(after) || /^[\s]*[\r\n]/.test(after)) {
+                    continue;
+                }
+
+                // Preserve original case
+                issues.push({
+                    found: match[0],
+                    suggestion: abbrev,
+                    autoFix: abbrev,
+                    position: match.index,
+                    rule: this
+                });
+            }
+            return issues;
+        }
+    },
+
     // ==================== WATCH WORDS ====================
     {
         id: 'watch-words',
@@ -1308,13 +1423,35 @@ const RULES = [
         link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/names-and-terms/government-terms',
         check: function(text) {
             const issues = [];
-            const regex = /\bCommonwealth government\b/gi;
+            // Match "a Commonwealth government" or just "Commonwealth government"
+            // Handle a/an article change when present
+            const regex = /\b(an?\s+)?Commonwealth government\b/gi;
             let match;
             while ((match = regex.exec(text)) !== null) {
+                const article = match[1];
+                let found = match[0];
+                let replacement;
+
+                if (article) {
+                    // Has article - need to change "a" to "an" for "Australian"
+                    const articleLower = article.trim().toLowerCase();
+                    if (articleLower === 'a') {
+                        // "a Commonwealth" → "an Australian"
+                        const isCapital = article.trim().charAt(0) === 'A';
+                        replacement = (isCapital ? 'An ' : 'an ') + 'Australian Government';
+                    } else {
+                        // "an Commonwealth" (unusual but handle it) → "an Australian"
+                        const isCapital = article.trim().charAt(0) === 'A';
+                        replacement = (isCapital ? 'An ' : 'an ') + 'Australian Government';
+                    }
+                } else {
+                    replacement = preserveCase(match[0], 'Australian Government');
+                }
+
                 issues.push({
-                    found: match[0],
-                    suggestion: 'Australian Government',
-                    autoFix: 'Australian Government',
+                    found: found,
+                    suggestion: replacement,
+                    autoFix: replacement,
                     position: match.index,
                     rule: this
                 });
@@ -1914,6 +2051,14 @@ const RULES = [
                 const digit = match[1];
                 const pos = match.index;
 
+                // Extra safeguard: skip if adjacent to another digit (handles edge cases)
+                const charBefore = pos > 0 ? text.charAt(pos - 1) : '';
+                const charAfter = pos < text.length - 1 ? text.charAt(pos + 1) : '';
+                if (/\d/.test(charBefore) || /\d/.test(charAfter)) continue;
+
+                // Skip decimals (0.5, 1.5, etc.)
+                if (charBefore === '.' || charAfter === '.') continue;
+
                 // Get surrounding context for additional checks
                 const before = text.substring(Math.max(0, pos - 30), pos);
                 const after = text.substring(pos + 1, Math.min(text.length, pos + 30));
@@ -2153,7 +2298,7 @@ const RULES = [
         id: 'numbers-measurement-words',
         name: 'Word number with unit symbol',
         category: 'numbers-and-measurements',
-        description: 'Always use numerals with units of measurement. Write \'5 km\', not \'five km\'.',
+        description: 'Always use numerals with units of measurement. Write \'5\u00A0km\', not \'five\u00A0km\'.',
         link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/numbers-and-measurements/measurement-and-units',
         check: function(text) {
             const issues = [];
