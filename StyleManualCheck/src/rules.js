@@ -810,7 +810,7 @@ const RULES = [
         category: 'headings',
         description: 'Use sentence case for headings, not title case. Only capitalise the first word and proper nouns. Note: you may need to adjust the suggested fix if the heading contains proper nouns.',
         link: 'https://www.stylemanual.gov.au/structuring-content/headings',
-        check: function(text, headingLines) {
+        check: function(text, headingLines, listLines) {
             const issues = [];
 
             // Words that are typically lowercase in title case (so don't count them)
@@ -838,13 +838,20 @@ const RULES = [
                 }
 
                 const hasHeadingStyle = headingLines && headingLines.has(lineIndex);
+                const isListItem = listLines && listLines.has(lineIndex);
+
+                // Skip list items unless they have a heading style (unusual but possible)
+                if (isListItem && !hasHeadingStyle) {
+                    position += line.length + 1;
+                    continue;
+                }
 
                 // Heading heuristics:
                 // - Short (under 12 words)
-                // - Doesn't end with . ? ! ; (headings typically don't)
+                // - Doesn't end with . ? ! ; , : (headings typically don't, and : often precedes lists)
                 // - Not all caps (that's a different issue)
                 const words = trimmed.split(/\s+/);
-                const endsWithPunctuation = /[.?!;,]$/.test(trimmed);
+                const endsWithPunctuation = /[.?!;,:]$/.test(trimmed);
                 const isAllCaps = trimmed === trimmed.toUpperCase() && /[A-Z]/.test(trimmed);
 
                 const isLikelyHeading = words.length >= 3 && words.length <= 12 && !endsWithPunctuation && !isAllCaps;
@@ -902,7 +909,7 @@ const RULES = [
         category: 'headings',
         description: 'Longer headings are more difficult to read and can be confusing. They might also suggest that you have too many ideas in a section.',
         link: 'https://www.stylemanual.gov.au/structuring-content/headings',
-        check: function(text, headingLines) {
+        check: function(text, headingLines, listLines) {
             const issues = [];
             const lines = text.split('\n');
             let position = 0;
@@ -918,10 +925,17 @@ const RULES = [
                 }
 
                 const hasHeadingStyle = headingLines && headingLines.has(lineIndex);
+                const isListItem = listLines && listLines.has(lineIndex);
+
+                // Skip list items unless they have a heading style
+                if (isListItem && !hasHeadingStyle) {
+                    position += line.length + 1;
+                    continue;
+                }
 
                 // Heading heuristics: short-ish line, doesn't end with sentence punctuation
                 const words = trimmed.split(/\s+/);
-                const endsWithPunctuation = /[.?!;,]$/.test(trimmed);
+                const endsWithPunctuation = /[.?!;,:]$/.test(trimmed);
 
                 // Consider it a heading if it's 3-20 words and doesn't end with punctuation,
                 // or if it has a Word heading style applied
@@ -954,7 +968,7 @@ const RULES = [
         category: 'headings',
         description: 'Don\'t use a full stop to end headings. Even if the heading is a sentence, it doesn\'t need a full stop at the end.',
         link: 'https://www.stylemanual.gov.au/structuring-content/headings',
-        check: function(text, headingLines) {
+        check: function(text, headingLines, listLines) {
             const issues = [];
             const lines = text.split('\n');
             let position = 0;
@@ -978,10 +992,10 @@ const RULES = [
                 }
 
                 const hasHeadingStyle = headingLines && headingLines.has(lineIndex);
+                const isListItem = listLines && listLines.has(lineIndex);
 
-                // Skip lines that are list items (start with bullet or number marker)
-                // but not if they have a heading style
-                if (!hasHeadingStyle && bulletPattern.test(line)) {
+                // Skip list items (Word-detected or text pattern) unless they have a heading style
+                if (!hasHeadingStyle && (isListItem || bulletPattern.test(line))) {
                     position += line.length + 1;
                     consecutiveShortLines++;
                     continue;
@@ -1036,7 +1050,7 @@ const RULES = [
         category: 'headings',
         description: 'Don\'t write headings in all capital letters as users could misread words. For example, \'ACT\' could be \'act\' (the verb) rather than the initialism for the Australian Capital Territory.',
         link: 'https://www.stylemanual.gov.au/structuring-content/headings',
-        check: function(text, headingLines) {
+        check: function(text, headingLines, listLines) {
             const issues = [];
             const lines = text.split('\n');
             let position = 0;
@@ -1052,6 +1066,13 @@ const RULES = [
                 }
 
                 const hasHeadingStyle = headingLines && headingLines.has(lineIndex);
+                const isListItem = listLines && listLines.has(lineIndex);
+
+                // Skip list items unless they have a heading style
+                if (isListItem && !hasHeadingStyle) {
+                    position += line.length + 1;
+                    continue;
+                }
 
                 // Check if line is all caps (and has letters)
                 const hasLetters = /[A-Z]/.test(trimmed);
@@ -2680,10 +2701,11 @@ function numberToWords(num) {
 
 // Main function to check text against all rules
 // headingLines: optional Set of line indices with a Word heading style applied
-function checkText(text, headingLines) {
+// listLines: optional Set of line indices that are list items (bullets/numbered)
+function checkText(text, headingLines, listLines) {
     const allIssues = [];
     for (const rule of RULES) {
-        const issues = rule.check(text, headingLines);
+        const issues = rule.check(text, headingLines, listLines);
         allIssues.push(...issues);
     }
     // Sort by position in text

@@ -60,10 +60,10 @@ async function scanDocument() {
             paragraphs.load('items');
             await context.sync();
 
-            // Load text and style for each paragraph
+            // Load text, style, and list info for each paragraph
             let fullText = '';
             for (let i = 0; i < paragraphs.items.length; i++) {
-                paragraphs.items[i].load('text,style');
+                paragraphs.items[i].load('text,style,isListItem');
             }
             await context.sync();
 
@@ -73,15 +73,22 @@ async function scanDocument() {
 
             // Build a set of line indices that have a Word heading style applied
             const headingLines = new Set();
+            // Build a set of line indices that are list items (bullets/numbered)
+            const listLines = new Set();
             for (let i = 0; i < paragraphs.items.length; i++) {
-                const style = (paragraphs.items[i].style || '').toLowerCase();
+                const para = paragraphs.items[i];
+                const style = (para.style || '').toLowerCase();
                 if (style.startsWith('heading') || style.startsWith('title') || style.startsWith('subtitle')) {
                     headingLines.add(i);
+                }
+                // Check if paragraph is a list item
+                if (para.isListItem) {
+                    listLines.add(i);
                 }
             }
 
             // Run style checks
-            allIssues = checkText(fullText, headingLines);
+            allIssues = checkText(fullText, headingLines, listLines);
 
             // Assign IDs and calculate occurrence indices for navigation
             allIssues.forEach((issue, i) => {

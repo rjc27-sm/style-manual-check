@@ -836,10 +836,10 @@ const RULES = [
 
                 // Heading heuristics:
                 // - Short (under 12 words)
-                // - Doesn't end with . ? ! ; (headings typically don't)
+                // - Doesn't end with . ? ! ; , : (headings typically don't, and : often precedes lists)
                 // - Not all caps (that's a different issue)
                 const words = trimmed.split(/\s+/);
-                const endsWithPunctuation = /[.?!;,]$/.test(trimmed);
+                const endsWithPunctuation = /[.?!;,:]$/.test(trimmed);
                 const isAllCaps = trimmed === trimmed.toUpperCase() && /[A-Z]/.test(trimmed);
 
                 if (words.length >= 3 && words.length <= 12 && !endsWithPunctuation && !isAllCaps) {
@@ -907,7 +907,7 @@ const RULES = [
 
                 // Heading heuristics: short-ish line, doesn't end with sentence punctuation
                 const words = trimmed.split(/\s+/);
-                const endsWithPunctuation = /[.?!;,]$/.test(trimmed);
+                const endsWithPunctuation = /[.?!;,:]$/.test(trimmed);
 
                 // Consider it a heading if it's 3-20 words and doesn't end with punctuation
                 // (Long headings that exceed 70 chars are likely to have more words)
