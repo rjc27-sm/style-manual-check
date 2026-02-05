@@ -8,67 +8,48 @@ Style Manual Check is a tool that checks documents against the Australian Govern
 
 **Development approach:** We are building this in phases:
 1. **Phase 1 (complete):** Build and test all style rules using the browser-based demo
-2. **Phase 2 (next):** Refactor into shared architecture, then build Word add-in
+2. **Phase 2 (complete):** Build Word add-in using Office.js
 3. **Phase 3 (planned):** Build PowerPoint add-in using the same architecture
 
 **Completed:**
-- Core rule engine with 62 rules across 11 categories
+- Core rule engine with ~68 rules across 12 categories
+- Microsoft Word add-in (StyleManualCheck/) - fully functional
 - Browser-based demo (demo.html) for testing rules
 - Comprehensive word lists in src/spellings.js
 - Rule definitions in src/rules.js
-- Complete word list documentation (can be regenerated)
-- Shared architecture design for Word + PowerPoint (see docs/shared-architecture.md)
+- Heading detection via Word paragraph styles (heading, title, subtitle)
+- List item detection via Word isListItem property
+- Occurrence-based navigation for accurate 'Go to issue' functionality
 
-**Next phase (shared architecture + Word add-in):**
-1. Refactor code into layered structure with adapter pattern
-2. Build WordAdapter for Office.js integration
-3. Package Word add-in for sideloading and testing
-
-**Future phase (PowerPoint add-in):**
-- Build PowerPointAdapter using same architecture
+**Next phase (PowerPoint add-in):**
+- Build PowerPointAdapter using similar architecture
 - Note: Speaker notes are NOT accessible via Office.js (known API limitation)
 
 ## Project structure
 
-**Current structure:**
 ```
-style-manual-check/
-├── CLAUDE.md           # This file - project context for Claude
-├── README.md           # User-facing documentation
-├── demo.html           # Browser demo for testing rules
-├── src/
-│   ├── rules.js        # Rule definitions (62 rules)
-│   └── spellings.js    # Word dictionaries (US→AU, common errors)
-└── docs/
-    ├── PROJECT_HISTORY.md
-    ├── shared-architecture.md   # Architecture for Word + PowerPoint
-    └── word-addin-plan.txt
-```
-
-**Planned structure after refactoring (see docs/shared-architecture.md):**
-```
-style-manual-check/
-├── src/
-│   ├── core/                    # Shared rule engine (100% reusable)
-│   │   ├── rules.js
-│   │   ├── spellings.js
-│   │   └── checker.js           # checkText() extracted here
-│   ├── adapters/                # Document access abstraction
-│   │   ├── document-adapter.js  # Interface definition
-│   │   ├── word-adapter.js      # Word Office.js implementation
-│   │   ├── powerpoint-adapter.js# PowerPoint Office.js implementation
-│   │   └── demo-adapter.js      # Browser demo (textarea)
-│   ├── ui/                      # Shared UI components
-│   │   ├── taskpane.html
-│   │   ├── taskpane.css
-│   │   └── taskpane.js
-│   └── app/                     # Entry points per application
-│       ├── word/
-│       ├── powerpoint/
-│       └── demo/
-└── manifests/
-    ├── word-manifest.xml
-    └── powerpoint-manifest.xml
+style-manual-check/           # Root project directory
+├── style-manual-check/       # Browser demo
+│   ├── CLAUDE.md             # This file - project context for Claude
+│   ├── README.md             # User-facing documentation
+│   ├── demo.html             # Browser demo for testing rules
+│   ├── src/
+│   │   ├── rules.js          # Rule definitions (~68 rules)
+│   │   └── spellings.js      # Word dictionaries (US→AU, common errors)
+│   └── docs/
+│       ├── PROJECT_HISTORY.md
+│       └── shared-architecture.md
+│
+└── StyleManualCheck/         # Word add-in (Office.js)
+    ├── manifest.xml          # Add-in manifest for sideloading
+    ├── src/
+    │   ├── rules.js          # Rule definitions (copy of demo version)
+    │   ├── spellings.js      # Word dictionaries (copy of demo version)
+    │   └── taskpane/
+    │       ├── taskpane.html # Task pane UI
+    │       ├── taskpane.css  # Styles
+    │       └── taskpane.js   # Word API integration
+    └── dist/                 # Built files for deployment
 ```
 
 ## Rule categories
@@ -76,14 +57,15 @@ style-manual-check/
 1. **Spelling** (7 rules) - US to Australian English conversions (-ize→-ise, -or→-our, etc.)
 2. **Common errors** (2 rules) - Always-wrong phrases (would of, irregardless, etc.)
 3. **Latin abbreviations** (5 rules) - e.g.→for example, i.e.→that is, etc.
-4. **Punctuation** (10 rules) - Dashes, quotes, serial comma, ampersands
-5. **Dates and time** (11 rules) - Date formats, time formats, decades, year spans, ordinals in dates
-6. **Headings** (4 rules) - Title case, length, full stops, all caps
-7. **Government terms** (6 rules) - Commonwealth government, minister/secretary prepositions, generic references
-8. **Watch words** (1 rule) - Plain language alternatives for jargon and complex phrases
-9. **Readability** (1 rule) - Sentence length over 25 words
-10. **Numbers and measurements** (9 rules) - Zero/one as words, percentages, decimals, units, imperial warnings
-11. **Lists** (6 rules) - No semicolons/commas/and/or at end of items, no 'etc.', consistent capitalisation and punctuation
+4. **Abbreviations** (3 rules) - Missing/extra full stops, spaced abbreviations
+5. **Punctuation** (10 rules) - Dashes, quotes, serial comma, ampersands
+6. **Dates and time** (11 rules) - Date formats, time formats, decades, year spans, ordinals in dates
+7. **Headings** (4 rules) - Title case, length, full stops, all caps
+8. **Government terms** (6 rules) - Australian Government, minister/secretary prepositions, generic references
+9. **Watch words** (1 rule) - Plain language alternatives for jargon and complex phrases
+10. **Readability** (1 rule) - Sentence length over 25 words
+11. **Numbers and measurements** (11 rules) - Zero/one as words, number words, ordinals, percentages, decimals, units, imperial warnings
+12. **Lists** (6 rules) - No semicolons/commas/and/or at end of items, no 'etc.', consistent capitalisation and punctuation
 
 ## Key Style Manual principles to follow
 
@@ -130,31 +112,23 @@ The add-in's own interface text must follow Style Manual rules:
 - Each rule has: id, name, category, description, link, check function
 - The preserveCase() helper maintains capitalisation when suggesting replacements
 
-## Shared architecture approach
+## Word add-in implementation
 
-The Word and PowerPoint add-ins share a common architecture using the adapter pattern:
+The Word add-in (StyleManualCheck/) uses Office.js to integrate with Word:
 
-- **Core rule engine** (100% shared) - rules.js, spellings.js, checker.js
-- **Document adapters** (app-specific) - Abstract Office.js differences behind a common interface
-- **Shared UI** (~90% shared) - Task pane HTML/CSS/JS works for both apps
-- **Entry points** (app-specific) - Initialise correct adapter per application
+**Key features:**
+- Task pane UI for reviewing and fixing issues
+- Accept, Ignore, Go to issue, and Fix all buttons
+- Category filtering dropdown
+- Detects Word heading styles (heading, title, subtitle)
+- Detects Word list items to avoid false positives
+- Occurrence-based navigation for accurate issue selection
 
-Key adapter interface methods:
-- `getTextBlocks()` - Extract all text from document/presentation
-- `replaceInBlock(blockId, oldText, newText)` - Apply a fix
-- `navigateToBlock(blockId)` - Jump to location in document
-- `getLocationString(block)` - Human-readable location (e.g. 'Slide 3, Title')
-
-See docs/shared-architecture.md for complete implementation details.
-
-## Word add-in requirements
-
-- Must work with Word on Windows, Mac, and Word Online
-- Use Office.js API to access document content
-- Implement as a task pane add-in
-- Support checking selected text or full document
-- Allow users to accept, ignore, or fix all instances of each issue
-- Must detect both styled headings AND manually formatted headings for title case rule
+**Technical approach:**
+- Loads paragraphs with text, style, and isListItem properties
+- Passes headingLines and listLines Sets to checkText()
+- Uses searchText field for navigation when found text is truncated
+- Calculates occurrenceIndex during scan for accurate 'Go to issue'
 
 ## PowerPoint add-in requirements
 

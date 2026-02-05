@@ -223,3 +223,47 @@ The headingLines parameter was added to checkText() to pass styled line indices 
 8. **Heuristic heading descriptions** - Per-issue descriptions now prompt users to apply heading styles when matches are heuristic
 
 9. **Double space rule** - Updated description text for clarity
+
+## 2026-02-05: Bug fixes, abbreviation rules, and navigation improvements
+
+### Bug report #1 fixes
+
+1. **Rule name change** - Changed 'Government terms' rule from 'Commonwealth government' to 'Use Australian Government' for clarity
+
+2. **Commonwealth article fix** - Fixed 'a Commonwealth government' → 'an Australian Government' (was incorrectly using 'a Australian Government')
+
+3. **Non-breaking spaces** - Added non-breaking spaces in UI text to prevent awkward line breaks (for example, between 'for' and 'example')
+
+4. **numbers-zero-one false positives** - Fixed multiple edge cases:
+   - Decimal numbers (0.5) no longer flagged
+   - Comma-separated thousands (1,100) no longer flagged
+   - Year ranges with en-dashes already handled
+
+5. **Go to issue navigation** - Fixed navigation to always select the correct occurrence:
+   - Added occurrenceIndex calculation during scan
+   - Navigation now uses stored index to select correct match
+
+6. **Stale position tracking** - Fixed by recalculating positions after each fix
+
+### New abbreviation rules
+
+7. **abbreviation-missing-stops** - Flags lowercase abbreviations missing full stops (for example, 'eg' → 'e.g.')
+
+8. **abbreviation-extra-stops** - Flags abbreviations that shouldn't have full stops:
+   - Contractions (Dr., Mr., Mrs., Ms., Ltd., Inc., Pty.)
+   - Acronyms (NSW., USA., UK.)
+   - Units (kg., cm., mm.)
+
+9. **abbreviation-spaced-stops** - Flags spaced abbreviations (e. g. → e.g.)
+
+### Bug report #2 fixes
+
+10. **Heading rules on list items** - Now detects Word list items via isListItem property and excludes them from heading checks
+
+11. **Text before lists** - Fixed false positive on 'Exceptions to this rule are:' by adding colon to sentence-ending punctuation pattern
+
+### Long sentence rule improvements
+
+12. **Navigation for long sentences** - Added searchText field to store full sentence for navigation while displaying truncated version (first 8 words + ellipsis)
+
+13. **Display format** - Long sentences now show first 8 words with ellipsis in found text, but full sentence is used for 'Go to issue' navigation
