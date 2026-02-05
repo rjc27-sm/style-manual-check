@@ -1635,9 +1635,13 @@ const RULES = [
                     const wordCount = words.length;
 
                     if (wordCount > 25) {
+                        // Use first ~50 chars for navigation (long sentences can cause search issues)
+                        const excerpt = sentence.length > 50
+                            ? sentence.substring(0, 50).trim() + '...'
+                            : sentence;
                         issues.push({
-                            found: sentence,
-                            suggestion: 'This sentence is ' + wordCount + ' words long',
+                            found: sentence.substring(0, Math.min(50, sentence.length)),
+                            suggestion: 'This sentence is ' + wordCount + ' words long. ' + excerpt,
                             position: currentPosition + match.index,
                             rule: this
                         });
@@ -2058,6 +2062,11 @@ const RULES = [
 
                 // Skip decimals (0.5, 1.5, etc.)
                 if (charBefore === '.' || charAfter === '.') continue;
+
+                // Skip comma-separated thousands (1,100 or 1,000,000)
+                // Check if followed by comma+digits or preceded by digits+comma
+                if (charAfter === ',' && /^\d/.test(text.charAt(pos + 2) || '')) continue;
+                if (charBefore === ',' && /\d$/.test(text.charAt(pos - 2) || '')) continue;
 
                 // Get surrounding context for additional checks
                 const before = text.substring(Math.max(0, pos - 30), pos);
