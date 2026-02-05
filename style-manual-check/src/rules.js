@@ -1636,9 +1636,10 @@ const RULES = [
 
                     if (wordCount > 25) {
                         // Use first 8 words for navigation (long sentences can cause search issues)
-                        const firstWords = words.slice(0, 8).join(' ');
+                        const searchText = words.slice(0, 8).join(' ');
                         issues.push({
-                            found: firstWords,
+                            found: sentence,
+                            searchText: searchText,  // Short text for navigation
                             suggestion: 'This sentence is ' + wordCount + ' words long. Consider breaking it up.',
                             position: currentPosition + match.index,
                             rule: this

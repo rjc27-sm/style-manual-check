@@ -93,10 +93,12 @@ async function scanDocument() {
             // Assign IDs and calculate occurrence indices for navigation
             allIssues.forEach((issue, i) => {
                 issue.id = 'issue-' + i;
-                // Count how many times 'found' text appears before this position
+                // Count how many times the search text appears before this position
                 // This tells us which occurrence to select in goToIssue
+                // Use searchText if available (for long text), otherwise found
+                const textToFind = issue.searchText || issue.found;
                 const textBefore = fullText.substring(0, issue.position);
-                const escapedFound = issue.found.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                const escapedFound = textToFind.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
                 const matches = textBefore.match(new RegExp(escapedFound, 'gi'));
                 issue.occurrenceIndex = matches ? matches.length : 0;
             });
@@ -390,8 +392,9 @@ function ignoreIssue(issueId) {
 async function goToIssue(issue) {
     try {
         await Word.run(async (context) => {
-            // Search for the found text
-            const searchResults = context.document.body.search(issue.found, {
+            // Use searchText if available (for long text like sentences), otherwise found
+            const textToFind = issue.searchText || issue.found;
+            const searchResults = context.document.body.search(textToFind, {
                 matchCase: true,
                 matchWholeWord: false
             });
