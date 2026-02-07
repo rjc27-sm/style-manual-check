@@ -437,7 +437,7 @@ export const WATCH_WORDS = {
     "a number of": "Tell people how many there were, or consider using 'some', 'many' or 'few'",
     "absolutely": "Do not use (unnecessary modifier)",
     "acquire": "Consider using 'buy' or 'get' instead",
-    "additional": "Consider using 'more' or 'extra'",
+    "additional": "Consider using 'extra' or 'more'",
     "assist": "Consider using 'help', 'support' or 'guide'",
     "cease": "Consider using 'stop' or 'end'",
     "cognisant of": "Consider using 'know' or 'aware of'",
