@@ -110,6 +110,11 @@ html, body {
     color: var(--error);
 }
 
+.status.warning {
+    background: #fefcbf;
+    color: var(--warning);
+}
+
 /* Summary stats */
 .summary {
     display: flex;

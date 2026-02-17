@@ -10,6 +10,7 @@ import { checkText, getCategories } from '../rules.js';
 // State
 let allIssues = [];
 let fixedCount = 0;
+let changesSinceLastScan = 0;
 let currentFilter = 'all';
 
 // DOM elements cache
@@ -29,6 +30,7 @@ Office.onReady((info) => {
         elements.filterContainer = document.getElementById('filter-container');
         elements.categoryFilter = document.getElementById('category-filter');
         elements.issuesList = document.getElementById('issues-list');
+        elements.rescanBanner = document.getElementById('rescan-banner');
 
         // Show app, hide loading
         elements.sideloadMsg.style.display = 'none';
@@ -103,8 +105,9 @@ async function scanDocument() {
                 issue.occurrenceIndex = matches ? matches.length : 0;
             });
 
-            // Reset fixed count for new scan
+            // Reset counts for new scan
             fixedCount = 0;
+            changesSinceLastScan = 0;
 
             // Update UI
             populateFilterDropdown();
@@ -182,6 +185,13 @@ function displayResults() {
     // Update counts
     elements.issuesCount.textContent = allIssues.length;
     elements.fixedCount.textContent = fixedCount;
+
+    // Show rescan banner after 3+ fixes since last scan
+    if (changesSinceLastScan >= 3 && allIssues.length > 0) {
+        elements.rescanBanner.style.display = 'block';
+    } else {
+        elements.rescanBanner.style.display = 'none';
+    }
 
     // Render issue cards
     elements.issuesList.innerHTML = '';
@@ -298,6 +308,7 @@ async function acceptFix(issue) {
                 // Remove from issues and update display
                 allIssues = allIssues.filter(i => i.id !== issue.id);
                 fixedCount++;
+                changesSinceLastScan++;
                 displayResults();
             }
         });
@@ -338,6 +349,7 @@ async function useReplacement(issue, replacementIndex) {
 
                 allIssues = allIssues.filter(i => i.id !== issue.id);
                 fixedCount++;
+                changesSinceLastScan++;
                 displayResults();
             }
         });
@@ -375,6 +387,7 @@ async function fixAllOfType(ruleId) {
             const fixedIds = new Set(toFix.map(i => i.id));
             allIssues = allIssues.filter(i => !fixedIds.has(i.id));
             fixedCount += toFix.length;
+            changesSinceLastScan += toFix.length;
             displayResults();
         });
     } catch (error) {
