@@ -133,7 +133,9 @@ function populateFilterDropdown() {
         'watch-words': 'Watch words',
         'readability': 'Readability',
         'numbers-and-measurements': 'Numbers and measurements',
-        'lists': 'Lists'
+        'lists': 'Lists',
+        'inclusive-language': 'Inclusive language',
+        'abbreviations': 'Abbreviations'
     };
 
     // Clear existing options except 'All issues'

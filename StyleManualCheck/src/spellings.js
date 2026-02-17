@@ -487,3 +487,90 @@ export const WATCH_WORDS = {
     "with regard to": "Consider using 'about'",
     "with respect to": "Consider using 'about'"
 };
+
+// Gendered terms → inclusive alternatives
+// Style Manual: https://www.stylemanual.gov.au/accessible-and-inclusive-content/inclusive-language/gender-and-sexual-diversity
+export const GENDERED_TERMS = {
+    "chairman": "Consider using 'chair' or 'chairperson'",
+    "chairwoman": "Consider using 'chair' or 'chairperson'",
+    "policeman": "Consider using 'police officer'",
+    "policewoman": "Consider using 'police officer'",
+    "fireman": "Consider using 'firefighter'",
+    "firewoman": "Consider using 'firefighter'",
+    "spokesman": "Consider using 'spokesperson'",
+    "spokeswoman": "Consider using 'spokesperson'",
+    "businessman": "Consider using 'businessperson' or 'executive'",
+    "businesswoman": "Consider using 'businessperson' or 'executive'",
+    "craftsman": "Consider using 'craftsperson' or 'artisan'",
+    "salesman": "Consider using 'salesperson' or 'sales representative'",
+    "saleswoman": "Consider using 'salesperson' or 'sales representative'",
+    "workman": "Consider using 'worker'",
+    "manpower": "Consider using 'workforce' or 'staffing'",
+    "manning": "Consider using 'staffing' or 'operating'",
+    "mankind": "Consider using 'humankind' or 'humanity'",
+    "man-made": "Consider using 'synthetic', 'artificial' or 'manufactured'",
+    "actress": "Consider using 'actor'",
+    "hostess": "Consider using 'host'",
+    "waitress": "Consider using 'waiter' or 'server'",
+    "stewardess": "Consider using 'flight attendant'",
+    "foreman": "Consider using 'supervisor' or 'foreperson'"
+};
+
+// Disability and neurodiversity terms → person-first language
+// Style Manual: https://www.stylemanual.gov.au/accessible-and-inclusive-content/inclusive-language/disability-and-neurodiversity
+export const DISABILITY_TERMS = {
+    "handicapped": "Use person-first language: 'person with disability' or 'accessible' (for places)",
+    "wheelchair-bound": "Consider using 'wheelchair user' or 'person who uses a wheelchair'",
+    "wheelchair bound": "Consider using 'wheelchair user' or 'person who uses a wheelchair'",
+    "suffers from": "Consider using 'has' or 'lives with' (avoid language that implies suffering)",
+    "afflicted with": "Consider using 'has' or 'lives with'",
+    "crippled": "Consider using 'person with disability'",
+    "deaf and dumb": "Consider using 'Deaf', 'hard of hearing' or 'person who is Deaf'",
+    "deaf-mute": "Consider using 'Deaf', 'hard of hearing' or 'person who is Deaf'",
+    "hearing impaired": "Consider using 'hard of hearing' or 'Deaf'",
+    "the disabled": "Consider using 'people with disability'",
+    "the blind": "Consider using 'people who are blind' or 'people with vision impairment'",
+    "able-bodied": "Consider using 'non-disabled' or 'people without disability'",
+    "mentally ill": "Consider using 'person with mental health condition'",
+    "mentally disabled": "Consider using 'person with intellectual disability' or 'person with cognitive disability'",
+    "special needs": "Consider using 'disability support needs' or 'access needs'"
+};
+
+// Age diversity terms
+// Style Manual: https://www.stylemanual.gov.au/accessible-and-inclusive-content/inclusive-language/age-diversity
+export const AGE_TERMS = {
+    "the elderly": "Consider using 'older people' or 'older Australians'",
+    "elderly": "Consider using 'older people' or 'older Australians'",
+    "the aged": "Consider using 'older people' or 'older Australians'",
+    "senior citizens": "Consider using 'older people' or 'older Australians'",
+    "old people": "Consider using 'older people' or 'older Australians'"
+};
+
+// Additional wordy phrases (supplements WATCH_WORDS)
+// Style Manual: https://www.stylemanual.gov.au/writing-and-designing-content/clear-language-and-writing-style/plain-language-and-word-choice
+export const WORDY_PHRASES = {
+    "adequate number of": "Consider using 'enough'",
+    "amongst": "Consider using 'among'",
+    "approximately": "Consider using 'about'",
+    "at this point in time": "Consider using 'now'",
+    "by means of": "Consider using 'by' or 'with'",
+    "despite the fact that": "Consider using 'although' or 'even though'",
+    "due to the fact that": "Consider using 'because'",
+    "during the course of": "Consider using 'during'",
+    "for the purpose of": "Consider using 'to' or 'for'",
+    "for the reason that": "Consider using 'because'",
+    "give consideration to": "Consider using 'consider'",
+    "in a position to": "Consider using 'can' or 'able to'",
+    "in order to": "Consider using 'to'",
+    "in receipt of": "Consider using 'receive' or 'getting'",
+    "in relation to": "Consider using 'about' or 'for'",
+    "in the near future": "Consider using 'soon'",
+    "is able to": "Consider using 'can'",
+    "it is important to note that": "Consider removing — go straight to the point",
+    "on a regular basis": "Consider using 'regularly'",
+    "on the grounds that": "Consider using 'because'",
+    "pertaining to": "Consider using 'about' or 'on'",
+    "upon": "Consider using 'on'",
+    "whether or not": "Consider using 'whether'",
+    "with reference to": "Consider using 'about'"
+};

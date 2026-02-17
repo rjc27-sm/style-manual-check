@@ -3,7 +3,7 @@
  * Each rule has: id, name, category, description, link, check function
  */
 
-import { SPELLINGS, COMMON_ERRORS, ERRORS_WITH_NOTES, WATCH_WORDS } from './spellings.js';
+import { SPELLINGS, COMMON_ERRORS, ERRORS_WITH_NOTES, WATCH_WORDS, GENDERED_TERMS, DISABILITY_TERMS, AGE_TERMS, WORDY_PHRASES } from './spellings.js';
 
 const RULES = [
     // ==================== SPELLING RULES ====================
@@ -2722,6 +2722,256 @@ const RULES = [
                         rule: this
                     });
                 }
+            }
+            return issues;
+        }
+    },
+
+    // ==================== INCLUSIVE LANGUAGE ====================
+    {
+        id: 'inclusive-gendered-terms',
+        name: 'Gendered term',
+        category: 'inclusive-language',
+        description: 'Use gender-neutral alternatives for gendered job titles and terms.',
+        link: 'https://www.stylemanual.gov.au/accessible-and-inclusive-content/inclusive-language/gender-and-sexual-diversity',
+        check: function(text) {
+            const issues = [];
+            for (const [term, suggestion] of Object.entries(GENDERED_TERMS)) {
+                const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                const regex = new RegExp('\\b' + escaped + '\\b', 'gi');
+                let match;
+                while ((match = regex.exec(text)) !== null) {
+                    const replacementMatches = suggestion.match(/'([^']+)'/g);
+                    const replacements = replacementMatches
+                        ? replacementMatches.map(m => m.replace(/'/g, ''))
+                        : [];
+                    issues.push({
+                        found: match[0],
+                        suggestion: suggestion,
+                        replacements: replacements,
+                        position: match.index,
+                        rule: this
+                    });
+                }
+            }
+            return issues;
+        }
+    },
+    {
+        id: 'inclusive-disability-terms',
+        name: 'Disability language',
+        category: 'inclusive-language',
+        description: 'Use person-first language when referring to disability.',
+        link: 'https://www.stylemanual.gov.au/accessible-and-inclusive-content/inclusive-language/disability-and-neurodiversity',
+        check: function(text) {
+            const issues = [];
+            for (const [term, suggestion] of Object.entries(DISABILITY_TERMS)) {
+                const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                const regex = new RegExp('\\b' + escaped + '\\b', 'gi');
+                let match;
+                while ((match = regex.exec(text)) !== null) {
+                    const replacementMatches = suggestion.match(/'([^']+)'/g);
+                    const replacements = replacementMatches
+                        ? replacementMatches.map(m => m.replace(/'/g, ''))
+                        : [];
+                    issues.push({
+                        found: match[0],
+                        suggestion: suggestion,
+                        replacements: replacements,
+                        position: match.index,
+                        rule: this
+                    });
+                }
+            }
+            return issues;
+        }
+    },
+    {
+        id: 'inclusive-age-terms',
+        name: 'Age-related language',
+        category: 'inclusive-language',
+        description: 'Use inclusive language when referring to older people.',
+        link: 'https://www.stylemanual.gov.au/accessible-and-inclusive-content/inclusive-language/age-diversity',
+        check: function(text) {
+            const issues = [];
+            for (const [term, suggestion] of Object.entries(AGE_TERMS)) {
+                const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                const regex = new RegExp('\\b' + escaped + '\\b', 'gi');
+                let match;
+                while ((match = regex.exec(text)) !== null) {
+                    const replacementMatches = suggestion.match(/'([^']+)'/g);
+                    const replacements = replacementMatches
+                        ? replacementMatches.map(m => m.replace(/'/g, ''))
+                        : [];
+                    issues.push({
+                        found: match[0],
+                        suggestion: suggestion,
+                        replacements: replacements,
+                        position: match.index,
+                        rule: this
+                    });
+                }
+            }
+            return issues;
+        }
+    },
+
+    // ==================== WORDY PHRASES ====================
+    {
+        id: 'wordy-phrases',
+        name: 'Wordy phrase',
+        category: 'watch-words',
+        description: 'Consider replacing this wordy phrase with a plain language alternative.',
+        link: 'https://www.stylemanual.gov.au/writing-and-designing-content/clear-language-and-writing-style/plain-language-and-word-choice',
+        check: function(text) {
+            const issues = [];
+            for (const [phrase, suggestion] of Object.entries(WORDY_PHRASES)) {
+                const escaped = phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                const regex = new RegExp('\\b' + escaped + '\\b', 'gi');
+                let match;
+                while ((match = regex.exec(text)) !== null) {
+                    const replacementMatches = suggestion.match(/'([^']+)'/g);
+                    const replacements = replacementMatches
+                        ? replacementMatches.map(m => m.replace(/'/g, ''))
+                        : [];
+                    issues.push({
+                        found: match[0],
+                        suggestion: suggestion,
+                        replacements: replacements,
+                        position: match.index,
+                        rule: this
+                    });
+                }
+            }
+            return issues;
+        }
+    },
+
+    // ==================== ADDITIONAL PUNCTUATION ====================
+    {
+        id: 'punct-capital-after-colon',
+        name: 'Capital letter after colon',
+        category: 'punctuation',
+        description: 'Use a lowercase letter after a colon (unless the word is a proper noun).',
+        link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/punctuation/colons',
+        check: function(text) {
+            const issues = [];
+            const regex = /:\s+([A-Z][a-z]+)/g;
+            // Proper nouns and other words that are legitimately capitalised
+            const properNouns = new Set([
+                'I',
+                'January', 'February', 'March', 'April', 'May', 'June',
+                'July', 'August', 'September', 'October', 'November', 'December',
+                'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday',
+                'Australia', 'Australian', 'Australians',
+                'Aboriginal', 'Indigenous',
+                'English', 'French', 'German', 'Spanish', 'Chinese', 'Japanese',
+                'Christmas', 'Easter',
+                'Parliament', 'Commonwealth', 'Government'
+            ]);
+            let match;
+            while ((match = regex.exec(text)) !== null) {
+                const word = match[1];
+
+                // Skip proper nouns
+                if (properNouns.has(word)) continue;
+
+                // Skip if followed by ? (question after colon)
+                const afterPos = match.index + match[0].length;
+                const after = text.substring(afterPos, afterPos + 50);
+                if (/^[a-z\s]*\?/.test(after)) continue;
+
+                const lower = word[0].toLowerCase() + word.slice(1);
+                issues.push({
+                    found: match[0].trim(),
+                    suggestion: 'Use a lowercase letter after a colon (unless a proper noun). Try \'' + lower + '\'',
+                    position: match.index + match[0].indexOf(word),
+                    rule: this
+                });
+            }
+            return issues;
+        }
+    },
+
+    // ==================== ADDITIONAL ABBREVIATION RULES ====================
+    {
+        id: 'abbrev-unit-full-stop',
+        name: 'Full stop after unit symbol',
+        category: 'abbreviations',
+        description: 'Don\'t put a full stop after unit symbols. Write \'kg\', not \'kg.\' (unless the symbol ends a sentence).',
+        link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/numbers-and-measurements/measurement-and-units',
+        check: function(text) {
+            const issues = [];
+            const units = 'kg|km|cm|mm|mg|mL|kL|Hz|kW|MW|kB|MB|GB|TB|ms|dB';
+            const regex = new RegExp('\\b(' + units + ')\\.', 'g');
+            let match;
+            while ((match = regex.exec(text)) !== null) {
+                const unit = match[1];
+                const afterPos = match.index + match[0].length;
+                const after = text.substring(afterPos, afterPos + 3);
+
+                // Skip if this ends a sentence (followed by space + capital, end of text/line)
+                if (/^\s*$/.test(after) || /^\s+[A-Z]/.test(after) || /^[\s]*[\r\n]/.test(after)) {
+                    continue;
+                }
+
+                issues.push({
+                    found: match[0],
+                    suggestion: unit,
+                    autoFix: unit,
+                    position: match.index,
+                    rule: this
+                });
+            }
+            return issues;
+        }
+    },
+    {
+        id: 'abbrev-unit-plural',
+        name: 'Pluralised unit symbol',
+        category: 'abbreviations',
+        description: 'Don\'t add \'s\' to unit symbols. Write \'5 kg\', not \'5 kgs\'.',
+        link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/numbers-and-measurements/measurement-and-units',
+        check: function(text) {
+            const issues = [];
+            const regex = /\b(\d+\s*)(kgs|kms|cms|mms|mgs|hrs|mins|secs)\b/gi;
+            let match;
+            while ((match = regex.exec(text)) !== null) {
+                const number = match[1];
+                const pluralUnit = match[2];
+                const singularUnit = pluralUnit.slice(0, -1);
+                const replacement = number + singularUnit;
+                issues.push({
+                    found: match[0],
+                    suggestion: replacement,
+                    autoFix: replacement,
+                    position: match.index,
+                    rule: this
+                });
+            }
+            return issues;
+        }
+    },
+    {
+        id: 'abbrev-plural-apostrophe',
+        name: 'Apostrophe in abbreviation plural',
+        category: 'abbreviations',
+        description: 'Don\'t use an apostrophe to pluralise abbreviations. Write \'DVDs\', not \'DVD\'s\'.',
+        link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/shortened-words-and-phrases/abbreviations',
+        check: function(text) {
+            const issues = [];
+            const regex = /\b([A-Z]{2,})'s\b/g;
+            let match;
+            while ((match = regex.exec(text)) !== null) {
+                const abbrev = match[1];
+                const replacement = abbrev + 's';
+                issues.push({
+                    found: match[0],
+                    suggestion: replacement,
+                    autoFix: replacement,
+                    position: match.index,
+                    rule: this
+                });
             }
             return issues;
         }
