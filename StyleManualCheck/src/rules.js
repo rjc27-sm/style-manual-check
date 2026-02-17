@@ -1785,19 +1785,37 @@ const RULES = [
         category: 'lists',
         description: 'Don\'t use semicolons at the end of list items. Use minimal punctuation in lists.',
         link: 'https://www.stylemanual.gov.au/structuring-content/lists',
-        check: function(text) {
+        check: function(text, headingLines, listLines) {
             const issues = [];
-            // Match semicolon at end of line, followed by a bullet or number on the next line
-            // Bullet markers: •●○◦▪▸-* or numbered 1. 1) a. a)
-            const regex = /;[ \t]*\r?\n[ \t]*[•●○◦▪▸\-\*]|;[ \t]*\r?\n[ \t]*\d+[.)]\s|;[ \t]*\r?\n[ \t]*[a-z][.)]\s/gi;
-            let match;
-            while ((match = regex.exec(text)) !== null) {
-                issues.push({
-                    found: ';',
-                    suggestion: 'Remove the semicolon',
-                    position: match.index,
-                    rule: this
-                });
+            const lines = text.split(/\r?\n/);
+            const bulletPattern = /^[ \t]*([•●○◦▪▸\-\*]|\d+[.)]|[a-z][.)])\s*/i;
+            let currentPos = 0;
+            let prevWasListItem = false;
+            let prevEndedWithSemicolon = false;
+            let prevSemicolonPos = -1;
+
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i];
+                const isListItem = bulletPattern.test(line) || (listLines && listLines.has(i));
+
+                if (isListItem && prevWasListItem && prevEndedWithSemicolon) {
+                    issues.push({
+                        found: ';',
+                        suggestion: 'Remove the semicolon',
+                        position: prevSemicolonPos,
+                        rule: this
+                    });
+                }
+
+                if (isListItem) {
+                    const trimmed = line.trimEnd();
+                    prevEndedWithSemicolon = trimmed.endsWith(';');
+                    prevSemicolonPos = currentPos + trimmed.length - 1;
+                } else {
+                    prevEndedWithSemicolon = false;
+                }
+                prevWasListItem = isListItem;
+                currentPos += line.length + 1;
             }
             return issues;
         }
@@ -1808,18 +1826,37 @@ const RULES = [
         category: 'lists',
         description: 'Don\'t use commas at the end of list items. Use minimal punctuation in lists.',
         link: 'https://www.stylemanual.gov.au/structuring-content/lists',
-        check: function(text) {
+        check: function(text, headingLines, listLines) {
             const issues = [];
-            // Match comma at end of line, followed by a bullet or number on the next line
-            const regex = /,[ \t]*\r?\n[ \t]*[•●○◦▪▸\-\*]|,[ \t]*\r?\n[ \t]*\d+[.)]\s|,[ \t]*\r?\n[ \t]*[a-z][.)]\s/gi;
-            let match;
-            while ((match = regex.exec(text)) !== null) {
-                issues.push({
-                    found: ',',
-                    suggestion: 'Remove the comma',
-                    position: match.index,
-                    rule: this
-                });
+            const lines = text.split(/\r?\n/);
+            const bulletPattern = /^[ \t]*([•●○◦▪▸\-\*]|\d+[.)]|[a-z][.)])\s*/i;
+            let currentPos = 0;
+            let prevWasListItem = false;
+            let prevEndedWithComma = false;
+            let prevCommaPos = -1;
+
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i];
+                const isListItem = bulletPattern.test(line) || (listLines && listLines.has(i));
+
+                if (isListItem && prevWasListItem && prevEndedWithComma) {
+                    issues.push({
+                        found: ',',
+                        suggestion: 'Remove the comma',
+                        position: prevCommaPos,
+                        rule: this
+                    });
+                }
+
+                if (isListItem) {
+                    const trimmed = line.trimEnd();
+                    prevEndedWithComma = trimmed.endsWith(',');
+                    prevCommaPos = currentPos + trimmed.length - 1;
+                } else {
+                    prevEndedWithComma = false;
+                }
+                prevWasListItem = isListItem;
+                currentPos += line.length + 1;
             }
             return issues;
         }
@@ -1830,20 +1867,41 @@ const RULES = [
         category: 'lists',
         description: 'Don\'t use \'and\' or \'or\' at the end of list items. The bullet or number structure makes these unnecessary.',
         link: 'https://www.stylemanual.gov.au/structuring-content/lists',
-        check: function(text) {
+        check: function(text, headingLines, listLines) {
             const issues = [];
-            // Match 'and' or 'or' at end of line (possibly after punctuation), followed by bullet/number
-            // Pattern: word boundary + and/or + optional punctuation + line break + bullet marker
-            const regex = /\b(and|or)[;,]?[ \t]*\r?\n[ \t]*[•●○◦▪▸\-\*]|\b(and|or)[;,]?[ \t]*\r?\n[ \t]*\d+[.)]\s|\b(and|or)[;,]?[ \t]*\r?\n[ \t]*[a-z][.)]\s/gi;
-            let match;
-            while ((match = regex.exec(text)) !== null) {
-                const found = match[1] || match[2] || match[3];
-                issues.push({
-                    found: found,
-                    suggestion: 'Remove \'' + found + '\' from end of list item',
-                    position: match.index,
-                    rule: this
-                });
+            const lines = text.split(/\r?\n/);
+            const bulletPattern = /^[ \t]*([•●○◦▪▸\-\*]|\d+[.)]|[a-z][.)])\s*/i;
+            const andOrPattern = /\b(and|or)[;,]?[ \t]*$/i;
+            let currentPos = 0;
+            let prevWasListItem = false;
+            let prevAndOrMatch = null;
+            let prevAndOrPos = -1;
+
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i];
+                const isListItem = bulletPattern.test(line) || (listLines && listLines.has(i));
+
+                if (isListItem && prevWasListItem && prevAndOrMatch) {
+                    const found = prevAndOrMatch[1];
+                    issues.push({
+                        found: found,
+                        suggestion: 'Remove \'' + found + '\' from end of list item',
+                        position: prevAndOrPos,
+                        rule: this
+                    });
+                }
+
+                if (isListItem) {
+                    const trimmed = line.trimEnd();
+                    prevAndOrMatch = andOrPattern.exec(trimmed);
+                    if (prevAndOrMatch) {
+                        prevAndOrPos = currentPos + trimmed.length - prevAndOrMatch[0].length;
+                    }
+                } else {
+                    prevAndOrMatch = null;
+                }
+                prevWasListItem = isListItem;
+                currentPos += line.length + 1;
             }
             return issues;
         }
@@ -1854,7 +1912,7 @@ const RULES = [
         category: 'lists',
         description: 'Don\'t write \'etc.\' at the end of a list to show the list is incomplete. Use a lead-in like \'including\' or \'for example\' instead.',
         link: 'https://www.stylemanual.gov.au/structuring-content/lists',
-        check: function(text) {
+        check: function(text, headingLines, listLines) {
             const issues = [];
             // Match 'etc.' or 'etc' as a list item (after bullet/number marker)
             // Also match 'etc.' at end of a list item before a new bullet
@@ -1869,17 +1927,44 @@ const RULES = [
                 /etc\.?[ \t]*\r?\n[ \t]*[•●○◦▪▸\-\*]/gi,
                 /etc\.?[ \t]*\r?\n[ \t]*\d+[.)]\s/gi
             ];
+            const flaggedPositions = new Set();
             for (const regex of patterns) {
                 let match;
                 while ((match = regex.exec(text)) !== null) {
                     // Find the position of 'etc' within the match
                     const etcPos = match[0].toLowerCase().indexOf('etc');
+                    const pos = match.index + etcPos;
+                    flaggedPositions.add(pos);
                     issues.push({
                         found: 'etc.',
                         suggestion: 'Remove \'etc.\' and use a lead-in like \'including\' or \'for example\' instead',
-                        position: match.index + etcPos,
+                        position: pos,
                         rule: this
                     });
+                }
+            }
+            // Second pass: check Word-formatted list items for 'etc'
+            if (listLines && listLines.size > 0) {
+                const lines = text.split(/\r?\n/);
+                let currentPos = 0;
+                const etcPattern = /\betc\.?\b/gi;
+                for (let i = 0; i < lines.length; i++) {
+                    if (listLines.has(i)) {
+                        let etcMatch;
+                        etcPattern.lastIndex = 0;
+                        while ((etcMatch = etcPattern.exec(lines[i])) !== null) {
+                            const pos = currentPos + etcMatch.index;
+                            if (!flaggedPositions.has(pos)) {
+                                issues.push({
+                                    found: 'etc.',
+                                    suggestion: 'Remove \'etc.\' and use a lead-in like \'including\' or \'for example\' instead',
+                                    position: pos,
+                                    rule: this
+                                });
+                            }
+                        }
+                    }
+                    currentPos += lines[i].length + 1;
                 }
             }
             return issues;
@@ -1891,7 +1976,7 @@ const RULES = [
         category: 'lists',
         description: 'List items should have consistent capitalisation. For sentence lists or stand-alone lists, start each item with a capital letter. For fragment lists, start each item with a lowercase letter, unless the first word is a proper noun.',
         link: 'https://www.stylemanual.gov.au/style-manual-resources/quick-guides/quick-guide-lists',
-        check: function(text) {
+        check: function(text, headingLines, listLines) {
             const issues = [];
             // Find list blocks (2+ consecutive lines with bullet/number markers)
             const lines = text.split(/\r?\n/);
@@ -1904,16 +1989,17 @@ const RULES = [
             for (let i = 0; i < lines.length; i++) {
                 const line = lines[i];
                 const match = bulletPattern.exec(line);
+                const isWordList = !match && listLines && listLines.has(i);
 
-                if (match) {
-                    const itemText = match[2].trim();
+                if (match || isWordList) {
+                    const itemText = match ? match[2].trim() : line.trim();
                     if (itemText.length > 0) {
                         if (listItems.length === 0) {
                             listStartPos = currentPos;
                         }
                         listItems.push({
                             text: itemText,
-                            position: currentPos + line.indexOf(itemText),
+                            position: match ? currentPos + line.indexOf(match[2].trim()) : currentPos + line.indexOf(line.trim()),
                             startsWithCapital: /^[A-Z]/.test(itemText),
                             startsWithLower: /^[a-z]/.test(itemText)
                         });
@@ -2006,7 +2092,7 @@ const RULES = [
         category: 'lists',
         description: 'List punctuation depends on list type. Sentence lists have a full stop on every item. Fragment lists have a full stop on the last item only. Stand-alone lists have no full stops.',
         link: 'https://www.stylemanual.gov.au/style-manual-resources/quick-guides/quick-guide-lists',
-        check: function(text) {
+        check: function(text, headingLines, listLines) {
             const issues = [];
             const lines = text.split(/\r?\n/);
             const bulletPattern = /^[ \t]*([•●○◦▪▸\-\*]|\d+[.)]|[a-z][.)])\s*(.+)/i;
@@ -2018,9 +2104,10 @@ const RULES = [
             for (let i = 0; i < lines.length; i++) {
                 const line = lines[i];
                 const match = bulletPattern.exec(line);
+                const isWordList = !match && listLines && listLines.has(i);
 
-                if (match) {
-                    const itemText = match[2].trim();
+                if (match || isWordList) {
+                    const itemText = match ? match[2].trim() : line.trim();
                     if (itemText.length > 0) {
                         // Check first letter for case (skip quotes, brackets, etc.)
                         const firstLetterMatch = itemText.match(/[a-zA-Z]/);
@@ -2028,7 +2115,7 @@ const RULES = [
 
                         listItems.push({
                             text: itemText,
-                            position: currentPos + line.indexOf(itemText),
+                            position: match ? currentPos + line.indexOf(match[2].trim()) : currentPos + line.indexOf(line.trim()),
                             endsWithPeriod: /\.$/.test(itemText),
                             startsWithCapital: firstLetter ? firstLetter === firstLetter.toUpperCase() : null,
                             isLast: false
