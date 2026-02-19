@@ -3,7 +3,7 @@
  * Each rule has: id, name, category, description, link, check function
  */
 
-import { SPELLINGS, COMMON_ERRORS, ERRORS_WITH_NOTES, WATCH_WORDS, GENDERED_TERMS, DISABILITY_TERMS, AGE_TERMS, WORDY_PHRASES } from './spellings.js';
+import { SPELLINGS, COMMON_ERRORS, ERRORS_WITH_NOTES, WATCH_WORDS, WORDY_PHRASES } from './spellings.js';
 
 const RULES = [
     // ==================== SPELLING RULES ====================
@@ -2718,95 +2718,6 @@ const RULES = [
                     issues.push({
                         found: match[0],
                         suggestion: 'Consider metric: ' + metric,
-                        position: match.index,
-                        rule: this
-                    });
-                }
-            }
-            return issues;
-        }
-    },
-
-    // ==================== INCLUSIVE LANGUAGE ====================
-    {
-        id: 'inclusive-gendered-terms',
-        name: 'Gendered term',
-        category: 'inclusive-language',
-        description: 'Use gender-neutral alternatives for gendered job titles and terms.',
-        link: 'https://www.stylemanual.gov.au/accessible-and-inclusive-content/inclusive-language/gender-and-sexual-diversity',
-        check: function(text) {
-            const issues = [];
-            for (const [term, suggestion] of Object.entries(GENDERED_TERMS)) {
-                const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                const regex = new RegExp('\\b' + escaped + '\\b', 'gi');
-                let match;
-                while ((match = regex.exec(text)) !== null) {
-                    const replacementMatches = suggestion.match(/'([^']+)'/g);
-                    const replacements = replacementMatches
-                        ? replacementMatches.map(m => m.replace(/'/g, ''))
-                        : [];
-                    issues.push({
-                        found: match[0],
-                        suggestion: suggestion,
-                        replacements: replacements,
-                        position: match.index,
-                        rule: this
-                    });
-                }
-            }
-            return issues;
-        }
-    },
-    {
-        id: 'inclusive-disability-terms',
-        name: 'Disability language',
-        category: 'inclusive-language',
-        description: 'Use person-first language when referring to disability.',
-        link: 'https://www.stylemanual.gov.au/accessible-and-inclusive-content/inclusive-language/disability-and-neurodiversity',
-        check: function(text) {
-            const issues = [];
-            for (const [term, suggestion] of Object.entries(DISABILITY_TERMS)) {
-                const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                const regex = new RegExp('\\b' + escaped + '\\b', 'gi');
-                let match;
-                while ((match = regex.exec(text)) !== null) {
-                    const replacementMatches = suggestion.match(/'([^']+)'/g);
-                    const replacements = replacementMatches
-                        ? replacementMatches.map(m => m.replace(/'/g, ''))
-                        : [];
-                    issues.push({
-                        found: match[0],
-                        suggestion: suggestion,
-                        replacements: replacements,
-                        position: match.index,
-                        rule: this
-                    });
-                }
-            }
-            return issues;
-        }
-    },
-    {
-        id: 'inclusive-age-terms',
-        name: 'Age-related language',
-        category: 'inclusive-language',
-        description: 'Use inclusive language when referring to older people.',
-        link: 'https://www.stylemanual.gov.au/accessible-and-inclusive-content/inclusive-language/age-diversity',
-        check: function(text) {
-            const issues = [];
-            for (const [term, suggestion] of Object.entries(AGE_TERMS)) {
-                const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                const regex = new RegExp('\\b' + escaped + '\\b', 'gi');
-                let match;
-                while ((match = regex.exec(text)) !== null) {
-                    const replacementMatches = suggestion.match(/'([^']+)'/g);
-                    const replacements = replacementMatches
-                        ? replacementMatches.map(m => m.replace(/'/g, ''))
-                        : [];
-                    issues.push({
-                        found: match[0],
-                        suggestion: suggestion,
-                        replacements: replacements,
                         position: match.index,
                         rule: this
                     });
