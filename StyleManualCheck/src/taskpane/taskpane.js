@@ -302,7 +302,19 @@ async function acceptFix(issue) {
                 // Replace the correct occurrence based on stored index
                 const idx = issue.occurrenceIndex || 0;
                 const targetIdx = Math.min(idx, searchResults.items.length - 1);
-                searchResults.items[targetIdx].insertText(issue.autoFix, Word.InsertLocation.replace);
+                const targetRange = searchResults.items[targetIdx];
+
+                if (issue.applyHeadingStyle) {
+                    // Load the paragraph so we can apply a heading style after the text fix
+                    const paras = targetRange.paragraphs;
+                    paras.load('items');
+                    await context.sync();
+
+                    targetRange.insertText(issue.autoFix, Word.InsertLocation.replace);
+                    paras.items[0].style = 'Heading 2';
+                } else {
+                    targetRange.insertText(issue.autoFix, Word.InsertLocation.replace);
+                }
                 await context.sync();
 
                 // Remove from issues and update display

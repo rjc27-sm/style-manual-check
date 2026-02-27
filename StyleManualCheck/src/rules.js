@@ -676,7 +676,7 @@ const RULES = [
             const regex = /\b(\d{1,2})\.(\d{2})\s*(am|pm)\b/gi;
             let match;
             while ((match = regex.exec(text)) !== null) {
-                const replacement = match[1] + ':' + match[2] + ' ' + match[3].toLowerCase();
+                const replacement = match[1] + ':' + match[2] + '\u00A0' + match[3].toLowerCase();
                 issues.push({
                     found: match[0],
                     suggestion: replacement,
@@ -893,6 +893,7 @@ const RULES = [
                         };
                         if (!hasHeadingStyle) {
                             issue.description = 'Is this a heading? If so, apply a heading style. Use sentence case for headings, not title case.';
+                            issue.applyHeadingStyle = true;
                         }
                         issues.push(issue);
                     }
@@ -1028,12 +1029,13 @@ const RULES = [
                         const issue = {
                             found: trimmed,
                             suggestion: replacement,
-                            autoFix: hasHeadingStyle ? replacement : undefined,
+                            autoFix: replacement,
                             position: position + line.indexOf(trimmed),
                             rule: this
                         };
                         if (!hasHeadingStyle) {
                             issue.description = 'Is this a heading? If so, apply a heading style. Don\'t use a full stop to end headings.';
+                            issue.applyHeadingStyle = true;
                         }
                         issues.push(issue);
                     }
@@ -1094,6 +1096,7 @@ const RULES = [
                     };
                     if (!hasHeadingStyle) {
                         issue.description = 'Is this a heading? If so, apply a heading style. Don\'t write headings in all capital letters.';
+                        issue.applyHeadingStyle = true;
                     }
                     issues.push(issue);
                 }
@@ -1526,7 +1529,7 @@ const RULES = [
             while ((match = regex.exec(text)) !== null) {
                 const tz = match[1].toUpperCase();
                 const time = match[2];
-                const replacement = time + ' ' + tz;
+                const replacement = time + '\u00A0' + tz;
                 issues.push({
                     found: match[0],
                     suggestion: replacement,
@@ -2664,7 +2667,7 @@ const RULES = [
                 const regex = new RegExp('\\b(' + word + ')\\s+(' + unitPattern + ')\\b', 'gi');
                 let match;
                 while ((match = regex.exec(text)) !== null) {
-                    const replacement = numeral + ' ' + match[2];
+                    const replacement = numeral + '\u00A0' + match[2];
                     issues.push({
                         found: match[0],
                         suggestion: replacement,
