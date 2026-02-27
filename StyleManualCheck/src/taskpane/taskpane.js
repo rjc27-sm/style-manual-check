@@ -12,6 +12,7 @@ let allIssues = [];
 let fixedCount = 0;
 let changesSinceLastScan = 0;
 let currentFilter = 'all';
+let ignoredRuleIds = new Set(); // Rule IDs the user has chosen to ignore for this session
 
 // DOM elements cache
 const elements = {};
@@ -92,6 +93,11 @@ async function scanDocument() {
             // Run style checks
             allIssues = checkText(fullText, headingLines, listLines);
 
+            // Filter out rules the user has chosen to ignore for this session
+            if (ignoredRuleIds.size > 0) {
+                allIssues = allIssues.filter(i => !ignoredRuleIds.has(i.rule.id));
+            }
+
             // Assign IDs and calculate occurrence indices for navigation
             allIssues.forEach((issue, i) => {
                 issue.id = 'issue-' + i;
@@ -129,15 +135,12 @@ function populateFilterDropdown() {
     const categoryNames = {
         'spelling': 'Spelling',
         'punctuation': 'Punctuation',
-        'latin-abbreviations': 'Latin abbreviations',
         'dates-and-time': 'Dates and time',
         'headings': 'Headings',
         'government-terms': 'Government terms',
-        'watch-words': 'Watch words',
         'readability': 'Readability',
         'numbers-and-measurements': 'Numbers and measurements',
         'lists': 'Lists',
-        'inclusive-language': 'Inclusive language',
         'abbreviations': 'Abbreviations'
     };
 
@@ -187,7 +190,7 @@ function displayResults() {
     elements.fixedCount.textContent = fixedCount;
 
     // Show rescan banner after 3+ fixes since last scan
-    if (changesSinceLastScan >= 3 && allIssues.length > 0) {
+    if (changesSinceLastScan >= 5 && allIssues.length > 0) {
         elements.rescanBanner.style.display = 'block';
     } else {
         elements.rescanBanner.style.display = 'none';
@@ -214,9 +217,11 @@ function createIssueCard(issue) {
     // Check for watch word replacements (suggestion contains alternatives)
     const hasReplacements = issue.replacements && issue.replacements.length > 0;
 
-    // Count how many fixable issues of the same type exist
+    // Count how many fixable issues of the same type exist (for Fix all)
     const fixableOfType = allIssues.filter(i => i.rule.id === issue.rule.id && i.autoFix !== undefined);
     const sameTypeCount = fixableOfType.length;
+    // Count all issues of this type (for Ignore all)
+    const totalOfType = allIssues.filter(i => i.rule.id === issue.rule.id).length;
 
     // Build card HTML
     let html = `
@@ -244,9 +249,13 @@ function createIssueCard(issue) {
     html += `<button class="btn btn-ignore" data-action="ignore" data-id="${issue.id}">Ignore</button>`;
     html += `<button class="btn btn-goto" data-action="goto" data-id="${issue.id}">Go to issue</button>`;
 
-    // Add "Fix all" button if there are multiple instances of this rule type
+    // Add "Fix all" button if there are multiple fixable instances of this rule type
     if (canAutoFix && sameTypeCount > 1) {
         html += `<button class="btn btn-fix-all" data-action="fixall" data-ruleid="${issue.rule.id}">Fix all ${sameTypeCount}</button>`;
+    }
+    // Add "Ignore all" button if there are multiple instances of this rule type
+    if (totalOfType > 1) {
+        html += `<button class="btn btn-ignore-all" data-action="ignoreall" data-ruleid="${issue.rule.id}">Ignore all ${totalOfType}</button>`;
     }
 
     html += '</div>';
@@ -280,6 +289,9 @@ async function handleAction(action, issueId, ruleId, replacementIndex) {
             break;
         case 'fixall':
             await fixAllOfType(ruleId);
+            break;
+        case 'ignoreall':
+            ignoreAllOfType(ruleId);
             break;
     }
 }
@@ -412,6 +424,13 @@ async function fixAllOfType(ruleId) {
 // Ignore an issue (remove from list)
 function ignoreIssue(issueId) {
     allIssues = allIssues.filter(i => i.id !== issueId);
+    displayResults();
+}
+
+// Ignore all issues of a rule type, persisting across rescans for this session
+function ignoreAllOfType(ruleId) {
+    ignoredRuleIds.add(ruleId);
+    allIssues = allIssues.filter(i => i.rule.id !== ruleId);
     displayResults();
 }
 

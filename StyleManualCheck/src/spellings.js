@@ -457,7 +457,7 @@ export const WATCH_WORDS = {
     "forthwith": "Consider using 'now' or 'at once'",
     "furthermore": "Cut, or use 'and'",
     "implement": "Consider using 'apply', 'install', 'do', 'start' or 'carry out'",
-    "important": "Consider using 'main'",
+
     "leverage": "Consider using 'use' or 'build on'",
     "notwithstanding": "Consider using 'even though', 'though', 'even if' or 'despite'",
     "numerous": "Consider using 'many'",

@@ -328,13 +328,23 @@ html, body {
 }
 
 .btn-fix-all {
-    background: var(--white);
-    color: var(--primary);
-    border: 1px solid var(--primary);
+    background: var(--success-light);
+    color: var(--success);
+    border: 1px solid #9ae6b4;
 }
 
 .btn-fix-all:hover {
-    background: var(--gray-100);
+    background: #9ae6b4;
+}
+
+.btn-ignore-all {
+    background: #fee2e2;
+    color: var(--error);
+    border: 1px solid #fca5a5;
+}
+
+.btn-ignore-all:hover {
+    background: #fecaca;
 }
 
 .btn-goto {

@@ -423,8 +423,8 @@ const RULES = [
         link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/punctuation/quotation-marks',
         check: function(text) {
             const issues = [];
-            // Match text in double quotes (simple pattern)
-            const regex = /"([^"]+)"/g;
+            // Match text in double quotes - catches ASCII " (U+0022) and smart/curly quotes " " (U+201C/U+201D)
+            const regex = /[\u201C"]([^\u201C\u201D"]+)[\u201D"]/g;
             let match;
             while ((match = regex.exec(text)) !== null) {
                 // Don't flag if it contains single quotes (nested quote)
@@ -1111,7 +1111,7 @@ const RULES = [
     {
         id: 'latin-eg',
         name: 'Latin abbreviation: e.g.',
-        category: 'spelling',
+        category: 'abbreviations',
         description: 'Use \'for example\' instead of \'e.g.\' in general content. Latin abbreviations can be unclear to some readers.',
         link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/shortened-words-and-phrases/latin-shortened-forms',
         check: function(text) {
@@ -1120,7 +1120,7 @@ const RULES = [
             const regex = /\be\.g\.(?:,)?/gi;
             let match;
             while ((match = regex.exec(text)) !== null) {
-                const replacement = 'for example' + (match[0].endsWith(',') ? ',' : '');
+                const replacement = 'for example,';
                 issues.push({
                     found: match[0],
                     suggestion: replacement,
@@ -1135,7 +1135,7 @@ const RULES = [
     {
         id: 'latin-ie',
         name: 'Latin abbreviation: i.e.',
-        category: 'spelling',
+        category: 'abbreviations',
         description: 'Use \'that is\' instead of \'i.e.\' in general content. Latin abbreviations can be unclear to some readers.',
         link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/shortened-words-and-phrases/latin-shortened-forms',
         check: function(text) {
@@ -1158,7 +1158,7 @@ const RULES = [
     {
         id: 'latin-etc',
         name: 'Latin abbreviation: etc.',
-        category: 'spelling',
+        category: 'abbreviations',
         description: 'Use \'and so on\' instead of \'etc.\' in general content. Latin abbreviations can be unclear to some readers.',
         link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/shortened-words-and-phrases/latin-shortened-forms',
         check: function(text) {
@@ -1198,7 +1198,7 @@ const RULES = [
     {
         id: 'latin-etal',
         name: 'Latin abbreviation: et al.',
-        category: 'spelling',
+        category: 'abbreviations',
         description: 'Use \'and others\' instead of \'et al.\' in general content. Latin abbreviations can be unclear to some readers. Note: \'et al.\' is acceptable in academic references.',
         link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/shortened-words-and-phrases/latin-shortened-forms',
         check: function(text) {
@@ -1220,7 +1220,7 @@ const RULES = [
     {
         id: 'latin-nb',
         name: 'Latin abbreviation: N.B.',
-        category: 'spelling',
+        category: 'abbreviations',
         description: 'Use \'note\' instead of \'N.B.\' in general content. Latin abbreviations can be unclear to some readers.',
         link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/shortened-words-and-phrases/latin-shortened-forms',
         check: function(text) {
@@ -1359,7 +1359,7 @@ const RULES = [
     {
         id: 'watch-words',
         name: 'Watch words',
-        category: 'watch-words',
+        category: 'readability',
         description: 'Consider replacing this word or phrase with a plain language alternative.',
         link: 'https://www.stylemanual.gov.au/writing-and-designing-content/clear-language-and-writing-style/plain-language-and-word-choice',
         check: function(text) {
@@ -2167,6 +2167,7 @@ const RULES = [
                         if (withCapital === items.length) {
                             issues.push({
                                 found: 'List with capitals and full stop on last item only',
+                                searchText: items[0].text.substring(0, Math.min(30, items[0].text.length)),
                                 suggestion: 'Fragment lists should start items in lower case (unless proper nouns). If this is a stand-alone list, remove the final full stop. If a sentence list, add full stops to all items.',
                                 position: items[0].position,
                                 rule: rule
@@ -2176,10 +2177,12 @@ const RULES = [
 
                     // Lowercase items with no full stops = likely fragment list missing final stop
                     if (noPeriods && likelyFragment) {
+                        const lastItem = items[items.length - 1];
                         issues.push({
-                            found: items[items.length - 1].text.substring(0, Math.min(30, items[items.length - 1].text.length)) + (items[items.length - 1].text.length > 30 ? '...' : ''),
+                            found: lastItem.text.substring(0, Math.min(30, lastItem.text.length)) + (lastItem.text.length > 30 ? '...' : ''),
+                            searchText: lastItem.text.substring(0, Math.min(30, lastItem.text.length)),
                             suggestion: 'Items starting in lower case suggest a fragment list, which needs a full stop on the last item.',
-                            position: items[items.length - 1].position,
+                            position: lastItem.position,
                             rule: rule
                         });
                     }
@@ -2198,6 +2201,7 @@ const RULES = [
                     for (const item of nonLastWithPeriods) {
                         issues.push({
                             found: item.text.substring(0, Math.min(30, item.text.length)) + (item.text.length > 30 ? '...' : ''),
+                            searchText: item.text.substring(0, Math.min(30, item.text.length)),
                             suggestion: 'In fragment lists, only the last item has a full stop. Remove the full stop from this item.',
                             position: item.position,
                             rule: rule
@@ -2206,10 +2210,12 @@ const RULES = [
 
                     // Flag if last item is missing full stop
                     if (!items[items.length - 1].endsWithPeriod) {
+                        const lastItem = items[items.length - 1];
                         issues.push({
-                            found: items[items.length - 1].text.substring(0, Math.min(30, items[items.length - 1].text.length)) + (items[items.length - 1].text.length > 30 ? '...' : ''),
+                            found: lastItem.text.substring(0, Math.min(30, lastItem.text.length)) + (lastItem.text.length > 30 ? '...' : ''),
+                            searchText: lastItem.text.substring(0, Math.min(30, lastItem.text.length)),
                             suggestion: 'In fragment lists, the last item needs a full stop.',
-                            position: items[items.length - 1].position,
+                            position: lastItem.position,
                             rule: rule
                         });
                     }
@@ -2224,6 +2230,7 @@ const RULES = [
                             if (!item.endsWithPeriod) {
                                 issues.push({
                                     found: item.text.substring(0, Math.min(30, item.text.length)) + (item.text.length > 30 ? '...' : ''),
+                                    searchText: item.text.substring(0, Math.min(30, item.text.length)),
                                     suggestion: 'In sentence lists, every item ends with a full stop. Add a full stop, or remove full stops from all items for a stand-alone list.',
                                     position: item.position,
                                     rule: rule
@@ -2236,6 +2243,7 @@ const RULES = [
                             if (item.endsWithPeriod) {
                                 issues.push({
                                     found: item.text.substring(0, Math.min(30, item.text.length)) + (item.text.length > 30 ? '...' : ''),
+                                    searchText: item.text.substring(0, Math.min(30, item.text.length)),
                                     suggestion: 'In stand-alone lists, items don\'t have full stops. Remove this full stop, or add full stops to all items for a sentence list.',
                                     position: item.position,
                                     rule: rule
@@ -2734,7 +2742,7 @@ const RULES = [
     {
         id: 'wordy-phrases',
         name: 'Wordy phrase',
-        category: 'watch-words',
+        category: 'readability',
         description: 'Consider replacing this wordy phrase with a plain language alternative.',
         link: 'https://www.stylemanual.gov.au/writing-and-designing-content/clear-language-and-writing-style/plain-language-and-word-choice',
         check: function(text) {
@@ -2790,6 +2798,13 @@ const RULES = [
                 // Skip proper nouns
                 if (properNouns.has(word)) continue;
 
+                // Skip if the colon is at the end of a line (lead-in to a list or next paragraph)
+                if (match[0].includes('\n')) continue;
+
+                // Skip if the colon follows a label word (Step 2:, Phase 1:, Note:, etc.)
+                const before = text.substring(Math.max(0, match.index - 60), match.index);
+                if (/\b(step|phase|stage|part|section|note|example|exercise|task|chapter|item|figure|table|exhibit|rule|action|activity|objective|outcome|principle|requirement|tip|warning|caution|appendix|schedule|attachment|annex)\s*[\d\w]*\s*$/i.test(before)) continue;
+
                 // Skip if followed by ? (question after colon)
                 const afterPos = match.index + match[0].length;
                 const after = text.substring(afterPos, afterPos + 50);
@@ -2797,8 +2812,9 @@ const RULES = [
 
                 const lower = word[0].toLowerCase() + word.slice(1);
                 issues.push({
-                    found: match[0].trim(),
+                    found: word,
                     suggestion: 'Use a lowercase letter after a colon (unless a proper noun). Try \'' + lower + '\'',
+                    autoFix: lower,
                     position: match.index + match[0].indexOf(word),
                     rule: this
                 });
