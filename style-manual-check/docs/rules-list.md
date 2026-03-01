@@ -1,6 +1,6 @@
 # Style Manual Check – Rules list
 
-72 rules across 9 categories. Source of truth: `StyleManualCheck/src/rules.js`.
+73 rules across 9 categories. Source of truth: `StyleManualCheck/src/rules.js`.
 
 ---
 
@@ -53,7 +53,7 @@
 
 ---
 
-## Headings (4 rules)
+## Headings (5 rules)
 
 | ID | Name | Checks for |
 |---|---|---|
@@ -61,6 +61,7 @@
 | `heading-too-long` | Heading too long | headings over recommended length |
 | `heading-full-stop` | Full stop at end of heading | headings ending with a full stop |
 | `heading-all-caps` | All caps heading | ALL CAPS headings |
+| `heading-bold-not-styled` | Bold text without heading style | entirely-bold paragraphs that look like headings but have no heading style applied (Word add-in only) |
 
 ---
 
