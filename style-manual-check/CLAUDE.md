@@ -98,12 +98,12 @@ The add-in's own interface text must follow Style Manual rules:
 7. Render issue cards
 
 **Per-issue actions:**
-- `Accept` — apply `issue.autoFix` to the correct occurrence; optionally apply `Heading 2` style if `issue.applyHeadingStyle` is set
-- `Use '[word]'` — apply the first entry in `issue.replacements` (watch words / wordy phrases), preserving case
-- `Ignore` — remove the single issue from the list
+- `Accept` — search for `issue.searchText || issue.found`, replace the correct occurrence with `issue.autoFix`; optionally apply `Heading 2` style if `issue.applyHeadingStyle` is set; then auto-navigate to the next issue
+- `Use '[word]'` — apply the first entry in `issue.replacements` (watch words / wordy phrases), preserving case; then auto-navigate to the next issue
+- `Ignore` — remove the single issue from the list; auto-navigate to the next issue
 - `Go to issue` — search for `issue.searchText || issue.found` and select the correct occurrence by index
-- `Fix all N` — apply autofix for all issues of that rule ID
-- `Ignore all N` — add rule ID to `ignoredRuleIds` Set (persists for the session, including after rescan)
+- `Fix all N` — apply autofix for all issues of that rule ID; then auto-navigate to the first remaining issue
+- `Ignore all N` — add rule ID to `ignoredRuleIds` Set (persists for the session, including after rescan); auto-navigate to first remaining issue
 
 **Rescan banner:** shown when `changesSinceLastScan >= 5` and issues remain, because occurrence indices drift as text changes.
 
@@ -111,7 +111,7 @@ The add-in's own interface text must follow Style Manual rules:
 
 **File:** `StyleManualCheck/src/rules.js`
 
-`checkText(text, headingLines, listLines)` — runs all rules and returns issues sorted by position.
+`checkText(text, headingLines, listLines, boldLines)` — runs all rules and returns issues sorted by position.
 
 Each rule object has:
 - `id` — unique string (for example, `'spelling-ize'`)
@@ -119,24 +119,26 @@ Each rule object has:
 - `category` — category key string
 - `description` — explanation shown in the card
 - `link` — URL to Style Manual page
-- `check(text, headingLines, listLines)` — returns array of issue objects
+- `check(text, headingLines, listLines, boldLines)` — returns array of issue objects
 
 Each issue object has:
 - `rule` — reference to the rule
 - `found` — the text that triggered the rule
 - `suggestion` — display text for the suggestion
 - `position` — character offset in the full text
-- `autoFix` — (optional) string to replace `found` with; use `''` for deletions (not `undefined`)
+- `autoFix` — (optional) string to replace the searched text with; use `''` for deletions (not `undefined`)
 - `replacements` — (optional) array of alternative words (watch words / wordy phrases)
 - `description` — (optional) per-issue override of rule description
-- `searchText` — (optional) full text for navigation when `found` is truncated (for example, long sentences)
+- `searchText` — (optional) full text used for the Word search and as the replace target; `found` is used as the short display text only. Used when `found` alone is too common to search safely (for example, list rules store the full list item here so the search is specific)
 - `applyHeadingStyle` — (optional) boolean; if true, `acceptFix` also applies `Heading 2` style
 
-**Important:** `autoFix === undefined` means no autofix. `autoFix === ''` is a valid deletion fix.
+**Important:** `autoFix === undefined` means no autofix. `autoFix === ''` is a valid deletion fix. When `searchText` is set, `autoFix` replaces the full `searchText` match (not just `found`).
 
-**Heading detection:** `headingLines` is a Set of paragraph indices that have a Word heading/title/subtitle style applied. Rules use this to identify headings accurately rather than relying on heuristics alone. When a match is heuristic (not confirmed by style), the per-issue description prompts users to apply a heading style.
+**Heading detection:** `headingLines` is a Set of paragraph indices with a Word heading/title/subtitle style. Rules use this to identify headings accurately rather than relying on heuristics alone. When a match is heuristic (not confirmed by style), the per-issue description prompts users to apply a heading style.
 
 **List detection:** `listLines` is a Set of paragraph indices where `isListItem` is true (covers both Word-formatted bullets/numbered lists using `numPr` and `List Paragraph` style).
+
+**Bold detection:** `boldLines` is a Set of paragraph indices where `font.bold === true` (entire paragraph is bold). Used by `heading-bold-not-styled`. Only populated in the Word add-in.
 
 **`preserveCase(original, replacement)`** — helper that matches the case of `original` when building a replacement.
 

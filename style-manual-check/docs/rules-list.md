@@ -69,12 +69,12 @@
 
 | ID | Name | Checks for |
 |---|---|---|
-| `list-semicolon` | Semicolon at end of list item | list items ending with ';' |
-| `list-trailing-comma` | Comma at end of list item | list items ending with ',' |
-| `list-and-or` | 'And' or 'or' at end of list item | list items ending with 'and'/'or' |
-| `list-etc` | 'Etc.' in list | 'etc.' at end of a list item |
-| `list-inconsistent-caps` | Inconsistent capitalisation in list | mixed upper/lowercase list item starts |
-| `list-inconsistent-punctuation` | Inconsistent or incorrect punctuation in list | mixed full stop usage across list items |
+| `list-semicolon` | Semicolon at end of list item | list items ending with ';' — autofix removes trailing ';' |
+| `list-trailing-comma` | Comma at end of list item | list items ending with ',' — autofix removes trailing ',' |
+| `list-and-or` | 'And' or 'or' at end of list item | list items ending with 'and'/'or' — autofix removes trailing word (and any preceding comma/semicolon) |
+| `list-etc` | 'Etc.' in list | 'etc.' at end of a list item (advisory only) |
+| `list-inconsistent-caps` | Inconsistent capitalisation in list | mixed upper/lowercase list item starts (advisory only) |
+| `list-inconsistent-punctuation` | Inconsistent or incorrect punctuation in list | mixed full stop usage across list items (advisory only) |
 
 ---
 
