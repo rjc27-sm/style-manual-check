@@ -325,8 +325,8 @@ async function acceptFix(issue) {
 
     try {
         await Word.run(async (context) => {
-            // Search for the found text
-            const searchResults = context.document.body.search(issue.found, {
+            // Search for the found text (use searchText when available for specificity)
+            const searchResults = context.document.body.search(issue.searchText || issue.found, {
                 matchCase: true,
                 matchWholeWord: false
             });
@@ -428,7 +428,7 @@ async function fixAllOfType(ruleId) {
         await Word.run(async (context) => {
             // Process each issue
             for (const issue of toFix) {
-                const searchResults = context.document.body.search(issue.found, {
+                const searchResults = context.document.body.search(issue.searchText || issue.found, {
                     matchCase: true,
                     matchWholeWord: false
                 });

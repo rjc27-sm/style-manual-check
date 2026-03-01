@@ -1853,7 +1853,8 @@ const RULES = [
             let currentPos = 0;
             let prevWasListItem = false;
             let prevEndedWithSemicolon = false;
-            let prevSemicolonPos = -1;
+            let prevLineText = '';
+            let prevLineStart = -1;
 
             for (let i = 0; i < lines.length; i++) {
                 const line = lines[i];
@@ -1863,7 +1864,9 @@ const RULES = [
                     issues.push({
                         found: ';',
                         suggestion: 'Remove the semicolon',
-                        position: prevSemicolonPos,
+                        searchText: prevLineText,
+                        autoFix: prevLineText.slice(0, -1).trimEnd(),
+                        position: prevLineStart,
                         rule: this
                     });
                 }
@@ -1871,9 +1874,11 @@ const RULES = [
                 if (isListItem) {
                     const trimmed = line.trimEnd();
                     prevEndedWithSemicolon = trimmed.endsWith(';');
-                    prevSemicolonPos = currentPos + trimmed.length - 1;
+                    prevLineText = trimmed;
+                    prevLineStart = currentPos;
                 } else {
                     prevEndedWithSemicolon = false;
+                    prevLineText = '';
                 }
                 prevWasListItem = isListItem;
                 currentPos += line.length + 1;
@@ -1894,7 +1899,8 @@ const RULES = [
             let currentPos = 0;
             let prevWasListItem = false;
             let prevEndedWithComma = false;
-            let prevCommaPos = -1;
+            let prevLineText = '';
+            let prevLineStart = -1;
 
             for (let i = 0; i < lines.length; i++) {
                 const line = lines[i];
@@ -1904,7 +1910,9 @@ const RULES = [
                     issues.push({
                         found: ',',
                         suggestion: 'Remove the comma',
-                        position: prevCommaPos,
+                        searchText: prevLineText,
+                        autoFix: prevLineText.slice(0, -1).trimEnd(),
+                        position: prevLineStart,
                         rule: this
                     });
                 }
@@ -1912,9 +1920,11 @@ const RULES = [
                 if (isListItem) {
                     const trimmed = line.trimEnd();
                     prevEndedWithComma = trimmed.endsWith(',');
-                    prevCommaPos = currentPos + trimmed.length - 1;
+                    prevLineText = trimmed;
+                    prevLineStart = currentPos;
                 } else {
                     prevEndedWithComma = false;
+                    prevLineText = '';
                 }
                 prevWasListItem = isListItem;
                 currentPos += line.length + 1;
@@ -1936,7 +1946,8 @@ const RULES = [
             let currentPos = 0;
             let prevWasListItem = false;
             let prevAndOrMatch = null;
-            let prevAndOrPos = -1;
+            let prevLineText = '';
+            let prevLineStart = -1;
 
             for (let i = 0; i < lines.length; i++) {
                 const line = lines[i];
@@ -1944,10 +1955,14 @@ const RULES = [
 
                 if (isListItem && prevWasListItem && prevAndOrMatch) {
                     const found = prevAndOrMatch[1];
+                    // Remove trailing 'and'/'or' and any preceding comma/semicolon
+                    const autoFix = prevLineText.replace(/[,;]?\s*\b(and|or)\b[;,]?\s*$/i, '').trimEnd();
                     issues.push({
                         found: found,
                         suggestion: 'Remove \'' + found + '\' from end of list item',
-                        position: prevAndOrPos,
+                        searchText: prevLineText,
+                        autoFix: autoFix,
+                        position: prevLineStart,
                         rule: this
                     });
                 }
@@ -1955,11 +1970,11 @@ const RULES = [
                 if (isListItem) {
                     const trimmed = line.trimEnd();
                     prevAndOrMatch = andOrPattern.exec(trimmed);
-                    if (prevAndOrMatch) {
-                        prevAndOrPos = currentPos + trimmed.length - prevAndOrMatch[0].length;
-                    }
+                    prevLineText = trimmed;
+                    prevLineStart = currentPos;
                 } else {
                     prevAndOrMatch = null;
+                    prevLineText = '';
                 }
                 prevWasListItem = isListItem;
                 currentPos += line.length + 1;
