@@ -299,9 +299,23 @@ async function handleAction(action, issueId, ruleId, replacementIndex, url) {
     }
 }
 
+// Find the next issue to navigate to after removing the given issue IDs from the visible list
+function getNextIssue(removedIds) {
+    const idSet = new Set(Array.isArray(removedIds) ? removedIds : [removedIds]);
+    const filtered = currentFilter === 'all'
+        ? allIssues
+        : allIssues.filter(i => i.rule.category === currentFilter);
+    const currentIndex = filtered.findIndex(i => idSet.has(i.id));
+    const remaining = filtered.filter(i => !idSet.has(i.id));
+    if (remaining.length === 0) return null;
+    return remaining[Math.min(Math.max(currentIndex, 0), remaining.length - 1)];
+}
+
 // Accept a fix and apply it to the document
 async function acceptFix(issue) {
     if (issue.autoFix === undefined) return;
+
+    const nextIssue = getNextIssue(issue.id);
 
     try {
         await Word.run(async (context) => {
@@ -344,6 +358,11 @@ async function acceptFix(issue) {
         elements.status.textContent = 'Error applying fix: ' + error.message;
         elements.status.className = 'status error';
     }
+
+    // Auto-navigate to the next issue if the fix was applied
+    if (nextIssue && !allIssues.some(i => i.id === issue.id)) {
+        await goToIssue(nextIssue);
+    }
 }
 
 // Use a replacement from watch words
@@ -351,6 +370,7 @@ async function useReplacement(issue, replacementIndex) {
     if (!issue.replacements || !issue.replacements[replacementIndex]) return;
 
     const replacement = issue.replacements[replacementIndex];
+    const nextIssue = getNextIssue(issue.id);
 
     // Preserve the case of the original word
     let fixedReplacement = replacement;
@@ -385,12 +405,18 @@ async function useReplacement(issue, replacementIndex) {
         elements.status.textContent = 'Error applying replacement: ' + error.message;
         elements.status.className = 'status error';
     }
+
+    if (nextIssue && !allIssues.some(i => i.id === issue.id)) {
+        await goToIssue(nextIssue);
+    }
 }
 
 // Fix all issues of a specific rule type
 async function fixAllOfType(ruleId) {
     const toFix = allIssues.filter(i => i.rule.id === ruleId && i.autoFix !== undefined);
     if (toFix.length === 0) return;
+
+    const nextIssue = getNextIssue(toFix.map(i => i.id));
 
     try {
         await Word.run(async (context) => {
@@ -422,19 +448,27 @@ async function fixAllOfType(ruleId) {
         elements.status.textContent = 'Error applying fixes: ' + error.message;
         elements.status.className = 'status error';
     }
+
+    if (nextIssue && !allIssues.some(i => i.rule.id === ruleId)) {
+        await goToIssue(nextIssue);
+    }
 }
 
 // Ignore an issue (remove from list)
 function ignoreIssue(issueId) {
+    const nextIssue = getNextIssue(issueId);
     allIssues = allIssues.filter(i => i.id !== issueId);
     displayResults();
+    if (nextIssue) goToIssue(nextIssue);
 }
 
 // Ignore all issues of a rule type, persisting across rescans for this session
 function ignoreAllOfType(ruleId) {
+    const nextIssue = getNextIssue(allIssues.filter(i => i.rule.id === ruleId).map(i => i.id));
     ignoredRuleIds.add(ruleId);
     allIssues = allIssues.filter(i => i.rule.id !== ruleId);
     displayResults();
+    if (nextIssue) goToIssue(nextIssue);
 }
 
 // Navigate to an issue in the document
