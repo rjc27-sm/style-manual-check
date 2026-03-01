@@ -1107,6 +1107,64 @@ const RULES = [
         }
     },
 
+    {
+        id: 'heading-bold-not-styled',
+        name: 'Bold text without heading style',
+        category: 'headings',
+        description: 'Is this a heading? If so, apply a heading style. Heading styles make documents accessible and allow readers to navigate using the headings panel.',
+        link: 'https://www.stylemanual.gov.au/structuring-content/headings',
+        check: function(text, headingLines, listLines, boldLines) {
+            const issues = [];
+            if (!boldLines || boldLines.size === 0) return issues;
+
+            const lines = text.split('\n');
+            let position = 0;
+
+            for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+                const line = lines[lineIndex];
+                const trimmed = line.trim();
+
+                if (!trimmed) {
+                    position += line.length + 1;
+                    continue;
+                }
+
+                const isBold = boldLines.has(lineIndex);
+                const hasHeadingStyle = headingLines && headingLines.has(lineIndex);
+                const isListItem = listLines && listLines.has(lineIndex);
+
+                // Only flag entirely-bold lines that don't already have a heading style
+                if (!isBold || hasHeadingStyle || isListItem) {
+                    position += line.length + 1;
+                    continue;
+                }
+
+                const words = trimmed.split(/\s+/);
+                const endsWithPunctuation = /[.?!;,:]$/.test(trimmed);
+                const isAllCaps = trimmed === trimmed.toUpperCase() && /[A-Z]/.test(trimmed);
+
+                // Looks like a heading: 1-12 words, starts with capital, no sentence-ending
+                // punctuation, not all-caps (that's handled by heading-all-caps)
+                if (words.length >= 1 && words.length <= 12 &&
+                    /^[A-Z]/.test(trimmed) &&
+                    !endsWithPunctuation &&
+                    !isAllCaps) {
+                    issues.push({
+                        found: trimmed,
+                        suggestion: 'Apply Heading 2 style',
+                        autoFix: trimmed,
+                        applyHeadingStyle: true,
+                        position: position + line.indexOf(trimmed),
+                        rule: this
+                    });
+                }
+
+                position += line.length + 1;
+            }
+            return issues;
+        }
+    },
+
     // ==================== LATIN ABBREVIATIONS ====================
     {
         id: 'latin-eg',
@@ -2977,10 +3035,11 @@ function numberToWords(num) {
 // Main function to check text against all rules
 // headingLines: optional Set of line indices with a Word heading style applied
 // listLines: optional Set of line indices that are list items (bullets/numbered)
-function checkText(text, headingLines, listLines) {
+// boldLines: optional Set of line indices where the entire paragraph is bold
+function checkText(text, headingLines, listLines, boldLines) {
     const allIssues = [];
     for (const rule of RULES) {
-        const issues = rule.check(text, headingLines, listLines);
+        const issues = rule.check(text, headingLines, listLines, boldLines);
         allIssues.push(...issues);
     }
     // Sort by position in text

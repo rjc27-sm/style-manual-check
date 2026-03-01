@@ -63,10 +63,11 @@ async function scanDocument() {
             paragraphs.load('items');
             await context.sync();
 
-            // Load text, style, and list info for each paragraph
+            // Load text, style, list info, and bold status for each paragraph
             let fullText = '';
             for (let i = 0; i < paragraphs.items.length; i++) {
                 paragraphs.items[i].load('text,style,isListItem');
+                paragraphs.items[i].font.load('bold');
             }
             await context.sync();
 
@@ -78,20 +79,25 @@ async function scanDocument() {
             const headingLines = new Set();
             // Build a set of line indices that are list items (bullets/numbered)
             const listLines = new Set();
+            // Build a set of line indices where the entire paragraph is bold
+            const boldLines = new Set();
             for (let i = 0; i < paragraphs.items.length; i++) {
                 const para = paragraphs.items[i];
                 const style = (para.style || '').toLowerCase();
                 if (style.startsWith('heading') || style.startsWith('title') || style.startsWith('subtitle')) {
                     headingLines.add(i);
                 }
-                // Check if paragraph is a list item
                 if (para.isListItem) {
                     listLines.add(i);
+                }
+                // font.bold === true means all text in the paragraph is bold (null = mixed)
+                if (para.font.bold === true) {
+                    boldLines.add(i);
                 }
             }
 
             // Run style checks
-            allIssues = checkText(fullText, headingLines, listLines);
+            allIssues = checkText(fullText, headingLines, listLines, boldLines);
 
             // Filter out rules the user has chosen to ignore for this session
             if (ignoredRuleIds.size > 0) {
