@@ -235,7 +235,7 @@ function createIssueCard(issue) {
         </div>
         <div class="issue-description">
             ${escapeHtml(issue.description || issue.rule.description)}
-            ${issue.rule.link ? `<a class="link-learn" href="${issue.rule.link}" target="_blank">Learn more \u2192</a>` : ''}
+            ${issue.rule.link ? `<button class="link-learn" data-action="openlink" data-url="${issue.rule.link}">Learn more \u2192</button>` : ''}
         </div>
         <div class="issue-actions">
     `;
@@ -263,14 +263,14 @@ function createIssueCard(issue) {
 
     // Attach event handlers
     card.querySelectorAll('button[data-action]').forEach(btn => {
-        btn.onclick = () => handleAction(btn.dataset.action, btn.dataset.id, btn.dataset.ruleid, btn.dataset.index);
+        btn.onclick = () => handleAction(btn.dataset.action, btn.dataset.id, btn.dataset.ruleid, btn.dataset.index, btn.dataset.url);
     });
 
     return card;
 }
 
 // Handle button actions
-async function handleAction(action, issueId, ruleId, replacementIndex) {
+async function handleAction(action, issueId, ruleId, replacementIndex, url) {
     switch (action) {
         case 'accept':
             const issue = allIssues.find(i => i.id === issueId);
@@ -292,6 +292,9 @@ async function handleAction(action, issueId, ruleId, replacementIndex) {
             break;
         case 'ignoreall':
             ignoreAllOfType(ruleId);
+            break;
+        case 'openlink':
+            if (url) Office.context.ui.openBrowserWindow(url);
             break;
     }
 }
