@@ -4,7 +4,7 @@ A tool to check documents against the [Australian Government Style Manual](https
 
 ## Current status
 
-The Microsoft Word add-in is complete and can be sideloaded for testing. A browser-based demo is also available for testing rules without Word.
+The Microsoft Word add-in is complete and can be sideloaded for testing. A browser-based checker is also available at **[rjc27-sm.github.io/style-manual-check](https://rjc27-sm.github.io/style-manual-check/)** — no installation needed.
 
 ## Microsoft Word add-in
 
@@ -15,18 +15,19 @@ The Word add-in is located in the `StyleManualCheck/` directory. To use it:
 3. Click 'Check document' in the task pane to scan for style issues
 4. Review and fix issues using the Accept, Ignore, and Go to issue buttons
 
-## Browser demo
+## Browser checker
 
-For quick testing without Word:
+The easiest way to use the browser checker is the public URL — no installation or setup needed:
 
-1. Open `demo.html` in a web browser
-2. Edit or paste text in the left panel
-3. Click 'Scan document' to check for style issues
-4. Review suggestions in the right panel
+**[rjc27-sm.github.io/style-manual-check](https://rjc27-sm.github.io/style-manual-check/)**
 
-Note: The demo needs to load the JavaScript files in `/src`, so you need to either:
-- Open demo.html from a local web server, OR
-- Use a browser that allows local file access (some browsers block this for security)
+Or to run it locally:
+
+1. Serve `style-manual-check/` with a local web server (for example: `python -m http.server 8000`)
+2. Open http://localhost:8000/demo.html
+3. Edit or paste text in the left panel
+4. Click 'Scan document' to check for style issues
+5. Review suggestions in the right panel
 
 ## What it checks
 
@@ -93,18 +94,20 @@ Note: The demo needs to load the JavaScript files in `/src`, so you need to eith
 
 ```
 style-manual-check/               # Root project directory
-├── style-manual-check/           # Browser demo
-│   ├── demo.html                 # Browser demo for testing
-│   ├── src/
-│   │   ├── rules.js              # Rule definitions (~68 rules)
-│   │   └── spellings.js          # Word dictionaries
-│   ├── docs/                     # Documentation
+├── LICENSE                       # CC BY-NC 4.0
+├── docs/                         # GitHub Pages browser checker
+│   ├── index.html                # Browser checker
+│   └── src/                      # Rule engine (73 rules)
+├── style-manual-check/           # Browser demo source + documentation
+│   ├── demo.html                 # Browser demo for local testing
+│   ├── src/                      # Rule engine source (older copy)
+│   ├── docs/                     # Technical documentation
 │   ├── CLAUDE.md                 # Project context for Claude Code
 │   └── README.md                 # This file
 │
-└── StyleManualCheck/             # Word add-in
+└── StyleManualCheck/             # Word add-in (Office.js)
     ├── dist/manifest.xml         # Add-in manifest for sideloading
-    └── src/                      # Source files
+    └── src/                      # Canonical rule engine source
 ```
 
 ## Development
@@ -113,7 +116,9 @@ This project is being developed with assistance from Claude. The `CLAUDE.md` fil
 
 ## Licence
 
-[To be determined]
+[Creative Commons Attribution-NonCommercial 4.0 International (CC BY-NC 4.0)](https://creativecommons.org/licenses/by-nc/4.0/)
+
+Free to use and adapt with attribution; not for commercial purposes.
 
 ## Contact
 

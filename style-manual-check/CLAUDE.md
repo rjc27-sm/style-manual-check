@@ -2,19 +2,26 @@
 
 ## Project overview
 
-Style Manual Check is a Microsoft Word add-in that checks documents against the Australian Government Style Manual (https://www.stylemanual.gov.au). It helps government staff apply Style Manual rules consistently. It also has a browser-based demo for testing.
+Style Manual Check is a Microsoft Word add-in that checks documents against the Australian Government Style Manual (https://www.stylemanual.gov.au). It helps government staff apply Style Manual rules consistently. It also has a browser-based checker hosted on GitHub Pages (https://rjc27-sm.github.io/style-manual-check/).
 
 ## Project structure
 
 ```
 style-manual-check/              # Root project directory
-├── style-manual-check/          # Browser demo
+├── LICENSE                      # CC BY-NC 4.0
+├── docs/                        # GitHub Pages (served at rjc27-sm.github.io/style-manual-check/)
+│   ├── .nojekyll                # Prevents Jekyll processing
+│   ├── index.html               # Browser checker (from demo.html)
+│   └── src/
+│       ├── rules.js             # 73 rules (canonical minus heading-bold-not-styled)
+│       └── spellings.js         # Word dictionaries
+├── style-manual-check/          # Browser demo source
 │   ├── CLAUDE.md                # This file - project context for Claude
 │   ├── README.md                # User-facing documentation
 │   ├── SETUP_INSTRUCTIONS.md    # Beginner setup guide for testers
-│   ├── demo.html                # Browser demo for testing rules
+│   ├── demo.html                # Browser demo for testing rules (local use)
 │   ├── src/
-│   │   ├── rules.js             # Rule definitions (72 rules)
+│   │   ├── rules.js             # Rule definitions (72 rules — older copy, not primary)
 │   │   └── spellings.js         # Word dictionaries (US→AU, common errors)
 │   └── docs/
 │       ├── PROJECT_HISTORY.md   # Development log with key decisions
@@ -23,8 +30,8 @@ style-manual-check/              # Root project directory
 └── StyleManualCheck/            # Word add-in (Office.js)
     ├── manifest.xml             # Add-in manifest for sideloading
     ├── src/
-    │   ├── rules.js             # Rule definitions (copy of demo version)
-    │   ├── spellings.js         # Word dictionaries (copy of demo version)
+    │   ├── rules.js             # CANONICAL — 73 rules (source of truth)
+    │   ├── spellings.js         # CANONICAL — word dictionaries (source of truth)
     │   └── taskpane/
     │       ├── taskpane.html    # Task pane UI
     │       ├── taskpane.css     # Styles
@@ -32,18 +39,18 @@ style-manual-check/              # Root project directory
     └── dist/                    # Built files for deployment
 ```
 
-**Important:** `StyleManualCheck/src/rules.js` and `StyleManualCheck/src/spellings.js` are the canonical versions. The copies in `style-manual-check/src/` should be kept in sync.
+**Important:** `StyleManualCheck/src/rules.js` and `StyleManualCheck/src/spellings.js` are the canonical versions. When syncing to GitHub Pages, copy to `docs/src/` and remove `heading-bold-not-styled` (Word-only rule). The older copy in `style-manual-check/src/` is not actively maintained.
 
 ## Rule categories and counts
 
-9 categories, 72 rules total:
+9 categories, 73 rules total (canonical: `StyleManualCheck/src/rules.js`):
 
 | Category | Rules |
 |---|---|
 | Spelling | 9 |
 | Punctuation | 11 |
 | Dates and time | 11 |
-| Headings | 4 |
+| Headings | 5 |
 | Abbreviations | 11 |
 | Government terms | 6 |
 | Readability | 3 |
