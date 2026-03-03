@@ -96,13 +96,14 @@ The add-in's own interface text must follow Style Manual rules:
 **File:** `StyleManualCheck/src/taskpane/taskpane.js`
 
 **Scanning flow:**
-1. Load all paragraphs with `text`, `style`, and `isListItem` properties
+1. Load all paragraphs with `text`, `style`, `isListItem`, `font.bold`, and `font.italic` properties (first sync)
 2. Join paragraphs with `\n` to preserve boundaries
-3. Build `headingLines` (Set of indices with heading/title/subtitle styles) and `listLines` (Set of indices with `isListItem`)
-4. Call `checkText(fullText, headingLines, listLines)` to get issues
-5. Filter out session-ignored rule IDs
-6. Calculate `occurrenceIndex` for each issue (count of same text before that position)
-7. Render issue cards
+3. Build `headingLines`, `listLines`, `boldLines`, and `italicLines` Sets from the loaded properties
+4. Detect table-cell paragraphs via `parentTableCellOrNullObject` (second sync) → build `tableLines` Set
+5. Call `checkText(fullText, headingLines, listLines, boldLines, italicLines, tableLines)` to get issues
+6. Filter out session-ignored rule IDs
+7. Calculate `occurrenceIndex` for each issue (count of same text before that position)
+8. Render issue cards
 
 **Per-issue actions:**
 - `Accept` — search for `issue.searchText || issue.found`, replace the correct occurrence with `issue.autoFix`; optionally apply `Heading 2` style if `issue.applyHeadingStyle` is set; then auto-navigate to the next issue
@@ -118,7 +119,7 @@ The add-in's own interface text must follow Style Manual rules:
 
 **File:** `StyleManualCheck/src/rules.js`
 
-`checkText(text, headingLines, listLines, boldLines)` — runs all rules and returns issues sorted by position.
+`checkText(text, headingLines, listLines, boldLines, italicLines, tableLines)` — runs all rules and returns issues sorted by position.
 
 Each rule object has:
 - `id` — unique string (for example, `'spelling-ize'`)
@@ -126,7 +127,7 @@ Each rule object has:
 - `category` — category key string
 - `description` — explanation shown in the card
 - `link` — URL to Style Manual page
-- `check(text, headingLines, listLines, boldLines)` — returns array of issue objects
+- `check(text, headingLines, listLines, boldLines, italicLines, tableLines)` — returns array of issue objects
 
 Each issue object has:
 - `rule` — reference to the rule
@@ -145,7 +146,11 @@ Each issue object has:
 
 **List detection:** `listLines` is a Set of paragraph indices where `isListItem` is true (covers both Word-formatted bullets/numbered lists using `numPr` and `List Paragraph` style).
 
-**Bold detection:** `boldLines` is a Set of paragraph indices where `font.bold === true` (entire paragraph is bold). Used by `heading-bold-not-styled`. Only populated in the Word add-in.
+**Bold/italic detection:** `boldLines` and `italicLines` are Sets of paragraph indices where `font.bold === true` or `font.italic === true` (entire paragraph). Only populated in the Word add-in.
+
+**Table detection:** `tableLines` is a Set of paragraph indices that are inside table cells (detected via `parentTableCellOrNullObject`). Only populated in the Word add-in.
+
+**Heuristic heading detection (Word mode):** When `boldLines` is defined (Word mode), heuristic heading detection requires the paragraph to be entirely bold or italic AND not inside a table cell. This prevents false positives on body sentences and table content. In browser mode (`boldLines` undefined), the existing word-count/punctuation heuristic is used unchanged.
 
 **`preserveCase(original, replacement)`** — helper that matches the case of `original` when building a replacement.
 
@@ -185,7 +190,10 @@ Always replaces with 'for example,' (including trailing comma).
 Use `searchText` on all issues so 'Go to issue' works.
 
 ### punct-capital-after-colon
-Skips cross-line matches (list lead-ins) and label words (Step, Phase, Note, etc.).
+Uses `[ \t]+` (not `\s+`) to prevent cross-line matches. Also skips label words (Step, Phase, Option, Note, etc.) and CamelCase identifiers.
+
+### punct-em-dash
+Catches both unspaced (`word—word`) and spaced (`word — word`) em dashes.
 
 ### govt-commonwealth-government
 Fixes 'a Commonwealth government' → 'an Australian Government' (not 'a Australian').
