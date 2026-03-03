@@ -811,7 +811,7 @@ const RULES = [
         category: 'headings',
         description: 'Use sentence case for headings, not title case. Only capitalise the first word and proper nouns. Note: you may need to adjust the suggested fix if the heading contains proper nouns.',
         link: 'https://www.stylemanual.gov.au/structuring-content/headings',
-        check: function(text, headingLines, listLines) {
+        check: function(text, headingLines, listLines, boldLines, italicLines, tableLines) {
             const issues = [];
 
             // Words that are typically lowercase in title case (so don't count them)
@@ -857,7 +857,14 @@ const RULES = [
 
                 const isLikelyHeading = words.length >= 3 && words.length <= 12 && !endsWithPunctuation && !isAllCaps;
 
-                if (isLikelyHeading || hasHeadingStyle) {
+                // In Word mode (boldLines is defined): heuristic only fires for bold/italic paragraphs
+                // that are not inside table cells. In browser mode: use heuristic as-is.
+                const inWordMode = boldLines != null;
+                const isInTable = tableLines && tableLines.has(lineIndex);
+                const isBoldOrItalic = (boldLines && boldLines.has(lineIndex)) || (italicLines && italicLines.has(lineIndex));
+                const heuristicOk = inWordMode ? (!isInTable && isBoldOrItalic) : true;
+
+                if (hasHeadingStyle || (isLikelyHeading && heuristicOk)) {
                     // Count words that start with capitals (excluding first word and small words)
                     let capitalizedCount = 0;
                     let significantWords = 0;
@@ -911,7 +918,7 @@ const RULES = [
         category: 'headings',
         description: 'Longer headings are more difficult to read and can be confusing. They might also suggest that you have too many ideas in a section.',
         link: 'https://www.stylemanual.gov.au/structuring-content/headings',
-        check: function(text, headingLines, listLines) {
+        check: function(text, headingLines, listLines, boldLines, italicLines, tableLines) {
             const issues = [];
             const lines = text.split('\n');
             let position = 0;
@@ -943,7 +950,12 @@ const RULES = [
                 // or if it has a Word heading style applied
                 const isLikelyHeading = words.length >= 3 && words.length <= 20 && !endsWithPunctuation;
 
-                if (isLikelyHeading || hasHeadingStyle) {
+                const inWordMode = boldLines != null;
+                const isInTable = tableLines && tableLines.has(lineIndex);
+                const isBoldOrItalic = (boldLines && boldLines.has(lineIndex)) || (italicLines && italicLines.has(lineIndex));
+                const heuristicOk = inWordMode ? (!isInTable && isBoldOrItalic) : true;
+
+                if (hasHeadingStyle || (isLikelyHeading && heuristicOk)) {
                     if (trimmed.length > 70) {
                         const issue = {
                             found: trimmed,
@@ -970,7 +982,7 @@ const RULES = [
         category: 'headings',
         description: 'Don\'t use a full stop to end headings. Even if the heading is a sentence, it doesn\'t need a full stop at the end.',
         link: 'https://www.stylemanual.gov.au/structuring-content/headings',
-        check: function(text, headingLines, listLines) {
+        check: function(text, headingLines, listLines, boldLines, italicLines, tableLines) {
             const issues = [];
             const lines = text.split('\n');
             let position = 0;
@@ -1025,7 +1037,12 @@ const RULES = [
                 if (endsWithFullStop) {
                     const isLikelyHeading = words.length >= 2 && words.length <= 10 && !/^[a-z]/.test(trimmed);
 
-                    if (isLikelyHeading || hasHeadingStyle) {
+                    const inWordMode = boldLines != null;
+                    const isInTable = tableLines && tableLines.has(lineIndex);
+                    const isBoldOrItalic = (boldLines && boldLines.has(lineIndex)) || (italicLines && italicLines.has(lineIndex));
+                    const heuristicOk = inWordMode ? (!isInTable && isBoldOrItalic) : true;
+
+                    if (hasHeadingStyle || (isLikelyHeading && heuristicOk)) {
                         const replacement = trimmed.slice(0, -1);
                         const issue = {
                             found: trimmed,
@@ -1053,7 +1070,7 @@ const RULES = [
         category: 'headings',
         description: 'Don\'t write headings in all capital letters as users could misread words. For example, \'ACT\' could be \'act\' (the verb) rather than the initialism for the Australian Capital Territory.',
         link: 'https://www.stylemanual.gov.au/structuring-content/headings',
-        check: function(text, headingLines, listLines) {
+        check: function(text, headingLines, listLines, boldLines, italicLines, tableLines) {
             const issues = [];
             const lines = text.split('\n');
             let position = 0;
@@ -1085,7 +1102,12 @@ const RULES = [
                 // Consider it a heading if it's 2-12 words, all caps, or has a heading style and is all caps
                 const isLikelyHeading = isAllCaps && words.length >= 2 && words.length <= 12;
 
-                if (isAllCaps && (isLikelyHeading || hasHeadingStyle)) {
+                const inWordMode = boldLines != null;
+                const isInTable = tableLines && tableLines.has(lineIndex);
+                const isBoldOrItalic = (boldLines && boldLines.has(lineIndex)) || (italicLines && italicLines.has(lineIndex));
+                const heuristicOk = inWordMode ? (!isInTable && isBoldOrItalic) : true;
+
+                if (isAllCaps && (hasHeadingStyle || (isLikelyHeading && heuristicOk))) {
                     // Convert to sentence case
                     const sentenceCase = toSentenceCase(trimmed);
                     const issue = {
@@ -1114,7 +1136,7 @@ const RULES = [
         category: 'headings',
         description: 'Is this a heading? If so, apply a heading style. Heading styles make documents accessible and allow readers to navigate using the headings panel.',
         link: 'https://www.stylemanual.gov.au/structuring-content/headings',
-        check: function(text, headingLines, listLines, boldLines) {
+        check: function(text, headingLines, listLines, boldLines, italicLines, tableLines) {
             const issues = [];
             if (!boldLines || boldLines.size === 0) return issues;
 
@@ -1133,9 +1155,10 @@ const RULES = [
                 const isBold = boldLines.has(lineIndex);
                 const hasHeadingStyle = headingLines && headingLines.has(lineIndex);
                 const isListItem = listLines && listLines.has(lineIndex);
+                const isInTable = tableLines && tableLines.has(lineIndex);
 
-                // Only flag entirely-bold lines that don't already have a heading style
-                if (!isBold || hasHeadingStyle || isListItem) {
+                // Only flag entirely-bold lines that don't already have a heading style and aren't in a table
+                if (!isBold || hasHeadingStyle || isListItem || isInTable) {
                     position += line.length + 1;
                     continue;
                 }
@@ -3058,10 +3081,10 @@ function numberToWords(num) {
 // headingLines: optional Set of line indices with a Word heading style applied
 // listLines: optional Set of line indices that are list items (bullets/numbered)
 // boldLines: optional Set of line indices where the entire paragraph is bold
-function checkText(text, headingLines, listLines, boldLines) {
+function checkText(text, headingLines, listLines, boldLines, italicLines, tableLines) {
     const allIssues = [];
     for (const rule of RULES) {
-        const issues = rule.check(text, headingLines, listLines, boldLines);
+        const issues = rule.check(text, headingLines, listLines, boldLines, italicLines, tableLines);
         allIssues.push(...issues);
     }
     // Sort by position in text

@@ -67,7 +67,7 @@ async function scanDocument() {
             let fullText = '';
             for (let i = 0; i < paragraphs.items.length; i++) {
                 paragraphs.items[i].load('text,style,isListItem');
-                paragraphs.items[i].font.load('bold');
+                paragraphs.items[i].font.load('bold,italic');
             }
             await context.sync();
 
@@ -81,6 +81,8 @@ async function scanDocument() {
             const listLines = new Set();
             // Build a set of line indices where the entire paragraph is bold
             const boldLines = new Set();
+            // Build a set of line indices where the entire paragraph is italic
+            const italicLines = new Set();
             for (let i = 0; i < paragraphs.items.length; i++) {
                 const para = paragraphs.items[i];
                 const style = (para.style || '').toLowerCase();
@@ -90,14 +92,27 @@ async function scanDocument() {
                 if (para.isListItem) {
                     listLines.add(i);
                 }
-                // font.bold === true means all text in the paragraph is bold (null = mixed)
+                // font.bold/italic === true means all text in the paragraph has that formatting (null = mixed)
                 if (para.font.bold === true) {
                     boldLines.add(i);
+                }
+                if (para.font.italic === true) {
+                    italicLines.add(i);
+                }
+            }
+
+            // Detect paragraphs inside table cells (parentTableCellOrNullObject requires a separate sync)
+            const tableLines = new Set();
+            const tableCellRefs = paragraphs.items.map(p => p.parentTableCellOrNullObject);
+            await context.sync();
+            for (let i = 0; i < paragraphs.items.length; i++) {
+                if (!tableCellRefs[i].isNullObject) {
+                    tableLines.add(i);
                 }
             }
 
             // Run style checks
-            allIssues = checkText(fullText, headingLines, listLines, boldLines);
+            allIssues = checkText(fullText, headingLines, listLines, boldLines, italicLines, tableLines);
 
             // Filter out rules the user has chosen to ignore for this session
             if (ignoredRuleIds.size > 0) {
