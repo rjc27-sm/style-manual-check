@@ -270,7 +270,8 @@ const RULES = [
         link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/punctuation/dashes',
         check: function(text) {
             const issues = [];
-            const regex = /(\w)—(\w)/g;
+            // \s* catches both unspaced (word—word) and spaced (word — word) em dashes
+            const regex = /(\w)\s*—\s*(\w)/g;
             let match;
             while ((match = regex.exec(text)) !== null) {
                 const replacement = match[1] + ' – ' + match[2];
@@ -2851,7 +2852,8 @@ const RULES = [
         link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/punctuation/colons',
         check: function(text) {
             const issues = [];
-            const regex = /:\s+([A-Z][a-z]+)/g;
+            // Use [ \t]+ (not \s+) so the regex never bridges line breaks (\r or \n)
+            const regex = /:[  \t]+([A-Z][a-z]+)/g;
             // Proper nouns and other words that are legitimately capitalised
             const properNouns = new Set([
                 'I',
@@ -2871,12 +2873,17 @@ const RULES = [
                 // Skip proper nouns
                 if (properNouns.has(word)) continue;
 
-                // Skip if the colon is at the end of a line (lead-in to a list or next paragraph)
-                if (match[0].includes('\n')) continue;
+                // Skip if the match bridges a line break (\r or \n) — safety net for any
+                // line endings that slip through the [ \t]+ regex guard above
+                if (/[\r\n]/.test(match[0])) continue;
 
-                // Skip if the colon follows a label word (Step 2:, Phase 1:, Note:, etc.)
+                // Skip if the word is part of a CamelCase identifier (e.g. ReadWriteDocument)
+                const charAfterWord = text[match.index + match[0].length];
+                if (charAfterWord && /[A-Z]/.test(charAfterWord)) continue;
+
+                // Skip if the colon follows a label word (Step 2:, Phase 1:, Option A:, Note:, etc.)
                 const before = text.substring(Math.max(0, match.index - 60), match.index);
-                if (/\b(step|phase|stage|part|section|note|example|exercise|task|chapter|item|figure|table|exhibit|rule|action|activity|objective|outcome|principle|requirement|tip|warning|caution|appendix|schedule|attachment|annex)\s*[\d\w]*\s*$/i.test(before)) continue;
+                if (/\b(step|phase|stage|part|section|note|example|exercise|task|chapter|item|option|figure|table|exhibit|rule|action|activity|objective|outcome|principle|requirement|tip|warning|caution|appendix|schedule|attachment|annex)\s*[\d\w]*\s*$/i.test(before)) continue;
 
                 // Skip if followed by ? (question after colon)
                 const afterPos = match.index + match[0].length;
