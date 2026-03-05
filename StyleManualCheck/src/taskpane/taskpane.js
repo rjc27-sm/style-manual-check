@@ -12,7 +12,8 @@ let allIssues = [];
 let fixedCount = 0;
 let changesSinceLastScan = 0;
 let currentFilter = 'all';
-let ignoredRuleIds = new Set(); // Rule IDs the user has chosen to ignore for this session
+let ignoredGroups = new Set();       // Group IDs ignored via "Ignore all" — persist across rescans
+let ignoredFingerprints = new Set(); // Per-issue fingerprints ignored via "Ignore" — persist across rescans
 
 // DOM elements cache
 const elements = {};
@@ -114,9 +115,14 @@ async function scanDocument() {
             // Run style checks
             allIssues = checkText(fullText, headingLines, listLines, boldLines, italicLines, tableLines);
 
-            // Filter out rules the user has chosen to ignore for this session
-            if (ignoredRuleIds.size > 0) {
-                allIssues = allIssues.filter(i => !ignoredRuleIds.has(i.rule.id));
+            // Filter out issues the user has chosen to ignore for this session
+            if (ignoredGroups.size > 0 || ignoredFingerprints.size > 0) {
+                allIssues = allIssues.filter(i => {
+                    const gid = i.groupId || i.rule.id;
+                    if (ignoredGroups.has(gid)) return false;
+                    if (ignoredFingerprints.has(i.rule.id + ':' + i.found)) return false;
+                    return true;
+                });
             }
 
             // Assign IDs and calculate occurrence indices for navigation
@@ -128,7 +134,9 @@ async function scanDocument() {
                 const textToFind = issue.searchText || issue.found;
                 const textBefore = fullText.substring(0, issue.position);
                 const escapedFound = textToFind.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                const matches = textBefore.match(new RegExp(escapedFound, 'gi'));
+                // Use word boundaries in the count when the rule matched whole words only
+                const countPattern = issue.matchWholeWord ? '\\b' + escapedFound + '\\b' : escapedFound;
+                const matches = textBefore.match(new RegExp(countPattern, 'gi'));
                 issue.occurrenceIndex = matches ? matches.length : 0;
             });
 
@@ -241,8 +249,10 @@ function createIssueCard(issue) {
     // Count how many fixable issues of the same type exist (for Fix all)
     const fixableOfType = allIssues.filter(i => i.rule.id === issue.rule.id && i.autoFix !== undefined);
     const sameTypeCount = fixableOfType.length;
-    // Count all issues of this type (for Ignore all)
-    const totalOfType = allIssues.filter(i => i.rule.id === issue.rule.id).length;
+    // Count issues in the same ignore group (for Ignore all)
+    // Watch-word issues group by word, other rules group by rule id
+    const issueGroupId = issue.groupId || issue.rule.id;
+    const totalOfType = allIssues.filter(i => (i.groupId || i.rule.id) === issueGroupId).length;
 
     // Build card HTML
     let html = `
@@ -274,9 +284,9 @@ function createIssueCard(issue) {
     if (canAutoFix && sameTypeCount > 1) {
         html += `<button class="btn btn-fix-all" data-action="fixall" data-ruleid="${issue.rule.id}">Fix all ${sameTypeCount}</button>`;
     }
-    // Add "Ignore all" button if there are multiple instances of this rule type
+    // Add "Ignore all" button if there are multiple instances in this group
     if (totalOfType > 1) {
-        html += `<button class="btn btn-ignore-all" data-action="ignoreall" data-ruleid="${issue.rule.id}">Ignore all ${totalOfType}</button>`;
+        html += `<button class="btn btn-ignore-all" data-action="ignoreall" data-ruleid="${issue.rule.id}" data-groupid="${escapeHtml(issueGroupId)}">Ignore all ${totalOfType}</button>`;
     }
 
     html += '</div>';
@@ -284,14 +294,14 @@ function createIssueCard(issue) {
 
     // Attach event handlers
     card.querySelectorAll('button[data-action]').forEach(btn => {
-        btn.onclick = () => handleAction(btn.dataset.action, btn.dataset.id, btn.dataset.ruleid, btn.dataset.index, btn.dataset.url);
+        btn.onclick = () => handleAction(btn.dataset.action, btn.dataset.id, btn.dataset.ruleid, btn.dataset.index, btn.dataset.url, btn.dataset.groupid);
     });
 
     return card;
 }
 
 // Handle button actions
-async function handleAction(action, issueId, ruleId, replacementIndex, url) {
+async function handleAction(action, issueId, ruleId, replacementIndex, url, groupId) {
     switch (action) {
         case 'accept':
             const issue = allIssues.find(i => i.id === issueId);
@@ -312,7 +322,7 @@ async function handleAction(action, issueId, ruleId, replacementIndex, url) {
             await fixAllOfType(ruleId);
             break;
         case 'ignoreall':
-            ignoreAllOfType(ruleId);
+            ignoreAllOfType(groupId || ruleId);
             break;
         case 'openlink':
             if (url) Office.context.ui.openBrowserWindow(url);
@@ -403,7 +413,7 @@ async function useReplacement(issue, replacementIndex) {
         await Word.run(async (context) => {
             const searchResults = context.document.body.search(issue.found, {
                 matchCase: true,
-                matchWholeWord: false
+                matchWholeWord: issue.matchWholeWord || false
             });
             searchResults.load('items');
             await context.sync();
@@ -475,19 +485,23 @@ async function fixAllOfType(ruleId) {
     }
 }
 
-// Ignore an issue (remove from list)
+// Ignore an issue (remove from list), remembering it across rescans by fingerprint
 function ignoreIssue(issueId) {
+    const issue = allIssues.find(i => i.id === issueId);
+    if (issue) {
+        ignoredFingerprints.add(issue.rule.id + ':' + issue.found);
+    }
     const nextIssue = getNextIssue(issueId);
     allIssues = allIssues.filter(i => i.id !== issueId);
     displayResults();
     if (nextIssue) goToIssue(nextIssue);
 }
 
-// Ignore all issues of a rule type, persisting across rescans for this session
-function ignoreAllOfType(ruleId) {
-    const nextIssue = getNextIssue(allIssues.filter(i => i.rule.id === ruleId).map(i => i.id));
-    ignoredRuleIds.add(ruleId);
-    allIssues = allIssues.filter(i => i.rule.id !== ruleId);
+// Ignore all issues in a group, persisting across rescans for this session
+function ignoreAllOfType(groupId) {
+    const nextIssue = getNextIssue(allIssues.filter(i => (i.groupId || i.rule.id) === groupId).map(i => i.id));
+    ignoredGroups.add(groupId);
+    allIssues = allIssues.filter(i => (i.groupId || i.rule.id) !== groupId);
     displayResults();
     if (nextIssue) goToIssue(nextIssue);
 }
@@ -500,7 +514,7 @@ async function goToIssue(issue) {
             const textToFind = issue.searchText || issue.found;
             const searchResults = context.document.body.search(textToFind, {
                 matchCase: true,
-                matchWholeWord: false
+                matchWholeWord: issue.matchWholeWord || false
             });
             searchResults.load('items');
             await context.sync();

@@ -445,7 +445,6 @@ export const WATCH_WORDS = {
     "comprehensive": "Consider using 'full', 'complete', 'broad' or 'all-round'",
     "consequence": "Consider using 'result'",
     "consequently": "Consider using 'so'",
-    "currently": "Consider using 'now', or delete",
     "demonstrate": "Consider using 'show'",
     "determine": "Consider using 'decide' or 'find out'",
     "discontinue": "Consider using 'stop' or 'end'",

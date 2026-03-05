@@ -857,6 +857,8 @@ const RULES = [
 
                 const isLikelyHeading = words.length >= 3 && words.length <= 12 && !endsWithPunctuation && !isAllCaps;
 
+                // In Word mode (boldLines is defined): heuristic only fires for bold/italic paragraphs
+                // that are not inside table cells. In browser mode: use heuristic as-is.
                 const inWordMode = boldLines != null;
                 const isInTable = tableLines && tableLines.has(lineIndex);
                 const isBoldOrItalic = (boldLines && boldLines.has(lineIndex)) || (italicLines && italicLines.has(lineIndex));
@@ -1127,6 +1129,7 @@ const RULES = [
             return issues;
         }
     },
+
 
     // ==================== LATIN ABBREVIATIONS ====================
     {
@@ -1401,6 +1404,8 @@ const RULES = [
                         suggestion: suggestion,
                         replacements: replacements,
                         position: match.index,
+                        matchWholeWord: true,
+                        groupId: 'watch-words:' + match[0].toLowerCase(),
                         rule: this
                     });
                 }
@@ -2027,6 +2032,32 @@ const RULES = [
 
             for (let i = 0; i < lines.length; i++) {
                 const line = lines[i];
+
+                // Heading lines always break a list block and are never list items
+                if (headingLines && headingLines.has(i)) {
+                    if (listItems.length >= 2) {
+                        const capsCount = listItems.filter(item => item.startsWithCapital).length;
+                        const lowerCount = listItems.filter(item => item.startsWithLower).length;
+                        if (capsCount > 0 && lowerCount > 0) {
+                            const shouldBeCaps = capsCount > lowerCount;
+                            for (const item of listItems) {
+                                if (shouldBeCaps && item.startsWithLower) {
+                                    issues.push({ found: item.text.substring(0, Math.min(30, item.text.length)) + (item.text.length > 30 ? '...' : ''), searchText: item.text.substring(0, Math.min(30, item.text.length)), suggestion: 'Other items start with capitals', position: item.position, rule: this });
+                                } else if (!shouldBeCaps && item.startsWithCapital) {
+                                    const firstWord = item.text.split(/\s+/)[0];
+                                    const likelyProperNoun = /^[A-Z][a-z]+$/.test(firstWord) && ['Australia', 'Australian', 'Government', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday', 'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].includes(firstWord);
+                                    if (!likelyProperNoun) {
+                                        issues.push({ found: item.text.substring(0, Math.min(30, item.text.length)) + (item.text.length > 30 ? '...' : ''), searchText: item.text.substring(0, Math.min(30, item.text.length)), suggestion: 'Other items start with lowercase', position: item.position, rule: this });
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    listItems = [];
+                    currentPos += line.length + 1;
+                    continue;
+                }
+
                 const match = bulletPattern.exec(line);
                 const isWordList = !match && listLines && listLines.has(i);
 
@@ -2057,6 +2088,7 @@ const RULES = [
                                 if (shouldBeCaps && item.startsWithLower) {
                                     issues.push({
                                         found: item.text.substring(0, Math.min(30, item.text.length)) + (item.text.length > 30 ? '...' : ''),
+                                        searchText: item.text.substring(0, Math.min(30, item.text.length)),
                                         suggestion: 'Other items start with capitals',
                                         position: item.position,
                                         rule: this
@@ -2072,6 +2104,7 @@ const RULES = [
                                     if (!likelyProperNoun) {
                                         issues.push({
                                             found: item.text.substring(0, Math.min(30, item.text.length)) + (item.text.length > 30 ? '...' : ''),
+                                            searchText: item.text.substring(0, Math.min(30, item.text.length)),
                                             suggestion: 'Other items start with lowercase',
                                             position: item.position,
                                             rule: this
@@ -2098,6 +2131,7 @@ const RULES = [
                         if (shouldBeCaps && item.startsWithLower) {
                             issues.push({
                                 found: item.text.substring(0, Math.min(30, item.text.length)) + (item.text.length > 30 ? '...' : ''),
+                                searchText: item.text.substring(0, Math.min(30, item.text.length)),
                                 suggestion: 'Other items start with capitals',
                                 position: item.position,
                                 rule: this
@@ -2112,6 +2146,7 @@ const RULES = [
                             if (!likelyProperNoun) {
                                 issues.push({
                                     found: item.text.substring(0, Math.min(30, item.text.length)) + (item.text.length > 30 ? '...' : ''),
+                                    searchText: item.text.substring(0, Math.min(30, item.text.length)),
                                     suggestion: 'Other items start with lowercase',
                                     position: item.position,
                                     rule: this
@@ -2142,6 +2177,19 @@ const RULES = [
 
             for (let i = 0; i < lines.length; i++) {
                 const line = lines[i];
+
+                // Heading lines always break a list block and are never list items
+                if (headingLines && headingLines.has(i)) {
+                    if (listItems.length >= 2) {
+                        listItems[listItems.length - 1].isLast = true;
+                        checkListPunctuation(listItems, leadInLine, issues, this);
+                    }
+                    leadInLine = line.trim();
+                    listItems = [];
+                    currentPos += line.length + 1;
+                    continue;
+                }
+
                 const match = bulletPattern.exec(line);
                 const isWordList = !match && listLines && listLines.has(i);
 
@@ -2572,7 +2620,7 @@ const RULES = [
         category: 'numbers-and-measurements',
         description: 'Don\'t start a sentence with a numeral. Write the number in words, or rephrase the sentence.',
         link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/numbers-and-measurements/choosing-numerals-or-words',
-        check: function(text) {
+        check: function(text, headingLines, listLines, boldLines, italicLines, tableLines) {
             const issues = [];
             // Match numeral at start of sentence (after . ! ? or start of text, followed by space and capital context)
             const regex = /(?:^|[.!?]\s+)(\d+)(?:\s+[a-zA-Z])/gm;
@@ -2581,6 +2629,13 @@ const RULES = [
                 const num = match[1];
                 const numInt = parseInt(num);
                 const pos = match.index + match[0].indexOf(num);
+
+                // Skip numerals in table cells
+                if (tableLines && tableLines.size > 0) {
+                    const lineIndex = text.substring(0, pos).split('\n').length - 1;
+                    if (tableLines.has(lineIndex)) continue;
+                }
+
                 const before = text.substring(Math.max(0, pos - 30), pos);
                 const after = text.substring(pos + num.length, pos + num.length + 20);
 
@@ -2812,7 +2867,7 @@ const RULES = [
         category: 'punctuation',
         description: 'Use a lowercase letter after a colon (unless the word is a proper noun).',
         link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/punctuation/colons',
-        check: function(text) {
+        check: function(text, headingLines) {
             const issues = [];
             // Use [ \t]+ (not \s+) so the regex never bridges line breaks (\r or \n)
             const regex = /:[  \t]+([A-Z][a-z]+)/g;
@@ -2839,6 +2894,16 @@ const RULES = [
                 // line endings that slip through the [ \t]+ regex guard above
                 if (/[\r\n]/.test(match[0])) continue;
 
+                // Skip if the colon is at the very start of a line (paragraph starting with ':')
+                const charBeforeColon = match.index > 0 ? text[match.index - 1] : '\n';
+                if (/[\r\n]/.test(charBeforeColon)) continue;
+
+                // Skip if the match falls within a heading line
+                if (headingLines && headingLines.size > 0) {
+                    const lineIndex = text.substring(0, match.index).split('\n').length - 1;
+                    if (headingLines.has(lineIndex)) continue;
+                }
+
                 // Skip if the word is part of a CamelCase identifier (e.g. ReadWriteDocument)
                 const charAfterWord = text[match.index + match[0].length];
                 if (charAfterWord && /[A-Z]/.test(charAfterWord)) continue;
@@ -2852,10 +2917,18 @@ const RULES = [
                 const after = text.substring(afterPos, afterPos + 50);
                 if (/^[a-z\s]*\?/.test(after)) continue;
 
+                // Skip if the flagged word is the start of a multi-word proper-noun phrase
+                // (the very next word also starts with a capital, e.g. "Style Manual", "Commonwealth Bank")
+                if (/^ [A-Z]/.test(after)) continue;
+
                 const lower = word[0].toLowerCase() + word.slice(1);
+
+                // Build a short context snippet so the card shows exactly where the colon is
+                const ctxSnippet = before.replace(/[\r\n]+/g, ' ').replace(/\s+/g, ' ').trim();
+                const ctxShort = ctxSnippet.length > 40 ? '\u2026' + ctxSnippet.slice(-40) : ctxSnippet;
                 issues.push({
                     found: word,
-                    suggestion: 'Use a lowercase letter after a colon (unless a proper noun). Try \'' + lower + '\'',
+                    suggestion: 'Use lowercase after a colon (unless a proper noun). Found: \u2018' + ctxShort + ': ' + word + '\u2026\u2019 \u2192 try \u2018' + lower + '\'',
                     autoFix: lower,
                     position: match.index + match[0].indexOf(word),
                     rule: this
