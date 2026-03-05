@@ -73,8 +73,8 @@
 | `list-trailing-comma` | Comma at end of list item | list items ending with ',' — autofix removes trailing ',' |
 | `list-and-or` | 'And' or 'or' at end of list item | list items ending with 'and'/'or' — autofix removes trailing word (and any preceding comma/semicolon) |
 | `list-etc` | 'Etc.' in list | 'etc.' at end of a list item (advisory only) |
-| `list-inconsistent-caps` | Inconsistent capitalisation in list | mixed upper/lowercase list item starts (advisory only) |
-| `list-inconsistent-punctuation` | Inconsistent or incorrect punctuation in list | mixed full stop usage across list items (advisory only) |
+| `list-inconsistent-caps` | Inconsistent capitalisation in list | mixed upper/lowercase list item starts (advisory only); skips heading lines; uses searchText for reliable navigation |
+| `list-inconsistent-punctuation` | Inconsistent or incorrect punctuation in list | mixed full stop usage across list items (advisory only); skips heading lines |
 
 ---
 
@@ -89,7 +89,7 @@
 | `numbers-percent-spelling` | Percent with numeral | '85 per cent' / '85 percent' → '85%' |
 | `numbers-percent-space` | Space before percentage sign | '15 %' → '15%' |
 | `numbers-leading-zero` | Missing leading zero | '.5' → '0.5' |
-| `numbers-start-sentence` | Numeral at start of sentence | sentence starting with a numeral |
+| `numbers-start-sentence` | Numeral at start of sentence | sentence starting with a numeral; skips table cells |
 | `numbers-comma-thousands` | Missing comma in large number | '2500' → '2,500' |
 | `numbers-measurement-words` | Word number with unit symbol | 'five km' → '5 km' |
 | `numbers-imperial-units` | Imperial units | miles, feet, pounds, etc. → metric alternatives |
@@ -110,7 +110,7 @@
 | `punct-comma-inside-quotes` | Comma inside closing quotation mark | comma placed incorrectly inside quotes |
 | `punct-serial-comma` | Serial comma (Oxford comma) | unnecessary Oxford commas |
 | `punct-ampersand` | Ampersand in body text | '&' in body text → 'and' |
-| `punct-capital-after-colon` | Capital letter after colon | 'word: Capital' → 'word: lowercase' |
+| `punct-capital-after-colon` | Capital letter after colon | 'word: Capital' → 'word: lowercase'; skips heading lines, paragraph-initial colons, and multi-word proper-noun phrases (for example, ': Style Manual') |
 
 ---
 
@@ -119,7 +119,7 @@
 | ID | Name | Checks for |
 |---|---|---|
 | `readability-sentence-length` | Long sentence | sentences over 25 words |
-| `watch-words` | Watch words | plain language alternatives for jargon (single words) |
+| `watch-words` | Watch words | plain language alternatives for jargon (single words); whole-word matching only; 'Ignore all' is per-word not per-category |
 | `wordy-phrases` | Wordy phrase | plain language alternatives for multi-word phrases |
 
 ---

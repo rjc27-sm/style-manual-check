@@ -101,17 +101,17 @@ The add-in's own interface text must follow Style Manual rules:
 3. Build `headingLines`, `listLines`, `boldLines`, and `italicLines` Sets from the loaded properties
 4. Detect table-cell paragraphs via `parentTableCellOrNullObject` (second sync) → build `tableLines` Set
 5. Call `checkText(fullText, headingLines, listLines, boldLines, italicLines, tableLines)` to get issues
-6. Filter out session-ignored rule IDs
-7. Calculate `occurrenceIndex` for each issue (count of same text before that position)
+6. Filter out session-ignored issues: remove any issue whose `groupId || rule.id` is in `ignoredGroups`, or whose `rule.id + ':' + found` fingerprint is in `ignoredFingerprints`
+7. Calculate `occurrenceIndex` for each issue (count of same text before that position in the full text); uses `\b` word-boundary pattern when `issue.matchWholeWord` is true
 8. Render issue cards
 
 **Per-issue actions:**
-- `Accept` — search for `issue.searchText || issue.found`, replace the correct occurrence with `issue.autoFix`; optionally apply `Heading 2` style if `issue.applyHeadingStyle` is set; then auto-navigate to the next issue
-- `Use '[word]'` — apply the first entry in `issue.replacements` (watch words / wordy phrases), preserving case; then auto-navigate to the next issue
-- `Ignore` — remove the single issue from the list; auto-navigate to the next issue
-- `Go to issue` — search for `issue.searchText || issue.found` and select the correct occurrence by index
+- `Accept` — search for `issue.searchText || issue.found` (with `matchWholeWord: issue.matchWholeWord`), replace the correct occurrence with `issue.autoFix`; optionally apply `Heading 2` style if `issue.applyHeadingStyle` is set; then auto-navigate to the next issue
+- `Use '[word]'` — apply the first entry in `issue.replacements` (watch words / wordy phrases), preserving case (uses `matchWholeWord: issue.matchWholeWord`); then auto-navigate to the next issue
+- `Ignore` — stores a fingerprint (`rule.id + ':' + found`) in `ignoredFingerprints` (persists across rescans); removes issue from list; auto-navigates to next issue
+- `Go to issue` — search for `issue.searchText || issue.found` (with `matchWholeWord: issue.matchWholeWord`) and select the correct occurrence by index
 - `Fix all N` — apply autofix for all issues of that rule ID; then auto-navigate to the first remaining issue
-- `Ignore all N` — add rule ID to `ignoredRuleIds` Set (persists for the session, including after rescan); auto-navigate to first remaining issue
+- `Ignore all N` — add `issue.groupId || issue.rule.id` to `ignoredGroups` Set (persists across rescans); for watch-words this is `'watch-words:<word>'` so it suppresses only that word, not the whole category; auto-navigate to first remaining issue
 
 **Rescan banner:** shown when `changesSinceLastScan >= 5` and issues remain, because occurrence indices drift as text changes.
 
@@ -139,6 +139,8 @@ Each issue object has:
 - `description` — (optional) per-issue override of rule description
 - `searchText` — (optional) full text used for the Word search and as the replace target; `found` is used as the short display text only. Used when `found` alone is too common to search safely (for example, list rules store the full list item here so the search is specific)
 - `applyHeadingStyle` — (optional) boolean; if true, `acceptFix` also applies `Heading 2` style
+- `matchWholeWord` — (optional) boolean; if true, Word searches use `matchWholeWord: true` and `occurrenceIndex` is counted with `\b` boundaries. Set by watch-words to prevent navigation landing on substrings (for example, 'require' within 'requirements')
+- `groupId` — (optional) string grouping key for `Ignore all`; defaults to `rule.id` when absent. Watch-word issues set this to `'watch-words:<matched-word-lowercase>'` so each word is ignored independently
 
 **Important:** `autoFix === undefined` means no autofix. `autoFix === ''` is a valid deletion fix. When `searchText` is set, `autoFix` replaces the full `searchText` match (not just `found`).
 
@@ -187,10 +189,22 @@ Skips indented bullets and sentence-ending list lead-ins (for example, 'Exceptio
 Always replaces with 'for example,' (including trailing comma).
 
 ### list-inconsistent-punctuation / list-inconsistent-caps
-Use `searchText` on all issues so 'Go to issue' works.
+Both rules skip lines present in `headingLines` at the top of their line loop — the line breaks the current list block and is never treated as a list item. This prevents numbered headings such as `'11. Licensing and source code'` from being mistaken for a numbered list item (the `\d+[.)]` pattern in `bulletPattern` would otherwise match). `list-inconsistent-caps` also sets `searchText` (first 30 chars, no trailing `...`) on every issue so 'Go to issue' works reliably for items longer than 30 characters.
 
 ### punct-capital-after-colon
-Uses `[ \t]+` (not `\s+`) to prevent cross-line matches. Also skips label words (Step, Phase, Option, Note, etc.) and CamelCase identifiers.
+Uses `[ \t]+` (not `\s+`) to prevent cross-line matches. Also skips:
+- Label words before the colon (Step, Phase, Option, Note, etc.)
+- CamelCase identifiers immediately after the word
+- Matches within heading lines (`headingLines`)
+- Colons at the very start of a paragraph (char before `:` is `\n`)
+- Multi-word proper-noun phrases: if the character immediately after the flagged word is a space followed by another capital letter (for example, `': Style Manual'` → 'Manual' follows 'Style'), the match is skipped
+The `suggestion` text includes a context snippet of up to 40 characters before the colon so the user can locate the match without clicking 'Go to issue'.
+
+### watch-words
+All issues carry `matchWholeWord: true` and `groupId: 'watch-words:<word-lowercase>'`. This means:
+- Navigation (Go to issue, Accept, Use) will not land on substrings (for example, 'require' won't match inside 'requirements')
+- 'Ignore all N' suppresses only that specific word for the session, not all watch-word issues
+- 'currently' was removed from the WATCH_WORDS dictionary (triggered too often in normal writing)
 
 ### punct-em-dash
 Catches both unspaced (`word—word`) and spaced (`word — word`) em dashes.
