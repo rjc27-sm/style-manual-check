@@ -2,117 +2,145 @@
 
 A tool to check documents against the [Australian Government Style Manual](https://www.stylemanual.gov.au).
 
-## Current status
-
-The Microsoft Word add-in is complete and can be sideloaded for testing. A browser-based checker is also available at **[rjc27-sm.github.io/style-manual-check](https://rjc27-sm.github.io/style-manual-check/)** — no installation needed.
-
-## Microsoft Word add-in
-
-The Word add-in is located in the `StyleManualCheck/` directory. To use it:
-
-1. Open Word and go to Insert → Add-ins → Upload My Add-in
-2. Browse to `StyleManualCheck/dist/manifest.xml`
-3. Click 'Check document' in the task pane to scan for style issues
-4. Review and fix issues using the Accept, Ignore, and Go to issue buttons
-
-## Browser checker
-
-The easiest way to use the browser checker is the public URL — no installation or setup needed:
+## Try it now — no installation needed
 
 **[rjc27-sm.github.io/style-manual-check](https://rjc27-sm.github.io/style-manual-check/)**
 
-Or to run it locally:
+Paste or type text in the left panel and click 'Scan document'. Issues appear in the right panel with suggestions, links to the Style Manual, and one-click fixes.
 
-1. Serve `style-manual-check/` with a local web server (for example: `python -m http.server 8000`)
-2. Open http://localhost:8000/demo.html
-3. Edit or paste text in the left panel
-4. Click 'Scan document' to check for style issues
-5. Review suggestions in the right panel
+## Microsoft Word add-in
+
+Sideloading to Word desktop now requires setting up a trusted shared folder catalogue as well as access to the Add-ins feature. Users must place the manifest file in a shared network folder, then configure Word to trust that folder via File → Options → Trust Center → Trust Center Settings → Trusted Add-in Catalogs. The add-in then appears under Home → Add-ins → Advanced → Shared Folder. Alternatively, for Word on the web, users can select Home → Add-ins → More Settings → Upload My Add-in. Both methods are suitable only for development and testing, not production deployment.
 
 ## What it checks
 
-### Spelling (US → Australian)
-- -ize → -ise (organize → organise)
-- -yze → -yse (analyze → analyse)  
-- -or → -our (color → colour)
-- -er → -re (center → centre)
-- -ense → -ence (defense → defence)
-- Doubled consonants (traveled → travelled)
-- Other differences (gray → grey, aging → ageing)
+9 categories, 72 rules in the browser checker (73 in the Word add-in, which also checks for bold text that should have a heading style applied).
 
-### Common errors
-- 'would of' → 'would have'
-- 'irregardless' → 'regardless'
-- 'deep-seeded' → 'deep-seated'
-- 'mute point' → 'moot point'
-- And more...
+### Spelling (9 rules)
+- US → Australian English: -ize → -ise (organize → organise), -yze → -yse (analyze → analyse)
+- -or → -our (color → colour), -er → -re (center → centre), -ense → -ence (defense → defence)
+- Doubled consonants (traveled → travelled, canceled → cancelled)
+- Other differences (gray → grey, aging → ageing, program → programme in some contexts)
+- Common errors: 'would of' → 'would have', 'irregardless' → 'regardless', 'deep-seeded' → 'deep-seated', 'mute point' → 'moot point'
+- Spelling: 'judgement' (not 'judgment', except in legal contexts)
 
-### Latin abbreviations
-- e.g. → for example
-- i.e. → that is
-- etc. → and so on
-- et al. → and others
-- N.B. → Note
-
-### Abbreviations
-- Missing full stops (eg → e.g.)
-- Extra full stops on contractions (Dr. → Dr, Mr. → Mr)
-- Extra full stops on acronyms (NSW. → NSW)
-- Spaced abbreviations (e. g. → e.g.)
-
-### Punctuation
-- Em dashes → spaced en dashes
-- Double quotes → single quotes
+### Punctuation (11 rules)
+- Em dashes → spaced en dashes (both spaced and unspaced em dashes)
+- Unspaced en dashes in sentences → spaced
+- Hyphens used as parenthetical dashes ( - ) → en dash ( – )
+- Hyphens in date ranges (2020-21) → en dashes (2020–21)
 - Double spaces after full stops
-- Ampersands in body text
-- Superscript ordinals (1ˢᵗ → 1st)
+- Double quotation marks → single quotation marks
+- Commas placed inside closing quotation marks
+- Serial (Oxford) commas
+- Ampersands in body text → 'and'
+- Spaced forward slashes (and / or → and/or)
+- Capital letters after colons
 
-### Dates and times
+### Dates and time (11 rules)
 - US date format (January 15, 2024 → 15 January 2024)
-- Ambiguous numeric dates
-- Time zone positioning (AEST 14:00 → 14:00 AEST)
+- Ambiguous numeric dates (12/03/2024)
+- Ordinals in dates (1st May → 1 May)
+- Apostrophes in decades (1980's → 1980s)
+- Commas after day names (Thursday, 31 December → Thursday 31 December)
+- Forward slashes in year spans (2018/19 → 2018–19)
+- Time zone before the time (AEST 13:45 → 13:45 AEST)
+- Ambiguous 12 am/pm (→ midnight/noon)
+- Full stops in times (10.30 am → 10:30 am)
+- Redundant am/pm qualifiers (8 am in the morning → 8 am)
+- Confusing 'bi' time terms (bimonthly, biweekly, biannual → be specific)
 
-### Headings
-- Title case headings (prompts user to check and use sentence case)
+### Headings (4–5 rules)
+- Title case headings (→ sentence case)
 - Full stops at end of headings
 - All caps headings
-- Long headings (over 8 words)
+- Headings over the recommended length
+- Bold text without a heading style applied (Word add-in only)
 
-### Numbers and measurements
+### Abbreviations (11 rules)
+- Latin abbreviations: e.g. → for example, i.e. → that is, etc. → and so on, et al. → and others, N.B. → Note
+- Full stops in month/day abbreviations (Jan. → Jan, Mon. → Mon)
+- Full stops in contractions, acronyms, and unit symbols (Dr. → Dr, NSW. → NSW, kg. → kg)
+- Pluralised unit symbols (5 kgs → 5 kg)
+- Apostrophes in abbreviation plurals (DVD's → DVDs)
+
+### Government terms (6 rules)
+- 'Commonwealth government' → 'Australian Government'
+- 'Minister of [portfolio]' → 'Minister for'
+- 'Secretary for [department]' → 'Secretary of'
+- Generic capitalised references: 'the Department', 'the Minister', 'the Agency', 'the Board', 'the Commission' → lowercase when used generically
+
+### Numbers and measurements (11 rules)
 - Use words for zero and one (0 → zero, 1 → one)
-- Use numerals for number words (two → 2, etc.)
-- Use word forms for ordinals 1st–9th (1st → first)
-- Percentages (85 per cent → 85%)
-- Imperial units (warns to use metric)
+- Number words two–ninety-nine → numerals
+- Ordinals 1st–9th → word forms (first–ninth)
+- Superscript ordinals (1ˢᵗ → 1st)
+- 'per cent' or 'percent' with a numeral → % (85 per cent → 85%)
+- Space before percentage sign (15 % → 15%)
+- Missing leading zero (.5 → 0.5)
+- Numeral at start of sentence
+- Missing thousands comma (2500 → 2,500)
+- Word number with unit symbol (five km → 5 km)
+- Imperial units (miles, feet, pounds, etc.) → prompt to use metric
 
-### Lists
-- No semicolons, commas, 'and' or 'or' at end of list items
-- No 'etc.' at end of lists
-- Consistent capitalisation and punctuation
+### Lists (6 rules)
+- Semicolons at end of list items
+- Commas at end of list items
+- 'And' or 'or' at end of list items
+- 'Etc.' in lists
+- Inconsistent capitalisation across list items
+- Inconsistent or incorrect punctuation across list items
+
+### Readability (3 rules)
+- Long sentences (over 25 words)
+- Watch words — jargon and overused terms with plain language alternatives (for example: 'utilise' → 'use', 'endeavour' → 'try', 'facilitate' → 'help')
+- Wordy phrases — multi-word phrases that can be simplified (for example: 'in order to' → 'to', 'prior to' → 'before')
 
 ## Project structure
 
 ```
 style-manual-check/               # Root project directory
 ├── LICENSE                       # CC BY-NC 4.0
-├── docs/                         # GitHub Pages browser checker
+├── docs/                         # GitHub Pages browser checker (public)
 │   ├── index.html                # Browser checker
-│   └── src/                      # Rule engine (73 rules)
+│   └── src/
+│       ├── rules.js              # 72 rules (all except heading-bold-not-styled)
+│       └── spellings.js          # US → Australian English word lists
 ├── style-manual-check/           # Browser demo source + documentation
-│   ├── demo.html                 # Browser demo for local testing
-│   ├── src/                      # Rule engine source (older copy)
-│   ├── docs/                     # Technical documentation
 │   ├── CLAUDE.md                 # Project context for Claude Code
-│   └── README.md                 # This file
+│   ├── README.md                 # This file
+│   ├── SETUP_INSTRUCTIONS.md     # Beginner setup guide
+│   ├── demo.html                 # Browser demo for local testing
+│   └── docs/                     # Technical documentation
 │
 └── StyleManualCheck/             # Word add-in (Office.js)
     ├── dist/manifest.xml         # Add-in manifest for sideloading
-    └── src/                      # Canonical rule engine source
+    └── src/                      # Canonical rule engine (source of truth)
+        ├── rules.js              # 73 rules
+        ├── spellings.js          # US → Australian English word lists
+        └── taskpane/             # Word add-in UI and Office.js integration
 ```
 
 ## Development
 
-This project is being developed with assistance from Claude. The `CLAUDE.md` file contains project context that helps Claude understand the codebase.
+This project is being developed with assistance from Claude Code. The `CLAUDE.md` file contains project context that helps Claude understand the codebase.
+
+To run the browser checker locally, serve the `docs/` folder with any static file server:
+
+```
+python -m http.server 8000
+```
+
+Then open http://localhost:8000.
+
+To develop the Word add-in:
+
+```
+cd StyleManualCheck
+npm install
+npm start        # dev server on https://localhost:3000
+npm run build    # production build to dist/
+```
 
 ## Licence
 
@@ -122,4 +150,4 @@ Free to use and adapt with attribution; not for commercial purposes.
 
 ## Contact
 
-[To be added]
+Jen Robertson, Australian Institute of Health and Welfare (AIHW).

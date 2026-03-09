@@ -21,7 +21,7 @@ style-manual-check/              # Root project directory
 │   ├── SETUP_INSTRUCTIONS.md    # Beginner setup guide for testers
 │   ├── demo.html                # Browser demo for testing rules (local use)
 │   ├── src/
-│   │   ├── rules.js             # Rule definitions (72 rules — older copy, not primary)
+│   │   ├── rules.js             # Rule definitions (older copy — not actively maintained; use StyleManualCheck/src/rules.js)
 │   │   └── spellings.js         # Word dictionaries (US→AU, common errors)
 │   └── docs/
 │       ├── PROJECT_HISTORY.md   # Development log with key decisions
@@ -208,6 +208,9 @@ All issues carry `matchWholeWord: true` and `groupId: 'watch-words:<word-lowerca
 
 ### punct-em-dash
 Catches both unspaced (`word—word`) and spaced (`word — word`) em dashes.
+
+### numbers-start-sentence
+Flags sentences that begin with a numeral. Skips lines in `tableLines` (table cells) to avoid false positives on data tables.
 
 ### govt-commonwealth-government
 Fixes 'a Commonwealth government' → 'an Australian Government' (not 'a Australian').
