@@ -242,7 +242,6 @@
         .issue-type {
             font-size: 10px;
             font-weight: 600;
-            text-transform: uppercase;
             letter-spacing: 0.5px;
             color: var(--gray-600);
             margin-bottom: 6px;
@@ -461,15 +460,6 @@ Required equipment:
                     <h2>Issues found</h2>
                     <select id="filterSelect" class="filter-select">
                         <option value="all">All types</option>
-                        <option value="dates-and-time">Dates and time</option>
-                        <option value="government-terms">Government terms</option>
-                        <option value="headings">Headings</option>
-                        <option value="lists">Lists</option>
-                        <option value="numbers-and-measurements">Numbers and measurements</option>
-                        <option value="punctuation">Punctuation</option>
-                        <option value="readability">Readability</option>
-                        <option value="spelling">Spelling</option>
-                        <option value="watch-words">Watch words</option>
                     </select>
                 </div>
                 
@@ -496,8 +486,12 @@ Required equipment:
         let fixedCount = 0;
         let currentFilter = 'all';
 
-        // Display names for categories (handles hyphenated IDs)
+        // Display names for categories
         const categoryDisplayNames = {
+            'spelling': 'Spelling',
+            'punctuation': 'Punctuation',
+            'headings': 'Headings',
+            'readability': 'Readability',
             'watch-words': 'Watch words',
             'dates-and-time': 'Dates and time',
             'government-terms': 'Government terms',
@@ -535,11 +529,38 @@ Required equipment:
             displayResults();
         }
         
+        function updateFilterDropdown() {
+            const countByCategory = {};
+            allIssues.forEach(i => {
+                countByCategory[i.rule.category] = (countByCategory[i.rule.category] || 0) + 1;
+            });
+            const sel = elements.filterSelect;
+            const prev = sel.value;
+            sel.innerHTML = `<option value="all">All types (${allIssues.length})</option>`;
+            // Emit categories in display-name order
+            for (const [cat, label] of Object.entries(categoryDisplayNames)) {
+                if (countByCategory[cat]) {
+                    const opt = document.createElement('option');
+                    opt.value = cat;
+                    opt.textContent = `${label} (${countByCategory[cat]})`;
+                    sel.appendChild(opt);
+                }
+            }
+            // Restore selection if it's still valid, else reset to 'all'
+            if ([...sel.options].some(o => o.value === prev)) {
+                sel.value = prev;
+            } else {
+                sel.value = 'all';
+                currentFilter = 'all';
+            }
+        }
+
         function displayResults() {
-            const filteredIssues = currentFilter === 'all' 
-                ? allIssues 
+            const filteredIssues = currentFilter === 'all'
+                ? allIssues
                 : allIssues.filter(i => i.rule.category === currentFilter);
-            
+
+            updateFilterDropdown();
             elements.summary.classList.remove('hidden');
             elements.issueCount.textContent = allIssues.length;
             elements.fixedCount.textContent = fixedCount;
