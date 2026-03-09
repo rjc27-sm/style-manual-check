@@ -586,9 +586,7 @@ Required equipment:
                     actionButtons += `<button class="btn btn-accept" onclick="useReplacement('${issue.id}', 0)">Use '${escapeHtml(firstReplacement)}'</button>`;
                 }
                 actionButtons += `<button class="btn btn-ignore" onclick="ignoreIssue('${issue.id}')">Ignore</button>`;
-                if (!canAutoFix && (hasMultipleReplacements || !hasReplacements)) {
-                    actionButtons += `<button class="btn btn-goto" onclick="goToIssue('${issue.id}')">Go to issue</button>`;
-                }
+                actionButtons += `<button class="btn btn-goto" onclick="goToIssue('${issue.id}')">Go to issue</button>`;
                 if (canAutoFix && sameTypeCount > 1) {
                     actionButtons += `<button class="btn btn-fix-all" onclick="fixAllOfType('${issue.rule.id}')">Fix all ${sameTypeCount}</button>`;
                 }
@@ -650,13 +648,6 @@ Required equipment:
             const linesBefore = textBefore.split('\n').length;
             const lineHeight = 22; // Approximate line height
             elements.documentText.scrollTop = Math.max(0, (linesBefore - 3) * lineHeight);
-
-            // Rescan to get fresh positions (user may edit after navigating)
-            allIssues = checkText(elements.documentText.value);
-            allIssues.forEach((issue, i) => {
-                issue.id = 'issue-' + i;
-            });
-            displayResults();
         }
 
         function useReplacement(issueId, replacementIndex) {
