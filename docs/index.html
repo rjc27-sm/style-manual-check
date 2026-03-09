@@ -488,11 +488,8 @@ Required equipment:
         </div>
     </div>
     
-    <!-- Load the rule definitions -->
-    <script src="src/spellings.js"></script>
-    <script src="src/rules.js"></script>
-    
-    <script>
+    <script type="module">
+        import { checkText } from './src/rules.js';
         // Demo-specific code (simulates the Word add-in behavior)
         
         let allIssues = [];
