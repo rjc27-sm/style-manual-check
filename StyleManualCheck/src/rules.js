@@ -2970,13 +2970,16 @@ const RULES = [
                 const before = text.substring(Math.max(0, match.index - 60), match.index);
                 if (/\b(step|phase|stage|part|section|note|example|exercise|task|chapter|item|option|figure|table|exhibit|rule|action|activity|objective|outcome|principle|requirement|tip|warning|caution|appendix|schedule|attachment|annex)\s*[\d\w]*\s*$/i.test(before)) continue;
 
-                // Skip if followed by ? (question after colon)
-                const afterPos = match.index + match[0].length;
-                const after = text.substring(afterPos, afterPos + 50);
-                if (/^[a-z\s]*\?/.test(after)) continue;
+                // Skip if the entire clause after the colon is a question
+                // (look from the colon to the first sentence-ending character)
+                const textAfterColon = text.substring(match.index + 1);
+                const sentenceEnd = textAfterColon.search(/[\n.!?]/);
+                if (sentenceEnd >= 0 && textAfterColon[sentenceEnd] === '?') continue;
 
                 // Skip if the flagged word is the start of a multi-word proper-noun phrase
                 // (the very next word also starts with a capital, e.g. "Style Manual", "Commonwealth Bank")
+                const afterPos = match.index + match[0].length;
+                const after = text.substring(afterPos, afterPos + 50);
                 if (/^ [A-Z]/.test(after)) continue;
 
                 const lower = word[0].toLowerCase() + word.slice(1);
