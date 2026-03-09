@@ -556,12 +556,38 @@ Required equipment:
             displayResults();
         });
         
+        // Build heuristic heading/list Sets from plain text (approximates Word's paragraph styles)
+        function buildHeuristicSets(text) {
+            const lines = text.split('\n');
+            const headingLines = new Set();
+            const listLines = new Set();
+            for (let i = 0; i < lines.length; i++) {
+                const trimmed = lines[i].trim();
+                if (!trimmed) continue;
+                // List item: starts with bullet or number+period/bracket
+                if (/^[\u2022\u2023\u25e6\u2043\u2219\-\*\+]\s/.test(trimmed) ||
+                    /^\d+[\.\)]\s/.test(trimmed)) {
+                    listLines.add(i);
+                    continue;
+                }
+                // Heading: 1–12 words, no trailing sentence-ending punctuation, not all-caps
+                const words = trimmed.split(/\s+/);
+                const endsWithPunct = /[.?!;,]$/.test(trimmed);
+                const isAllCaps = trimmed === trimmed.toUpperCase() && /[A-Z]/.test(trimmed);
+                if (words.length <= 12 && !endsWithPunct && !isAllCaps) {
+                    headingLines.add(i);
+                }
+            }
+            return { headingLines, listLines };
+        }
+
         function scanDocument() {
             elements.scanBtn.disabled = true;
             elements.scanBtn.textContent = 'Checking...';
 
             const text = elements.documentText.value;
-            allIssues = checkText(text);
+            const { headingLines, listLines } = buildHeuristicSets(text);
+            allIssues = checkText(text, headingLines, listLines);
 
             // Filter out ignored issues
             if (ignoredGroups.size > 0 || ignoredFingerprints.size > 0) {
@@ -726,7 +752,8 @@ Required equipment:
 
         function rescanAndDisplay() {
             const text = elements.documentText.value;
-            allIssues = checkText(text);
+            const { headingLines, listLines } = buildHeuristicSets(text);
+            allIssues = checkText(text, headingLines, listLines);
             if (ignoredGroups.size > 0 || ignoredFingerprints.size > 0) {
                 allIssues = allIssues.filter(i => {
                     const gid = i.groupId || i.rule.id;
