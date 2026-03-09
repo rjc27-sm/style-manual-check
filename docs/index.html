@@ -136,6 +136,11 @@
             background: #c6f6d5;
             color: var(--success);
         }
+
+        .status.warning {
+            background: #fefcbf;
+            color: var(--warning);
+        }
         
         /* Summary stats */
         .summary {
@@ -239,12 +244,43 @@
             border-left-color: #dd6b20;
         }
 
-        .issue-type {
+        .issue-header {
+            margin-bottom: 8px;
+        }
+
+        .issue-category {
             font-size: 10px;
             font-weight: 600;
             letter-spacing: 0.5px;
             color: var(--gray-600);
-            margin-bottom: 6px;
+            text-transform: uppercase;
+            margin-right: 6px;
+        }
+
+        .issue-rule-name {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--gray-800);
+        }
+
+        .btn-ignore-all {
+            background: #fee2e2;
+            color: var(--error);
+            border: 1px solid #fca5a5;
+        }
+
+        .btn-ignore-all:hover {
+            background: #fecaca;
+        }
+
+        .learn-more {
+            font-size: 12px;
+            color: var(--primary);
+            text-decoration: none;
+        }
+
+        .learn-more:hover {
+            text-decoration: underline;
         }
         
         .issue-found {
@@ -443,7 +479,9 @@ Required equipment:
             <button id="scanBtn" class="scan-btn">
                 Scan document
             </button>
-            
+
+            <div id="status" class="status hidden"></div>
+
             <div id="summary" class="summary hidden">
                 <div class="stat">
                     <div id="issueCount" class="stat-number">0</div>
@@ -480,11 +518,12 @@ Required equipment:
     
     <script type="module">
         import { checkText } from './src/rules.js';
-        // Demo-specific code (simulates the Word add-in behavior)
-        
+
         let allIssues = [];
         let fixedCount = 0;
         let currentFilter = 'all';
+        let ignoredGroups = new Set();
+        let ignoredFingerprints = new Set();
 
         // Display names for categories
         const categoryDisplayNames = {
@@ -502,13 +541,13 @@ Required equipment:
         const elements = {
             documentText: document.getElementById('documentText'),
             scanBtn: document.getElementById('scanBtn'),
+            status: document.getElementById('status'),
             summary: document.getElementById('summary'),
             issueCount: document.getElementById('issueCount'),
             fixedCount: document.getElementById('fixedCount'),
             issuesContainer: document.getElementById('issuesContainer'),
             issuesList: document.getElementById('issuesList'),
             filterSelect: document.getElementById('filterSelect'),
-            emptyState: document.getElementById('emptyState')
         };
         
         elements.scanBtn.addEventListener('click', scanDocument);
@@ -518,14 +557,27 @@ Required equipment:
         });
         
         function scanDocument() {
+            elements.scanBtn.disabled = true;
+            elements.scanBtn.textContent = 'Checking...';
+
             const text = elements.documentText.value;
             allIssues = checkText(text);
-            
-            // Add IDs to issues
-            allIssues.forEach((issue, i) => {
-                issue.id = 'issue-' + i;
-            });
-            
+
+            // Filter out ignored issues
+            if (ignoredGroups.size > 0 || ignoredFingerprints.size > 0) {
+                allIssues = allIssues.filter(i => {
+                    const gid = i.groupId || i.rule.id;
+                    if (ignoredGroups.has(gid)) return false;
+                    if (ignoredFingerprints.has(i.rule.id + ':' + i.found)) return false;
+                    return true;
+                });
+            }
+
+            allIssues.forEach((issue, i) => { issue.id = 'issue-' + i; });
+            fixedCount = 0;
+
+            elements.scanBtn.disabled = false;
+            elements.scanBtn.textContent = 'Scan document';
             displayResults();
         }
         
@@ -556,21 +608,24 @@ Required equipment:
         }
 
         function displayResults() {
-            const filteredIssues = currentFilter === 'all'
-                ? allIssues
-                : allIssues.filter(i => i.rule.category === currentFilter);
-
             updateFilterDropdown();
             elements.summary.classList.remove('hidden');
             elements.issueCount.textContent = allIssues.length;
             elements.fixedCount.textContent = fixedCount;
-            
+
             if (allIssues.length === 0) {
-                elements.emptyState.classList.remove('hidden');
+                elements.status.textContent = 'Check complete — no issues found.';
+                elements.status.className = 'status success';
+                elements.status.classList.remove('hidden');
                 elements.issuesContainer.classList.add('hidden');
             } else {
-                elements.emptyState.classList.add('hidden');
+                elements.status.textContent = allIssues.length + ' issue' + (allIssues.length !== 1 ? 's' : '') + ' found.';
+                elements.status.className = 'status';
+                elements.status.classList.remove('hidden');
                 elements.issuesContainer.classList.remove('hidden');
+                const filteredIssues = currentFilter === 'all'
+                    ? allIssues
+                    : allIssues.filter(i => i.rule.category === currentFilter);
                 renderIssuesList(filteredIssues);
             }
         }
@@ -578,135 +633,142 @@ Required equipment:
         function renderIssuesList(issues) {
             elements.issuesList.innerHTML = '';
 
-            // Group by rule for "Fix all" count
-            const countByRule = {};
-            allIssues.forEach(i => {
-                countByRule[i.rule.id] = (countByRule[i.rule.id] || 0) + 1;
-            });
-
             for (const issue of issues) {
-                const card = document.createElement('div');
-                card.className = `issue-card ${issue.rule.category}`;
-
-                // Only count fixable issues for "Fix all" button (autoFix can be empty string for deletions)
-                const fixableOfType = allIssues.filter(i => i.rule.id === issue.rule.id && i.autoFix !== undefined);
-                const sameTypeCount = fixableOfType.length;
-                const canAutoFix = issue.autoFix !== undefined;
-
-                // Check for watch word replacements
-                const hasReplacements = issue.replacements && issue.replacements.length > 0;
-                const firstReplacement = hasReplacements ? issue.replacements[0] : null;
-                const hasMultipleReplacements = hasReplacements && issue.replacements.length > 1;
-
-                // Build action buttons based on issue type
-                let actionButtons = '';
-                if (canAutoFix) {
-                    actionButtons += `<button class="btn btn-accept" onclick="acceptFix('${issue.id}')">Accept</button>`;
-                } else if (hasReplacements) {
-                    // Watch word with replacement options - use index to avoid quote issues
-                    actionButtons += `<button class="btn btn-accept" onclick="useReplacement('${issue.id}', 0)">Use '${escapeHtml(firstReplacement)}'</button>`;
-                }
-                actionButtons += `<button class="btn btn-ignore" onclick="ignoreIssue('${issue.id}')">Ignore</button>`;
-                actionButtons += `<button class="btn btn-goto" onclick="goToIssue('${issue.id}')">Go to issue</button>`;
-                if (canAutoFix && sameTypeCount > 1) {
-                    actionButtons += `<button class="btn btn-fix-all" onclick="fixAllOfType('${issue.rule.id}')">Fix all ${sameTypeCount}</button>`;
-                }
-
-                card.innerHTML = `
-                    <div class="issue-type">${categoryDisplayNames[issue.rule.category] || issue.rule.category}</div>
-                    <div class="issue-text">
-                        <span class="issue-found">${escapeHtml(issue.found)}</span>
-                        <span class="issue-arrow">→</span>
-                        <span class="issue-suggestion">${escapeHtml(issue.suggestion)}</span>
-                    </div>
-                    <div class="issue-explanation">
-                        ${escapeHtml(issue.description || issue.rule.description)}
-                        ${issue.rule.link ? `<br><a href="${issue.rule.link}" target="_blank">Learn more →</a>` : ''}
-                    </div>
-                    <div class="issue-actions">
-                        ${actionButtons}
-                    </div>
-                `;
-
-                elements.issuesList.appendChild(card);
+                elements.issuesList.appendChild(createIssueCard(issue));
             }
         }
-        
-        function acceptFix(issueId) {
-            const issue = allIssues.find(i => i.id === issueId);
-            if (!issue || issue.autoFix === undefined) return;
 
-            // Use position-based replacement to fix the exact occurrence
+        function createIssueCard(issue) {
+            const card = document.createElement('div');
+            card.className = 'issue-card ' + issue.rule.category;
+            card.id = issue.id;
+
+            const canAutoFix = issue.autoFix !== undefined;
+            const hasReplacements = issue.replacements && issue.replacements.length > 0;
+            const fixableOfType = allIssues.filter(i => i.rule.id === issue.rule.id && i.autoFix !== undefined);
+            const sameTypeCount = fixableOfType.length;
+            const issueGroupId = issue.groupId || issue.rule.id;
+            const totalOfType = allIssues.filter(i => (i.groupId || i.rule.id) === issueGroupId).length;
+
+            let html = `
+                <div class="issue-header">
+                    <span class="issue-category">${escapeHtml(categoryDisplayNames[issue.rule.category] || issue.rule.category)}</span>
+                    <span class="issue-rule-name">${escapeHtml(issue.rule.name)}</span>
+                </div>
+                <div class="issue-text">
+                    <span class="issue-found">${escapeHtml(issue.found)}</span>
+                    <span class="issue-arrow">→</span>
+                    <span class="issue-suggestion">${escapeHtml(issue.suggestion)}</span>
+                </div>
+                <div class="issue-explanation">
+                    ${escapeHtml(issue.description || issue.rule.description)}
+                    ${issue.rule.link ? `<br><a class="learn-more" href="${issue.rule.link}" target="_blank">Learn more \u2192</a>` : ''}
+                </div>
+                <div class="issue-actions">
+            `;
+
+            if (canAutoFix) {
+                html += `<button class="btn btn-accept" data-action="accept" data-id="${issue.id}">Accept</button>`;
+            } else if (hasReplacements) {
+                html += `<button class="btn btn-accept" data-action="usereplacement" data-id="${issue.id}" data-index="0">Use '${escapeHtml(issue.replacements[0])}'</button>`;
+            }
+            html += `<button class="btn btn-ignore" data-action="ignore" data-id="${issue.id}">Ignore</button>`;
+            html += `<button class="btn btn-goto" data-action="goto" data-id="${issue.id}">Go to issue</button>`;
+            if (canAutoFix && sameTypeCount > 1) {
+                html += `<button class="btn btn-fix-all" data-action="fixall" data-ruleid="${issue.rule.id}">Fix all ${sameTypeCount}</button>`;
+            }
+            if (totalOfType > 1) {
+                html += `<button class="btn btn-ignore-all" data-action="ignoreall" data-groupid="${escapeHtml(issueGroupId)}">Ignore all ${totalOfType}</button>`;
+            }
+            html += '</div>';
+            card.innerHTML = html;
+
+            card.querySelectorAll('button[data-action]').forEach(btn => {
+                btn.onclick = () => handleAction(
+                    btn.dataset.action,
+                    btn.dataset.id,
+                    btn.dataset.ruleid,
+                    btn.dataset.index,
+                    btn.dataset.groupid
+                );
+            });
+
+            return card;
+        }
+
+        function handleAction(action, issueId, ruleId, replacementIndex, groupId) {
+            switch (action) {
+                case 'accept': {
+                    const issue = allIssues.find(i => i.id === issueId);
+                    if (issue) acceptFix(issue);
+                    break;
+                }
+                case 'usereplacement': {
+                    const issue = allIssues.find(i => i.id === issueId);
+                    if (issue) useReplacement(issue, parseInt(replacementIndex || '0'));
+                    break;
+                }
+                case 'ignore':
+                    ignoreIssue(issueId);
+                    break;
+                case 'goto': {
+                    const issue = allIssues.find(i => i.id === issueId);
+                    if (issue) goToIssue(issue);
+                    break;
+                }
+                case 'fixall':
+                    fixAllOfType(ruleId);
+                    break;
+                case 'ignoreall':
+                    ignoreAllOfType(groupId || ruleId);
+                    break;
+            }
+        }
+
+        function rescanAndDisplay() {
+            const text = elements.documentText.value;
+            allIssues = checkText(text);
+            if (ignoredGroups.size > 0 || ignoredFingerprints.size > 0) {
+                allIssues = allIssues.filter(i => {
+                    const gid = i.groupId || i.rule.id;
+                    if (ignoredGroups.has(gid)) return false;
+                    if (ignoredFingerprints.has(i.rule.id + ':' + i.found)) return false;
+                    return true;
+                });
+            }
+            allIssues.forEach((issue, i) => { issue.id = 'issue-' + i; });
+            displayResults();
+        }
+
+        function acceptFix(issue) {
+            if (issue.autoFix === undefined) return;
             const text = elements.documentText.value;
             const before = text.substring(0, issue.position);
             const after = text.substring(issue.position + issue.found.length);
             elements.documentText.value = before + issue.autoFix + after;
-
-            // Rescan to get fresh positions for remaining issues
-            allIssues = checkText(elements.documentText.value);
-            allIssues.forEach((issue, i) => {
-                issue.id = 'issue-' + i;
-            });
             fixedCount++;
-            displayResults();
-        }
-        
-        function ignoreIssue(issueId) {
-            allIssues = allIssues.filter(i => i.id !== issueId);
-            displayResults();
+            rescanAndDisplay();
         }
 
-        function goToIssue(issueId) {
-            const issue = allIssues.find(i => i.id === issueId);
-            if (!issue) return;
-
-            // Focus the textarea and move cursor to the issue position
-            elements.documentText.focus();
-            elements.documentText.setSelectionRange(issue.position, issue.position + issue.found.length);
-
-            // Scroll the textarea to make the selection visible
-            const textBefore = elements.documentText.value.substring(0, issue.position);
-            const linesBefore = textBefore.split('\n').length;
-            const lineHeight = 22; // Approximate line height
-            elements.documentText.scrollTop = Math.max(0, (linesBefore - 3) * lineHeight);
-        }
-
-        function useReplacement(issueId, replacementIndex) {
-            const issue = allIssues.find(i => i.id === issueId);
-            if (!issue || !issue.replacements || !issue.replacements[replacementIndex]) return;
-
+        function useReplacement(issue, replacementIndex) {
+            if (!issue.replacements || !issue.replacements[replacementIndex]) return;
             const replacement = issue.replacements[replacementIndex];
-
-            // Preserve the case of the original word
             let fixedReplacement = replacement;
             if (issue.found.charAt(0) === issue.found.charAt(0).toUpperCase()) {
                 fixedReplacement = replacement.charAt(0).toUpperCase() + replacement.slice(1);
             }
-
-            // Use position-based replacement to fix the exact occurrence
             const text = elements.documentText.value;
             const before = text.substring(0, issue.position);
             const after = text.substring(issue.position + issue.found.length);
             elements.documentText.value = before + fixedReplacement + after;
-
-            // Rescan to get fresh positions for remaining issues
-            allIssues = checkText(elements.documentText.value);
-            allIssues.forEach((issue, i) => {
-                issue.id = 'issue-' + i;
-            });
             fixedCount++;
-            displayResults();
+            rescanAndDisplay();
         }
-        
+
         function fixAllOfType(ruleId) {
-            // Only fix issues that have autoFix defined (including empty string)
             const toFix = allIssues.filter(i => i.rule.id === ruleId && i.autoFix !== undefined);
             if (toFix.length === 0) return;
-
-            // Sort by position descending so we replace from end to start
-            // This avoids position shifts affecting subsequent replacements
             toFix.sort((a, b) => b.position - a.position);
-
             let text = elements.documentText.value;
             for (const issue of toFix) {
                 const before = text.substring(0, issue.position);
@@ -714,14 +776,32 @@ Required equipment:
                 text = before + issue.autoFix + after;
             }
             elements.documentText.value = text;
-
-            // Rescan to get fresh positions for remaining issues
-            allIssues = checkText(elements.documentText.value);
-            allIssues.forEach((issue, i) => {
-                issue.id = 'issue-' + i;
-            });
             fixedCount += toFix.length;
+            rescanAndDisplay();
+        }
+
+        function ignoreIssue(issueId) {
+            const issue = allIssues.find(i => i.id === issueId);
+            if (issue) {
+                ignoredFingerprints.add(issue.rule.id + ':' + issue.found);
+            }
+            allIssues = allIssues.filter(i => i.id !== issueId);
             displayResults();
+        }
+
+        function ignoreAllOfType(groupId) {
+            ignoredGroups.add(groupId);
+            allIssues = allIssues.filter(i => (i.groupId || i.rule.id) !== groupId);
+            displayResults();
+        }
+
+        function goToIssue(issue) {
+            elements.documentText.focus();
+            elements.documentText.setSelectionRange(issue.position, issue.position + issue.found.length);
+            const textBefore = elements.documentText.value.substring(0, issue.position);
+            const linesBefore = textBefore.split('\n').length;
+            const lineHeight = 22;
+            elements.documentText.scrollTop = Math.max(0, (linesBefore - 3) * lineHeight);
         }
         
         function escapeHtml(text) {
