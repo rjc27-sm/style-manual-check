@@ -91,6 +91,38 @@ The add-in's own interface text must follow Style Manual rules:
 - Sentence case throughout
 - Non-breaking spaces to prevent awkward line breaks (for example, between 'for' and 'example')
 
+## Browser checker implementation
+
+**File:** `docs/index.html`
+
+**Status:** Live at https://rjc27-sm.github.io/style-manual-check/ (served from `docs/` on master branch; GitHub Pro required for private repo + public Pages).
+
+**Intentional limitation:** The browser checker uses a plain-text `<textarea>`. When users paste from Word, formatting (bold, italic, heading styles) is stripped. This is a browser constraint. There is no plan to add rich-text editing — the Word add-in is the correct tool for applying fixes to formatted documents with styles preserved. The browser checker is for quick checks of plain text.
+
+**Scanning flow:**
+1. User pastes text into the `<textarea>`
+2. `buildHeuristicSets(text)` splits on `\n` and classifies each line:
+   - Lines starting with a bullet or `\d+[.)]` → `listLines`
+   - Lines ≤ 12 words, no trailing sentence punctuation, not all-caps → `headingLines`
+3. `checkText(text, headingLines, listLines)` runs all rules (bold/italic/tableLines omitted — always undefined in browser mode)
+4. Results are filtered by `ignoredGroups` (Set of group IDs from 'Ignore all') and `ignoredFingerprints` (Set of `ruleId:found` fingerprints from individual 'Ignore')
+5. Each issue gets an `id` property (`'issue-N'`) for DOM targeting
+6. `displayResults()` renders cards and rebuilds the filter dropdown
+
+**Per-issue actions (data-action pattern):**
+All buttons use `data-action` attributes — functions are NOT referenced in `onclick=` HTML attributes because module-scoped functions are not global. Each card's buttons are bound via `card.querySelectorAll('button[data-action]').forEach(btn => { btn.onclick = ... })`.
+
+- `accept` — replaces the first occurrence of `issue.found` at `issue.position` in the textarea, increments `fixedCount`, calls `rescanAndDisplay()`
+- `usereplacement` — same as accept but substitutes `issue.replacements[index]`
+- `ignore` — adds `rule.id + ':' + found` fingerprint to `ignoredFingerprints`; removes card
+- `goto` — calls `textarea.setSelectionRange(position, position + found.length)` and scrolls the textarea to show the selection
+- `fixall` — replaces all issues of that rule ID in the current `allIssues` array
+- `ignoreall` — adds `issue.groupId || issue.rule.id` to `ignoredGroups`; removes matching cards
+
+**Ignore persistence:** Both `ignoredGroups` and `ignoredFingerprints` persist across rescans in the same browser session (they are not cleared when the user clicks 'Scan document' again).
+
+**Filter dropdown:** Rebuilt dynamically after each scan to show only categories that have issues, with counts.
+
 ## Word add-in implementation
 
 **File:** `StyleManualCheck/src/taskpane/taskpane.js`
@@ -110,7 +142,7 @@ The add-in's own interface text must follow Style Manual rules:
 - `Use '[word]'` — apply the first entry in `issue.replacements` (watch words / wordy phrases), preserving case (uses `matchWholeWord: issue.matchWholeWord`); then auto-navigate to the next issue
 - `Ignore` — stores a fingerprint (`rule.id + ':' + found`) in `ignoredFingerprints` (persists across rescans); removes issue from list; auto-navigates to next issue
 - `Go to issue` — search for `issue.searchText || issue.found` (with `matchWholeWord: issue.matchWholeWord`) and select the correct occurrence by index
-- `Fix all N` — apply autofix for all issues of that rule ID; then auto-navigate to the first remaining issue
+- `Fix all N` — apply autofix for all issues of that rule ID; also applies `Heading 2` style if `issue.applyHeadingStyle` is set; then auto-navigate to the first remaining issue
 - `Ignore all N` — add `issue.groupId || issue.rule.id` to `ignoredGroups` Set (persists across rescans); for watch-words this is `'watch-words:<word>'` so it suppresses only that word, not the whole category; auto-navigate to first remaining issue
 
 **Rescan banner:** shown when `changesSinceLastScan >= 5` and issues remain, because occurrence indices drift as text changes.
@@ -191,6 +223,8 @@ Always replaces with 'for example,' (including trailing comma).
 ### list-inconsistent-punctuation / list-inconsistent-caps
 Both rules skip lines present in `headingLines` at the top of their line loop — the line breaks the current list block and is never treated as a list item. This prevents numbered headings such as `'11. Licensing and source code'` from being mistaken for a numbered list item (the `\d+[.)]` pattern in `bulletPattern` would otherwise match). `list-inconsistent-caps` also sets `searchText` (first 30 chars, no trailing `...`) on every issue so 'Go to issue' works reliably for items longer than 30 characters.
 
+`list-inconsistent-punctuation` also detects the case where all items start with capitals and have no full stops, but the preceding line ends with `:`. Stand-alone lists (capitals, no full stops) are the only valid pattern for that combination, and stand-alone lists never have a lead-in sentence — so a colon lead-in definitively rules out stand-alone. The issue is flagged on the first item with a suggestion covering both possible corrections: add full stops to all items (sentence list) or start each item in lowercase and add a full stop to the last item only (fragment list).
+
 ### punct-capital-after-colon
 Uses `[ \t]+` (not `\s+`) to prevent cross-line matches. Also skips:
 - Label words before the colon (Step, Phase, Option, Note, etc.)
@@ -198,6 +232,7 @@ Uses `[ \t]+` (not `\s+`) to prevent cross-line matches. Also skips:
 - Matches within heading lines (`headingLines`)
 - Colons at the very start of a paragraph (char before `:` is `\n`)
 - Multi-word proper-noun phrases: if the character immediately after the flagged word is a space followed by another capital letter (for example, `': Style Manual'` → 'Manual' follows 'Style'), the match is skipped
+- Question sentences: if the first sentence-ending character after the colon is `?`, the match is skipped (Style Manual allows a capital after a colon that introduces a question, for example, `'Ask yourself: Is this clear?'`). Detection scans from the colon position to the first `\n`, `.`, `!`, or `?` character.
 The `suggestion` text includes a context snippet of up to 40 characters before the colon so the user can locate the match without clicking 'Go to issue'.
 
 ### watch-words
@@ -217,9 +252,17 @@ Fixes 'a Commonwealth government' → 'an Australian Government' (not 'a Austral
 
 ## Known issues / limitations
 
+**Word add-in:**
 - **Office.js:** Speaker notes in PowerPoint are not accessible — this is a known API limitation
 - **Occurrence drift:** After several fixes the document text changes, so occurrence indices become stale. The rescan banner appears after 5 changes to prompt a rescan
 - **No paragraph-level iteration in fix-all:** `fixAllOfType` replaces all Word search results for each found text, not just the indexed occurrence
+
+**Browser checker:**
+- **Plain text only:** Pasting from Word strips all formatting (bold, italic, heading styles). This is intentional — the Word add-in is the correct tool for formatted documents
+- **Heuristic heading detection:** `headingLines` is inferred from line length and punctuation, not from actual heading styles. Short lines without trailing punctuation may be misidentified as headings (false negatives) or body text may be treated as headings (false positives)
+- **No bold/italic/table detection:** `boldLines`, `italicLines`, and `tableLines` are always undefined. Rules that depend on these (for example, `heading-bold-not-styled`) are not available or are less precise
+- **`heading-bold-not-styled` excluded:** This rule is Word-only (requires bold paragraph detection) and is absent from `docs/src/rules.js`
+- **No write-back:** The browser checker cannot apply fixes to a Word document. Users must manually make changes in Word based on the issues found
 
 ## Important links
 
@@ -233,21 +276,26 @@ Fixes 'a Commonwealth government' → 'an Australian Government' (not 'a Austral
 
 ## Development
 
-The Word add-in uses a Webpack/Babel build:
+**Word add-in** (Webpack/Babel build):
 ```
 cd StyleManualCheck
 npm install
 npm start        # dev server on https://localhost:3000
 npm run build    # production build to dist/
 ```
-
-For the browser demo, serve `style-manual-check/` with any static file server:
-```
-python -m http.server 8000
-```
-Then open http://localhost:8000/demo.html.
-
 The add-in is sideloaded into Word via `manifest.xml`. Point the dev server URL in the manifest to your hosted `dist/` for non-local testing.
+
+**Browser checker** (no build step — plain HTML + vanilla JS with ES modules):
+- Live: https://rjc27-sm.github.io/style-manual-check/ (served from `docs/` on master branch)
+- Local testing: serve `docs/` with any static file server (ES modules require a server, not `file://`)
+  ```
+  cd docs
+  python -m http.server 8000
+  ```
+  Then open http://localhost:8000/
+
+**Syncing rules to browser checker:**
+When updating `StyleManualCheck/src/rules.js`, copy to `docs/src/rules.js` and remove the `heading-bold-not-styled` rule (Word-only). The `export` statement must remain for ES module loading. The file in `style-manual-check/src/rules.js` is an older copy and not actively maintained — do not use it as a source of truth.
 
 ## Roadmap
 

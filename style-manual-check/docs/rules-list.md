@@ -74,7 +74,7 @@
 | `list-and-or` | 'And' or 'or' at end of list item | list items ending with 'and'/'or' — autofix removes trailing word (and any preceding comma/semicolon) |
 | `list-etc` | 'Etc.' in list | 'etc.' at end of a list item (advisory only) |
 | `list-inconsistent-caps` | Inconsistent capitalisation in list | mixed upper/lowercase list item starts (advisory only); skips heading lines; uses searchText for reliable navigation |
-| `list-inconsistent-punctuation` | Inconsistent or incorrect punctuation in list | mixed full stop usage across list items (advisory only); skips heading lines |
+| `list-inconsistent-punctuation` | Inconsistent or incorrect punctuation in list | mixed full stop usage across list items (advisory only); skips heading lines; also flags lists where all items start with capitals and have no full stops but the preceding line ends with ':' (cannot be a stand-alone list) |
 
 ---
 
@@ -110,7 +110,7 @@
 | `punct-comma-inside-quotes` | Comma inside closing quotation mark | comma placed incorrectly inside quotes |
 | `punct-serial-comma` | Serial comma (Oxford comma) | unnecessary Oxford commas |
 | `punct-ampersand` | Ampersand in body text | '&' in body text → 'and' |
-| `punct-capital-after-colon` | Capital letter after colon | 'word: Capital' → 'word: lowercase'; skips heading lines, paragraph-initial colons, and multi-word proper-noun phrases (for example, ': Style Manual') |
+| `punct-capital-after-colon` | Capital letter after colon | 'word: Capital' → 'word: lowercase'; skips heading lines, paragraph-initial colons, multi-word proper-noun phrases (for example, ': Style Manual'), and question sentences (for example, 'Ask yourself: Is this clear?') |
 
 ---
 

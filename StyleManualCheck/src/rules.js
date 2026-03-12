@@ -2329,6 +2329,18 @@ const RULES = [
                         });
                     }
 
+                    // Capitals + no full stops is only valid for stand-alone lists, which have no lead-in.
+                    // If the lead-in ends with ':', this cannot be a stand-alone list.
+                    if (noPeriods && likelyStandAloneOrSentence && leadIn && /:\s*$/.test(leadIn)) {
+                        issues.push({
+                            found: items[0].text.substring(0, Math.min(30, items[0].text.length)) + (items[0].text.length > 30 ? '...' : ''),
+                            searchText: items[0].text.substring(0, Math.min(30, items[0].text.length)),
+                            suggestion: 'Stand-alone lists (capitals, no full stops) should not follow a lead-in sentence. If a sentence list, add full stops to all items. If a fragment list, start each item in lowercase and add a full stop to the last item only.',
+                            position: items[0].position,
+                            rule: rule
+                        });
+                    }
+
                     return; // Pattern is otherwise valid
                 }
 

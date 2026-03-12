@@ -54,6 +54,7 @@ Office.onReady((info) => {
 async function scanDocument() {
     elements.scanBtn.disabled = true;
     elements.scanBtn.textContent = 'Checking...';
+    elements.status.style.display = '';
     elements.status.textContent = 'Scanning document...';
     elements.status.className = 'status';
 
@@ -202,6 +203,7 @@ function displayResults() {
         : allIssues.filter(i => i.rule.category === currentFilter);
 
     // Update status
+    elements.status.style.display = '';
     if (allIssues.length === 0) {
         elements.status.textContent = 'Check complete.';
         elements.status.className = 'status success';
@@ -460,9 +462,23 @@ async function fixAllOfType(ruleId) {
                 searchResults.load('items');
                 await context.sync();
 
-                // Replace all occurrences
-                for (const item of searchResults.items) {
-                    item.insertText(issue.autoFix, Word.InsertLocation.replace);
+                if (issue.applyHeadingStyle) {
+                    // Load paragraphs for all matches first, then apply style in one sync
+                    const parasList = [];
+                    for (const item of searchResults.items) {
+                        const paras = item.paragraphs;
+                        paras.load('items');
+                        parasList.push(paras);
+                    }
+                    await context.sync();
+                    for (let i = 0; i < searchResults.items.length; i++) {
+                        searchResults.items[i].insertText(issue.autoFix, Word.InsertLocation.replace);
+                        parasList[i].items[0].style = 'Heading 2';
+                    }
+                } else {
+                    for (const item of searchResults.items) {
+                        item.insertText(issue.autoFix, Word.InsertLocation.replace);
+                    }
                 }
                 await context.sync();
             }
