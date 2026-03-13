@@ -63,6 +63,30 @@
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
+
+        .document-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .document-header h2 {
+            margin-bottom: 0;
+            text-transform: none;
+        }
+
+        .feedback-link {
+            font-size: 12px;
+            color: var(--primary);
+            text-decoration: none;
+            white-space: nowrap;
+            margin-left: 12px;
+        }
+
+        .feedback-link:hover {
+            text-decoration: underline;
+        }
         
         .document-panel textarea {
             width: 100%;
@@ -407,7 +431,10 @@
     <div class="demo-container">
         <!-- Document panel (simulates Word) -->
         <div class="document-panel">
-            <h2>📄 Sample document (edit to test)</h2>
+            <div class="document-header">
+                <h2>Sample document (edit to test, or paste your own text below)</h2>
+                <a href="https://forms.office.com/r/7qcF8K4cJN" target="_blank" class="feedback-link">Give feedback or report a bug</a>
+            </div>
             <textarea id="documentText">Annual report summary
 
 The organization has finalized its strategic plan for 2024–2025. This document summarizes the seven key initiatives we are prioritizing this year, e.g., workforce planning & digital transformation.
@@ -477,7 +504,7 @@ Required equipment:
             </div>
             
             <button id="scanBtn" class="scan-btn">
-                Scan document
+                Check document
             </button>
 
             <div id="status" class="status hidden"></div>
@@ -603,7 +630,7 @@ Required equipment:
             fixedCount = 0;
 
             elements.scanBtn.disabled = false;
-            elements.scanBtn.textContent = 'Scan document';
+            elements.scanBtn.textContent = 'Check document';
             displayResults();
         }
         
@@ -640,14 +667,12 @@ Required equipment:
             elements.fixedCount.textContent = fixedCount;
 
             if (allIssues.length === 0) {
-                elements.status.textContent = 'Check complete — no issues found.';
+                elements.status.textContent = '✓ Check complete';
                 elements.status.className = 'status success';
                 elements.status.classList.remove('hidden');
                 elements.issuesContainer.classList.add('hidden');
             } else {
-                elements.status.textContent = allIssues.length + ' issue' + (allIssues.length !== 1 ? 's' : '') + ' found.';
-                elements.status.className = 'status';
-                elements.status.classList.remove('hidden');
+                elements.status.className = 'status hidden';
                 elements.issuesContainer.classList.remove('hidden');
                 const filteredIssues = currentFilter === 'all'
                     ? allIssues

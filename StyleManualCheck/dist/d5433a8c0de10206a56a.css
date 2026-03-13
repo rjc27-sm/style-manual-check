@@ -110,6 +110,11 @@ html, body {
     color: var(--error);
 }
 
+.status.warning {
+    background: #fefcbf;
+    color: var(--warning);
+}
+
 /* Summary stats */
 .summary {
     display: flex;
@@ -323,13 +328,23 @@ html, body {
 }
 
 .btn-fix-all {
-    background: var(--white);
-    color: var(--primary);
-    border: 1px solid var(--primary);
+    background: var(--success-light);
+    color: var(--success);
+    border: 1px solid #9ae6b4;
 }
 
 .btn-fix-all:hover {
-    background: var(--gray-100);
+    background: #9ae6b4;
+}
+
+.btn-ignore-all {
+    background: #fee2e2;
+    color: var(--error);
+    border: 1px solid #fca5a5;
+}
+
+.btn-ignore-all:hover {
+    background: #fecaca;
 }
 
 .btn-goto {
@@ -342,7 +357,7 @@ html, body {
     background: var(--gray-100);
 }
 
-/* Learn more as a link, not button */
+/* Learn more as a link-styled button */
 .link-learn {
     font-size: 12px;
     color: var(--primary);
@@ -350,6 +365,11 @@ html, body {
     display: inline-flex;
     align-items: center;
     gap: 4px;
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    font-family: inherit;
 }
 
 .link-learn:hover {
