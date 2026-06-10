@@ -104,9 +104,7 @@ async function downloadAnnotated() {
     try {
         // Re-load from the original buffer so repeated downloads are clean
         const loaded = await loadDocx(state.fileBuffer.slice(0));
-        const issues = runRules(loaded.fullText, loaded)
-            .filter(i => state.categoryFilter === 'all' ||
-                         i.rule.category === state.categoryFilter);
+        const issues = runRules(loaded.fullText, loaded);
         const { zip, commentCount } = await annotateDocx(loaded, issues);
         const blob = await zip.generateAsync({
             type: 'blob',
@@ -202,8 +200,10 @@ function renderResults() {
             '</div>' +
             '<p class="issue-found">‘' + escapeHtml(truncate(issue.found, 120)) + '’</p>' +
             (suggestion && suggestion !== issue.found
-                ? '<p class="issue-suggestion">Suggested: ‘' +
-                  escapeHtml(truncate(suggestion, 120)) + '’</p>' : '') +
+                ? '<p class="issue-suggestion">Suggested: ' +
+                  (issue.autoFix === suggestion
+                      ? '‘' + escapeHtml(truncate(suggestion, 120)) + '’'
+                      : escapeHtml(truncate(suggestion, 120))) + '</p>' : '') +
             '<p class="issue-desc">' + escapeHtml(rule.description) +
             (issue.note ? ' ' + escapeHtml(issue.note) : '') + '</p>' +
             (rule.link ? '<a class="learn-more" href="' + escapeHtml(rule.link) +

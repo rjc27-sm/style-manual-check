@@ -252,7 +252,12 @@ export function commentTextFor(issue) {
     lines.push((rule.name || 'Style issue') + ': ' + (rule.description || ''));
     const suggestion = issue.suggestion || issue.autoFix;
     if (suggestion && suggestion !== issue.found) {
-        lines.push("Suggested change: '" + suggestion + "'");
+        // Quote real replacement text; leave instructions unquoted
+        if (issue.autoFix === suggestion) {
+            lines.push("Suggested change: '" + suggestion + "'");
+        } else {
+            lines.push('Suggested change: ' + suggestion);
+        }
     }
     if (issue.note) lines.push(issue.note);
     if (rule.link) lines.push('Style Manual guidance: ' + rule.link);

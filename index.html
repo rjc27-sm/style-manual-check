@@ -163,10 +163,6 @@ textarea#text-input:focus{outline:none;box-shadow:inset 0 0 0 2px var(--b5)}
   </section>
 
   <div class="controls">
-    <span class="ctrl-lab" id="filter-lab">Show</span>
-    <select id="category-filter" aria-labelledby="filter-lab">
-      <option value="all">All categories</option>
-    </select>
     <label class="pill-check"><input type="checkbox" id="aihw-toggle">
       <span id="aihw-label">AIHW house style pack</span></label>
   </div>
@@ -186,6 +182,12 @@ textarea#text-input:focus{outline:none;box-shadow:inset 0 0 0 2px var(--b5)}
   <section id="results-section" hidden aria-live="polite">
     <div class="step-h" style="margin-top:6px"><span class="num" id="results-num">3</span><h2>Issues found</h2></div>
     <p id="summary-line"></p>
+    <div class="controls" style="margin:0 0 14px">
+      <span class="ctrl-lab" id="filter-lab">Show</span>
+      <select id="category-filter" aria-labelledby="filter-lab">
+        <option value="all">All categories</option>
+      </select>
+    </div>
     <div id="issue-list"></div>
   </section>
 
