@@ -1130,6 +1130,64 @@ const RULES = [
         }
     },
 
+    {
+        id: 'heading-bold-not-styled',
+        name: 'Bold text without heading style',
+        category: 'headings',
+        description: 'Is this a heading? If so, apply a heading style. Heading styles make documents accessible and allow readers to navigate using the headings panel.',
+        link: 'https://www.stylemanual.gov.au/structuring-content/headings',
+        check: function(text, headingLines, listLines, boldLines, italicLines, tableLines) {
+            const issues = [];
+            if (!boldLines || boldLines.size === 0) return issues;
+
+            const lines = text.split('\n');
+            let position = 0;
+
+            for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+                const line = lines[lineIndex];
+                const trimmed = line.trim();
+
+                if (!trimmed) {
+                    position += line.length + 1;
+                    continue;
+                }
+
+                const isBold = boldLines.has(lineIndex);
+                const hasHeadingStyle = headingLines && headingLines.has(lineIndex);
+                const isListItem = listLines && listLines.has(lineIndex);
+                const isInTable = tableLines && tableLines.has(lineIndex);
+
+                // Only flag entirely-bold lines that don't already have a heading style and aren't in a table
+                if (!isBold || hasHeadingStyle || isListItem || isInTable) {
+                    position += line.length + 1;
+                    continue;
+                }
+
+                const words = trimmed.split(/\s+/);
+                const endsWithPunctuation = /[.?!;,:]$/.test(trimmed);
+                const isAllCaps = trimmed === trimmed.toUpperCase() && /[A-Z]/.test(trimmed);
+
+                // Looks like a heading: 1-12 words, starts with capital, no sentence-ending
+                // punctuation, not all-caps (that's handled by heading-all-caps)
+                if (words.length >= 1 && words.length <= 12 &&
+                    /^[A-Z]/.test(trimmed) &&
+                    !endsWithPunctuation &&
+                    !isAllCaps) {
+                    issues.push({
+                        found: trimmed,
+                        suggestion: 'Apply Heading 2 style',
+                        autoFix: trimmed,
+                        applyHeadingStyle: true,
+                        position: position + line.indexOf(trimmed),
+                        rule: this
+                    });
+                }
+
+                position += line.length + 1;
+            }
+            return issues;
+        }
+    },
 
     // ==================== LATIN ABBREVIATIONS ====================
     {

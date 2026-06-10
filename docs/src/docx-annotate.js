@@ -1,0 +1,423 @@
+/**
+ * Style Manual Check - docx annotation module
+ */
+
+const W_NS = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
+const REL_NS = 'http://schemas.openxmlformats.org/package/2006/relationships';
+const COMMENTS_CT = 'application/vnd.openxmlformats-officedocument.wordprocessingml.comments+xml';
+const COMMENTS_REL = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/comments';
+
+function getEnv(env) {
+    return {
+        DOMParser: (env && env.DOMParser) || DOMParser,
+        XMLSerializer: (env && env.XMLSerializer) || XMLSerializer,
+        JSZip: (env && env.JSZip) || (typeof JSZip !== 'undefined' ? JSZip : undefined)
+    };
+}
+
+function localName(node) {
+    return node.localName || node.nodeName.split(':').pop();
+}
+
+function isW(node, name) {
+    return node.nodeType === 1 && localName(node) === name;
+}
+
+function hasAncestor(node, name, stopAt) {
+    let cur = node.parentNode;
+    while (cur && cur !== stopAt) {
+        if (isW(cur, name)) return true;
+        cur = cur.parentNode;
+    }
+    return false;
+}
+
+function collectParagraphSegments(pEl) {
+    const segments = [];
+    let text = '';
+
+    function findRun(node) {
+        let cur = node;
+        while (cur && !isW(cur, 'r')) cur = cur.parentNode;
+        return cur;
+    }
+
+    function walk(node) {
+        for (let child = node.firstChild; child; child = child.nextSibling) {
+            if (child.nodeType !== 1) continue;
+            const name = localName(child);
+            if (name === 'p' || name === 'pPr' || name === 'Fallback' ||
+                name === 'del' || name === 'commentReference') {
+                continue;
+            }
+            if (name === 't') {
+                const value = child.textContent || '';
+                if (value.length > 0) {
+                    segments.push({
+                        kind: 't', tNode: child, run: findRun(child),
+                        start: text.length, length: value.length
+                    });
+                    text += value;
+                }
+                continue;
+            }
+            if (name === 'tab' || name === 'br' || name === 'cr' ||
+                name === 'noBreakHyphen') {
+                segments.push({
+                    kind: 'atom', run: findRun(child),
+                    start: text.length, length: 1
+                });
+                text += (name === 'tab') ? '\t' : ' ';
+                continue;
+            }
+            walk(child);
+        }
+    }
+
+    walk(pEl);
+    return { text, segments };
+}
+
+function getPStyle(pEl) {
+    for (let c = pEl.firstChild; c; c = c.nextSibling) {
+        if (!isW(c, 'pPr')) continue;
+        for (let s = c.firstChild; s; s = s.nextSibling) {
+            if (isW(s, 'pStyle')) {
+                return s.getAttribute('w:val') || '';
+            }
+        }
+    }
+    return '';
+}
+
+function hasNumPr(pEl) {
+    for (let c = pEl.firstChild; c; c = c.nextSibling) {
+        if (!isW(c, 'pPr')) continue;
+        for (let s = c.firstChild; s; s = s.nextSibling) {
+            if (isW(s, 'numPr')) return true;
+        }
+    }
+    return false;
+}
+
+function toggleOn(rPr, name) {
+    if (!rPr) return false;
+    for (let c = rPr.firstChild; c; c = c.nextSibling) {
+        if (isW(c, name)) {
+            const val = c.getAttribute('w:val');
+            return !(val === '0' || val === 'false' || val === 'none');
+        }
+    }
+    return false;
+}
+
+function getRPr(run) {
+    for (let c = run.firstChild; c; c = c.nextSibling) {
+        if (isW(c, 'rPr')) return c;
+    }
+    return null;
+}
+
+function paragraphToggle(segments, toggleName) {
+    const runs = new Set();
+    for (const seg of segments) {
+        if (seg.kind === 't' && seg.run) runs.add(seg.run);
+    }
+    if (runs.size === 0) return false;
+    for (const run of runs) {
+        if (!toggleOn(getRPr(run), toggleName)) return false;
+    }
+    return true;
+}
+
+export async function loadDocx(arrayBuffer, env) {
+    const E = getEnv(env);
+    const zip = await E.JSZip.loadAsync(arrayBuffer);
+    const docFile = zip.file('word/document.xml');
+    if (!docFile) {
+        throw new Error('This file does not look like a Word document (no word/document.xml).');
+    }
+    const xml = await docFile.async('string');
+    const parser = new E.DOMParser();
+    const doc = parser.parseFromString(xml, 'application/xml');
+
+    const allP = Array.from(doc.getElementsByTagName('w:p'));
+    const paragraphEls = allP.filter(p => !hasAncestor(p, 'p'));
+
+    const paragraphs = [];
+    const headingLines = new Set();
+    const listLines = new Set();
+    const boldLines = new Set();
+    const italicLines = new Set();
+    const tableLines = new Set();
+    const lineStarts = [];
+    let fullText = '';
+
+    paragraphEls.forEach((pEl, i) => {
+        const { text, segments } = collectParagraphSegments(pEl);
+        lineStarts.push(fullText.length);
+        fullText += text;
+        if (i < paragraphEls.length - 1) fullText += '\n';
+
+        const style = getPStyle(pEl);
+        if (/^(Heading[1-9]|Title|Subtitle)/i.test(style)) headingLines.add(i);
+        if (hasNumPr(pEl) || /^(ListParagraph|ListBullet|ListNumber)/i.test(style)) {
+            listLines.add(i);
+        }
+        if (text.trim()) {
+            if (paragraphToggle(segments, 'b')) boldLines.add(i);
+            if (paragraphToggle(segments, 'i')) italicLines.add(i);
+        }
+        if (hasAncestor(pEl, 'tbl')) tableLines.add(i);
+
+        paragraphs.push({ el: pEl, text, segments });
+    });
+
+    return {
+        zip, doc, paragraphs, fullText, lineStarts,
+        headingLines, listLines, boldLines, italicLines, tableLines
+    };
+}
+
+function locate(lineStarts, paragraphs, position) {
+    let lo = 0, hi = lineStarts.length - 1, idx = 0;
+    while (lo <= hi) {
+        const mid = (lo + hi) >> 1;
+        if (lineStarts[mid] <= position) { idx = mid; lo = mid + 1; }
+        else hi = mid - 1;
+    }
+    return { paraIndex: idx, offset: position - lineStarts[idx] };
+}
+
+function splitRun(doc, run, tNode, at) {
+    const text = tNode.textContent || '';
+    const newRun = doc.createElementNS(W_NS, 'w:r');
+    const rPr = getRPr(run);
+    if (rPr) newRun.appendChild(rPr.cloneNode(true));
+
+    const newT = doc.createElementNS(W_NS, 'w:t');
+    newT.setAttribute('xml:space', 'preserve');
+    newT.appendChild(doc.createTextNode(text.slice(at)));
+    newRun.appendChild(newT);
+
+    tNode.textContent = text.slice(0, at);
+    tNode.setAttribute('xml:space', 'preserve');
+
+    const tParent = tNode.parentNode;
+    while (tParent === run && tNode.nextSibling) {
+        newRun.appendChild(tNode.nextSibling);
+    }
+    run.parentNode.insertBefore(newRun, run.nextSibling);
+    return newRun;
+}
+
+function makeCommentMarker(doc, name, id) {
+    const el = doc.createElementNS(W_NS, 'w:' + name);
+    el.setAttribute('w:id', String(id));
+    return el;
+}
+
+function makeCommentReferenceRun(doc, id) {
+    const run = doc.createElementNS(W_NS, 'w:r');
+    const rPr = doc.createElementNS(W_NS, 'w:rPr');
+    const rStyle = doc.createElementNS(W_NS, 'w:rStyle');
+    rStyle.setAttribute('w:val', 'CommentReference');
+    rPr.appendChild(rStyle);
+    run.appendChild(rPr);
+    const ref = doc.createElementNS(W_NS, 'w:commentReference');
+    ref.setAttribute('w:id', String(id));
+    run.appendChild(ref);
+    return run;
+}
+
+function escapeXml(s) {
+    return String(s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+}
+
+function commentXml(id, paragraphsOfText, author, initials, date) {
+    const paras = paragraphsOfText.map(t =>
+        '<w:p><w:pPr><w:pStyle w:val="CommentText"/></w:pPr>' +
+        '<w:r><w:t xml:space="preserve">' + escapeXml(t) + '</w:t></w:r></w:p>'
+    ).join('');
+    return '<w:comment w:id="' + id + '" w:author="' + escapeXml(author) +
+        '" w:initials="' + escapeXml(initials) + '" w:date="' + date + '">' +
+        paras + '</w:comment>';
+}
+
+export function commentTextFor(issue) {
+    const rule = issue.rule || {};
+    const lines = [];
+    lines.push((rule.name || 'Style issue') + ': ' + (rule.description || ''));
+    const suggestion = issue.suggestion || issue.autoFix;
+    if (suggestion && suggestion !== issue.found) {
+        lines.push("Suggested change: '" + suggestion + "'");
+    }
+    if (issue.note) lines.push(issue.note);
+    if (rule.link) lines.push('Style Manual guidance: ' + rule.link);
+    return lines.filter(Boolean);
+}
+
+export async function annotateDocx(loaded, issues, env, options) {
+    const E = getEnv(env);
+    const opts = options || {};
+    const author = opts.author || 'Style Manual Check';
+    const initials = opts.initials || 'SMC';
+    const date = (opts.date || new Date().toISOString().replace(/\.\d+Z$/, 'Z'));
+    const { zip, doc, paragraphs, lineStarts } = loaded;
+
+    const byPara = new Map();
+    for (const issue of issues) {
+        if (typeof issue.position !== 'number' || !issue.found) continue;
+        const { paraIndex, offset } = locate(lineStarts, paragraphs, issue.position);
+        const para = paragraphs[paraIndex];
+        const start = Math.max(0, Math.min(offset, para.text.length));
+        const end = Math.min(start + issue.found.length, para.text.length);
+        if (end <= start) continue;
+        if (!byPara.has(paraIndex)) byPara.set(paraIndex, []);
+        byPara.get(paraIndex).push({ issue, start, end });
+    }
+
+    let nextId = 0;
+    const existingCommentsFile = zip.file('word/comments.xml');
+    let existingCommentsXml = null;
+    if (existingCommentsFile) {
+        existingCommentsXml = await existingCommentsFile.async('string');
+        const idMatches = existingCommentsXml.match(/w:id="(\d+)"/g) || [];
+        for (const m of idMatches) {
+            const n = parseInt(m.replace(/\D/g, ''), 10);
+            if (n >= nextId) nextId = n + 1;
+        }
+    }
+
+    const newComments = [];
+    const sortedParas = Array.from(byPara.keys()).sort((a, b) => a - b);
+
+    for (const paraIndex of sortedParas) {
+        const para = paragraphs[paraIndex];
+        const items = byPara.get(paraIndex)
+            .sort((a, b) => a.start - b.start || b.end - a.end);
+
+        const accepted = [];
+        for (const item of items) {
+            const prev = accepted[accepted.length - 1];
+            if (prev && item.start < prev.end) {
+                if (item.start === prev.start && item.end === prev.end) {
+                    prev.issues.push(item.issue);
+                } else {
+                    prev.merged.push(item.issue);
+                }
+                continue;
+            }
+            accepted.push({
+                start: item.start, end: item.end,
+                issues: [item.issue], merged: []
+            });
+        }
+
+        for (let i = accepted.length - 1; i >= 0; i--) {
+            const { start, end, issues: anchorIssues, merged } = accepted[i];
+
+            const segs = para.segments.filter(s =>
+                s.start < end && (s.start + s.length) > start);
+            if (segs.length === 0) continue;
+
+            const firstSeg = segs[0];
+            const lastSeg = segs[segs.length - 1];
+
+            let endRun = lastSeg.run;
+            if (lastSeg.kind === 't' && end < lastSeg.start + lastSeg.length) {
+                splitRun(doc, lastSeg.run, lastSeg.tNode, end - lastSeg.start);
+                endRun = lastSeg.run;
+            }
+
+            let startRun = firstSeg.run;
+            if (firstSeg.kind === 't' && start > firstSeg.start) {
+                const suffixRun = splitRun(
+                    doc, firstSeg.run, firstSeg.tNode, start - firstSeg.start);
+                startRun = suffixRun;
+                if (endRun === firstSeg.run) endRun = suffixRun;
+            }
+
+            for (let k = 0; k < anchorIssues.length; k++) {
+                const id = nextId++;
+                startRun.parentNode.insertBefore(
+                    makeCommentMarker(doc, 'commentRangeStart', id), startRun);
+                const endMarker = makeCommentMarker(doc, 'commentRangeEnd', id);
+                endRun.parentNode.insertBefore(endMarker, endRun.nextSibling);
+                endMarker.parentNode.insertBefore(
+                    makeCommentReferenceRun(doc, id), endMarker.nextSibling);
+
+                let textParas = commentTextFor(anchorIssues[k]);
+                if (k === 0 && merged.length > 0) {
+                    for (const m of merged) {
+                        textParas = textParas.concat(
+                            ['Also flagged in this text:'],
+                            commentTextFor(m));
+                    }
+                }
+                newComments.push(commentXml(
+                    id, textParas, author, initials, date));
+            }
+        }
+    }
+
+    if (newComments.length > 0) {
+        if (existingCommentsXml) {
+            const updated = existingCommentsXml.replace(
+                /<\/w:comments>\s*$/,
+                newComments.join('') + '</w:comments>');
+            zip.file('word/comments.xml', updated);
+        } else {
+            const commentsDoc =
+                '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
+                '<w:comments xmlns:w="' + W_NS + '">' +
+                newComments.join('') + '</w:comments>';
+            zip.file('word/comments.xml', commentsDoc);
+            await ensureContentType(zip);
+            await ensureRelationship(zip);
+        }
+    }
+
+    const serializer = new E.XMLSerializer();
+    let outXml = serializer.serializeToString(doc);
+    if (!outXml.startsWith('<?xml')) {
+        outXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' + outXml;
+    }
+    zip.file('word/document.xml', outXml);
+    return { zip, commentCount: newComments.length };
+}
+
+async function zipString(zip, path) {
+    const f = zip.file(path);
+    return f ? f.async('string') : '';
+}
+
+async function ensureContentType(zip) {
+    let ct = await zipString(zip, '[Content_Types].xml');
+    if (ct.indexOf('word/comments.xml') !== -1) return;
+    ct = ct.replace('</Types>',
+        '<Override PartName="/word/comments.xml" ContentType="' +
+        COMMENTS_CT + '"/></Types>');
+    zip.file('[Content_Types].xml', ct);
+}
+
+async function ensureRelationship(zip) {
+    const path = 'word/_rels/document.xml.rels';
+    let rels = await zipString(zip, path);
+    if (rels.indexOf(COMMENTS_REL) !== -1) return;
+    let n = 1000;
+    while (rels.indexOf('Id="rId' + n + '"') !== -1) n++;
+    if (rels) {
+        rels = rels.replace('</Relationships>',
+            '<Relationship Id="rId' + n + '" Type="' + COMMENTS_REL +
+            '" Target="comments.xml"/></Relationships>');
+    } else {
+        rels = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
+            '<Relationships xmlns="' + REL_NS + '">' +
+            '<Relationship Id="rId' + n + '" Type="' + COMMENTS_REL +
+            '" Target="comments.xml"/></Relationships>';
+    }
+    zip.file(path, rels);
+}

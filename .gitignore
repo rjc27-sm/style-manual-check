@@ -1,19 +1,22 @@
-# Dependencies
 node_modules/
+package-lock.json
+tests/*annotated*.docx
+~$*.docx
 
-# IDE/Editor settings
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# OS files
-.DS_Store
-Thumbs.db
-
-# Logs
-*.log
-
-# Temporary files
-*.tmp
-*.temp
+# Local working files not part of the published tool
+.claude/
+Assets/
+StyleManualCheck/
+style-manual-check/
+Style Manual Check/
+Style Manual Check for testers.pptx
+*.docx
+!tests/sample.docx
+*.py
+*.ps1
+*.skill
+*.md
+!README.md
+crawl_report.txt
+LICENSE
+SETUP_INSTRUCTIONS.md

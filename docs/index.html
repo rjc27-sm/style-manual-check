@@ -1,866 +1,196 @@
 <!DOCTYPE html>
-<html lang="en-AU">
+<html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Style Manual Check</title>
-    
-    <style>
-        :root {
-            --primary: #1a365d;
-            --primary-light: #2c5282;
-            --success: #276749;
-            --warning: #c05621;
-            --error: #c53030;
-            --gray-50: #f7fafc;
-            --gray-100: #edf2f7;
-            --gray-200: #e2e8f0;
-            --gray-300: #cbd5e0;
-            --gray-600: #718096;
-            --gray-700: #4a5568;
-            --gray-800: #2d3748;
-            --white: #ffffff;
-        }
-        
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-        
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-            font-size: 14px;
-            line-height: 1.5;
-            color: var(--gray-800);
-            background: var(--gray-100);
-            display: flex;
-            min-height: 100vh;
-        }
-        
-        /* Two-panel layout for demo */
-        .demo-container {
-            display: flex;
-            width: 100%;
-            max-width: 1400px;
-            margin: 0 auto;
-            gap: 20px;
-            padding: 20px;
-        }
-        
-        .document-panel {
-            flex: 1;
-            background: var(--white);
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            padding: 30px;
-        }
-        
-        .document-panel h2 {
-            font-size: 14px;
-            color: var(--gray-600);
-            margin-bottom: 20px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Style Manual Check</title>
+<meta name="description" content="Check Word documents and text against the Australian Government Style Manual. Runs entirely in your browser – no data leaves your device.">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700;800&display=swap');
+:root{
+  --blue:#2d7e98;--b1:#192f38;--b2:#295665;--b4:#61a9be;--b5:#b7d6df;
+  --teal:#27854e;--green:#4d8227;--orange:#f36f21;--o2:#863a0d;
+  --c1:#2b2d2d;--c2:#4f5152;--c3:#707678;--c4:#9c9fa0;--c5:#cfd1d1;
+  --bg:#f6f7f7;--line:#e3e6e6;--ease:cubic-bezier(.2,0,.2,1);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{font-family:'Open Sans',Arial,sans-serif;background:var(--bg);color:var(--c1);
+  font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+[hidden]{display:none !important}
+:focus-visible{outline:3px solid rgba(45,126,152,.45);outline-offset:2px;border-radius:4px}
 
-        .document-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-        }
+.keyline{height:4px;background:linear-gradient(90deg,var(--b2),var(--blue) 55%,var(--b4))}
+.wrap{max-width:960px;margin:0 auto;padding:40px 28px 56px}
 
-        .document-header h2 {
-            margin-bottom: 0;
-            text-transform: none;
-        }
+.head{margin-bottom:28px}
+.head h1{font-size:30px;font-weight:800;color:var(--b1);letter-spacing:-.01em;line-height:1.12;margin:0}
+.lede{font-size:15.5px;color:var(--c2);margin:8px 0 0;max-width:640px;line-height:1.6}
+.privacy{font-size:13.5px;color:var(--c3);margin-top:10px}
 
-        .feedback-link {
-            font-size: 12px;
-            color: var(--primary);
-            text-decoration: none;
-            white-space: nowrap;
-            margin-left: 12px;
-        }
+.step-h{display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+.num{width:26px;height:26px;border-radius:999px;background:var(--blue);color:#fff;
+  font:700 13px 'Open Sans',sans-serif;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.step-h h2{font-size:16px;font-weight:700;color:var(--b1);margin:0}
+.step-hint{font-size:12.5px;color:var(--c3)}
 
-        .feedback-link:hover {
-            text-decoration: underline;
-        }
-        
-        .document-panel textarea {
-            width: 100%;
-            height: 400px;
-            padding: 16px;
-            font-family: 'Georgia', serif;
-            font-size: 14px;
-            line-height: 1.8;
-            border: 1px solid var(--gray-300);
-            border-radius: 6px;
-            resize: vertical;
-        }
-        
-        .taskpane-panel {
-            width: 350px;
-            background: var(--gray-50);
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            padding: 16px;
-            max-height: calc(100vh - 40px);
-            overflow-y: auto;
-        }
-        
-        /* Header */
-        .header {
-            margin-bottom: 20px;
-        }
-        
-        .header h1 {
-            font-size: 16px;
-            font-weight: 600;
-            color: var(--primary);
-            margin-bottom: 4px;
-        }
-        
-        .header p {
-            font-size: 12px;
-            color: var(--gray-600);
-        }
-        
-        /* Scan button */
-        .scan-btn {
-            width: 100%;
-            padding: 12px 16px;
-            font-size: 14px;
-            font-weight: 500;
-            color: var(--white);
-            background: var(--primary);
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: background 0.2s;
-            margin-bottom: 16px;
-        }
-        
-        .scan-btn:hover {
-            background: var(--primary-light);
-        }
-        
-        /* Status bar */
-        .status {
-            padding: 10px 12px;
-            background: var(--gray-100);
-            border-radius: 6px;
-            font-size: 13px;
-            color: var(--gray-700);
-            margin-bottom: 16px;
-        }
-        
-        .status.success {
-            background: #c6f6d5;
-            color: var(--success);
-        }
+.seg{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+.seg button{display:inline-flex;align-items:center;gap:7px;padding:9px 15px;border:1px solid var(--c5);
+  border-radius:999px;font:600 14px 'Open Sans',sans-serif;color:var(--c2);cursor:pointer;background:#fff;
+  transition:all .15s var(--ease)}
+.seg button:hover{border-color:var(--b4)}
+.seg button[aria-selected="true"]{background:#eef5f7;border-color:var(--blue);color:var(--b2);font-weight:700}
 
-        .status.warning {
-            background: #fefcbf;
-            color: var(--warning);
-        }
-        
-        /* Summary stats */
-        .summary {
-            display: flex;
-            gap: 12px;
-            margin-bottom: 16px;
-        }
-        
-        .stat {
-            flex: 1;
-            padding: 12px;
-            background: var(--white);
-            border: 1px solid var(--gray-200);
-            border-radius: 6px;
-            text-align: center;
-        }
-        
-        .stat-number {
-            font-size: 24px;
-            font-weight: 600;
-            color: var(--primary);
-        }
-        
-        .stat-label {
-            font-size: 11px;
-            color: var(--gray-600);
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-        
-        /* Issues list */
-        .issues-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 12px;
-        }
-        
-        .issues-header h2 {
-            font-size: 14px;
-            font-weight: 600;
-            color: var(--gray-800);
-        }
-        
-        .filter-select {
-            padding: 4px 8px;
-            font-size: 12px;
-            border: 1px solid var(--gray-300);
-            border-radius: 4px;
-            background: var(--white);
-        }
-        
-        .issues-list {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-        
-        /* Individual issue card */
-        .issue-card {
-            background: var(--white);
-            border: 1px solid var(--gray-200);
-            border-radius: 8px;
-            padding: 14px;
-            border-left: 4px solid var(--warning);
-        }
-        
-        .issue-card.spelling {
-            border-left-color: var(--error);
-        }
-        
-        .issue-card.punctuation {
-            border-left-color: var(--warning);
-        }
-        
-        .issue-card.dates-and-time {
-            border-left-color: var(--primary);
-        }
-        
-        .issue-card.headings {
-            border-left-color: #805ad5;
-        }
+.card{background:#fff;border:1px solid var(--line);border-radius:10px;overflow:hidden;
+  box-shadow:0 1px 2px rgba(25,47,56,.04)}
 
-        .issue-card.watch-words {
-            border-left-color: #2b6cb0;
-        }
+#drop-zone{margin:14px;border:2px dashed var(--b5);border-radius:8px;padding:36px 20px;text-align:center;
+  cursor:pointer;transition:all .15s var(--ease)}
+#drop-zone:hover,#drop-zone.drag{background:#eef5f7;border-color:var(--blue)}
+#drop-zone strong{color:var(--b2)}
+#drop-zone .hint{font-size:13px;color:var(--c3);margin-top:6px;line-height:1.55}
+#file-name{font-weight:700;color:var(--b2);margin-top:10px;font-size:14.5px}
+#file-input{display:none}
 
-        .issue-card.readability {
-            border-left-color: #319795;
-        }
+textarea#text-input{width:100%;min-height:230px;padding:18px 20px;border:0;resize:vertical;display:block;
+  font:15px/1.6 'Open Sans',Arial,sans-serif;color:var(--c1);background:#fff}
+textarea#text-input::placeholder{color:var(--c4)}
+textarea#text-input:focus{outline:none;box-shadow:inset 0 0 0 2px var(--b5)}
+.card-foot{border-top:1px solid var(--line);padding:11px 16px;display:flex;justify-content:flex-end;
+  align-items:center}
 
-        .issue-card.government-terms {
-            border-left-color: #d69e2e;
-        }
+.btn{font:700 15px 'Open Sans',sans-serif;border-radius:8px;padding:12px 26px;cursor:pointer;border:none;
+  min-height:46px;display:inline-flex;align-items:center;gap:8px}
+.btn-primary{background:var(--blue);color:#fff}
+.btn-primary:hover{background:var(--b2)}
+.btn:disabled{background:var(--c4);cursor:default}
 
-        .issue-card.lists {
-            border-left-color: #38a169;
-        }
+.controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:22px 0 0}
+.controls .ctrl-lab{font-size:13px;font-weight:600;color:var(--c3)}
+.controls select{font:600 14px 'Open Sans',sans-serif;color:var(--c2);padding:9px 12px;
+  border:1px solid var(--c5);border-radius:999px;background:#fff;cursor:pointer}
+.controls select:hover{border-color:var(--b4)}
+.pill-check{display:inline-flex;align-items:center;gap:7px;padding:9px 15px;border:1px solid var(--c5);
+  border-radius:999px;font-size:14px;color:var(--c2);cursor:pointer;background:#fff;transition:all .15s var(--ease)}
+.pill-check:hover{border-color:var(--b4)}
+.pill-check:has(input:checked){background:#eef5f7;border-color:var(--blue);color:var(--b2);font-weight:700}
+.pill-check:has(input:disabled){color:var(--c4);cursor:default;background:var(--bg)}
+.pill-check input{accent-color:var(--blue);width:15px;height:15px;cursor:pointer}
+.pill-check input:disabled{cursor:default}
 
-        .issue-card.numbers-and-measurements {
-            border-left-color: #dd6b20;
-        }
+#busy{margin-top:18px;font-size:14.5px;font-weight:600;color:var(--b2)}
 
-        .issue-header {
-            margin-bottom: 8px;
-        }
+#error-box{margin-top:22px;background:#fdf3ec;border:1px solid #f4d4bd;border-left:4px solid var(--orange);
+  border-radius:10px;padding:18px 22px;font-size:14.5px;line-height:1.65;color:#7a3d18;
+  animation:rise .25s var(--ease)}
 
-        .issue-category {
-            font-size: 10px;
-            font-weight: 600;
-            letter-spacing: 0.5px;
-            color: var(--gray-600);
-            text-transform: uppercase;
-            margin-right: 6px;
-        }
+#download-bar{margin-top:22px;background:#eef5f7;border:1px solid #cfe2e8;border-left:4px solid var(--blue);
+  border-radius:10px;padding:18px 22px;display:flex;align-items:center;gap:18px;flex-wrap:wrap;
+  animation:rise .25s var(--ease)}
+#download-note{font-size:14px;color:var(--c2);line-height:1.6;flex:1;min-width:240px}
 
-        .issue-rule-name {
-            font-size: 12px;
-            font-weight: 600;
-            color: var(--gray-800);
-        }
+#results-section{margin-top:28px}
+#summary-line{font-size:15px;font-weight:700;color:var(--b1);margin-bottom:14px}
 
-        .btn-ignore-all {
-            background: #fee2e2;
-            color: var(--error);
-            border: 1px solid #fca5a5;
-        }
+.issue-card{background:#fff;border:1px solid var(--line);border-left:4px solid var(--blue);border-radius:10px;
+  padding:15px 20px;margin-bottom:10px;box-shadow:0 1px 2px rgba(25,47,56,.04);animation:rise .25s var(--ease)}
+.issue-head{display:flex;gap:10px;align-items:baseline;margin-bottom:5px;flex-wrap:wrap}
+.badge{font-size:12px;font-weight:700;color:var(--b2);background:#eef5f7;border:1px solid var(--b5);
+  border-radius:999px;padding:2px 11px}
+.para-ref{font-size:12.5px;color:var(--c3)}
+.issue-found{font-size:15px;font-weight:700;color:var(--c1)}
+.issue-suggestion{font-size:14.5px;font-weight:700;color:var(--teal);margin-top:1px}
+.issue-desc{font-size:14px;color:var(--c2);line-height:1.6;margin-top:3px}
+.learn-more{display:inline-block;font-size:13.5px;color:var(--b2);margin-top:5px;
+  text-underline-offset:2px}
+.learn-more:hover{color:var(--blue)}
 
-        .btn-ignore-all:hover {
-            background: #fecaca;
-        }
+.copyright{margin-top:44px;padding-top:32px;border-top:1px solid var(--line);font-size:13.5px;
+  color:var(--c3);line-height:1.6}
+.copyright a{color:var(--b2)}
 
-        .learn-more {
-            font-size: 12px;
-            color: var(--primary);
-            text-decoration: none;
-        }
+@keyframes rise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 
-        .learn-more:hover {
-            text-decoration: underline;
-        }
-        
-        .issue-found {
-            font-family: 'Consolas', 'Monaco', monospace;
-            font-size: 13px;
-            background: #fed7d7;
-            padding: 2px 6px;
-            border-radius: 3px;
-            color: var(--error);
-        }
-        
-        .issue-arrow {
-            color: var(--gray-400);
-            margin: 0 8px;
-        }
-        
-        .issue-suggestion {
-            font-family: 'Consolas', 'Monaco', monospace;
-            font-size: 13px;
-            background: #c6f6d5;
-            padding: 2px 6px;
-            border-radius: 3px;
-            color: var(--success);
-        }
-        
-        .issue-text {
-            margin: 8px 0;
-            display: flex;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 4px;
-        }
-        
-        .issue-explanation {
-            font-size: 12px;
-            color: var(--gray-600);
-            margin-bottom: 12px;
-            padding: 8px;
-            background: var(--gray-50);
-            border-radius: 4px;
-        }
-        
-        .issue-explanation a {
-            color: var(--primary);
-            text-decoration: none;
-        }
-        
-        .issue-actions {
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
-        }
-        
-        .btn {
-            padding: 6px 12px;
-            font-size: 12px;
-            font-weight: 500;
-            border-radius: 4px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        
-        .btn-accept {
-            background: var(--success);
-            color: var(--white);
-            border: none;
-        }
-        
-        .btn-accept:hover {
-            background: #22543d;
-        }
-        
-        .btn-ignore {
-            background: var(--white);
-            color: var(--gray-700);
-            border: 1px solid var(--gray-300);
-        }
-        
-        .btn-ignore:hover {
-            background: var(--gray-100);
-        }
-        
-        .btn-fix-all {
-            background: var(--white);
-            color: var(--primary);
-            border: 1px solid var(--primary);
-        }
-
-        .btn-fix-all:hover {
-            background: var(--gray-100);
-        }
-
-        .btn-goto {
-            background: var(--white);
-            color: var(--primary-light);
-            border: 1px solid var(--primary-light);
-        }
-
-        .btn-goto:hover {
-            background: var(--gray-100);
-        }
-        
-        /* Footer */
-        .footer {
-            margin-top: 24px;
-            padding-top: 16px;
-            border-top: 1px solid var(--gray-200);
-            font-size: 11px;
-            color: var(--gray-600);
-            text-align: center;
-        }
-        
-        .footer a {
-            color: var(--primary);
-            text-decoration: none;
-        }
-        
-        .hidden {
-            display: none !important;
-        }
-    </style>
+@media (max-width:720px){
+  .wrap{padding:28px 18px 44px}
+  .head h1{font-size:25px}
+  .lede{font-size:15px}
+}
+</style>
 </head>
 <body>
-    <div class="demo-container">
-        <!-- Document panel (simulates Word) -->
-        <div class="document-panel">
-            <div class="document-header">
-                <h2>Sample document (edit to test, or paste your own text below)</h2>
-                <a href="https://forms.office.com/r/7qcF8K4cJN" target="_blank" class="feedback-link">Give feedback or report a bug</a>
-            </div>
-            <textarea id="documentText">Annual report summary
 
-The organization has finalized its strategic plan for 2024–2025. This document summarizes the seven key initiatives we are prioritizing this year, e.g., workforce planning & digital transformation.
+<div class="keyline"></div>
+<main class="wrap">
+  <header class="head">
+    <h1>Style Manual Check</h1>
+    <p class="lede">Upload a Word document and download it back with a review
+      comment on every style issue – your formatting is untouched. Each comment
+      links to the relevant page of the
+      <a href="https://www.stylemanual.gov.au" target="_blank" rel="noopener noreferrer">Australian Government Style Manual</a>.</p>
+    <p class="privacy">Everything runs in your browser. Your document is not
+      uploaded anywhere and no data leaves your device.</p>
+  </header>
 
-Key Achievements For This Year
+  <section>
+    <div class="step-h"><span class="num">1</span><h2>Your content</h2>
+      <span class="step-hint">a Word document, or pasted text for a quick check</span></div>
 
-Our team analyzed the data from January 15, 2024 and recognized several important trends. The program—which was authorized last year—exceeded expectations. It would of been difficult to achieve these results without the team's dedication.
-
-We utilized new methodologies to maximize efficiency.  The center has been modernized and all staff have been familiarized with the new systems. The training programme was well received.
-
-In order to facilitate the implementation of these changes, we will endeavour to provide assistance with the transition. Prior to commencing, staff should obtain the necessary documentation.
-
-The implementation of the new policy framework requires careful consideration of multiple stakeholder perspectives and the development of comprehensive guidelines that address all potential scenarios while maintaining flexibility for future adjustments.
-
-Staff Development And Training Programs
-
-Irregardless of budget constraints, we supported twelve staff across three departments to complete their master's degree qualifications. This is a deep-seeded commitment to professional development. Fourteen respondents provided additional feedback. About two-thirds of participants were satisfied with the programme. N.B. Funding will continue through the training budget.
-
-The argument that training is a mute point should be rejected. Our judgment is that continued investment is essential. Research by Smith et al. supports this conclusion.
-
-Use of Medicare Services and Pharmaceuticals by Mental Health Patients in Australia over the Last Decade
-
-The policy is often described as "innovative" by stakeholders. The term 'stakeholder,' which appears frequently, should be used sparingly. The word 'synergy,' meaning combined effect, is overused.
-
-The priorities are efficiency, quality, and value. The industries most affected are retail, wholesale, and accommodation and food services.
-
-Defence is a Commonwealth government responsibility. The Department of Finance owns the policy. Staff should contact the Department directly for guidance. The research was conducted in partnership with the Institute last year. The Minister for Education announced the new policy. The Minister of Health also attended. Education groups met with the Minister to present their views. The Secretary for the Department of Health attended. We will work with the Agency on implementation. Stakeholders welcomed the findings from the Commission this month.
-
-Important information about the program.
-
-The 2023-24 financial year saw significant growth. The program - which ran from 2020-2023 - exceeded all targets. During the 1980's, we published bimonthly newsletters.
-
-UPCOMING EVENTS AND ACTIVITIES
-
-The 1ˢᵗ quarterly review is scheduled for AEST 14:00 on the 3ʳᵈ of March. This will be our 21ˢᵗ annual planning session. The 2nd item on the agenda is the 9th century artefact display, which is in its 3rd year.
-
-The meeting is on Thursday, 15 August at 10.30 am in the morning. The deadline was extended to 12 pm. Submit your 2018/19 report by 1st September. Various formats are acceptable, i.e., Word, PDF, etc. Contact the program coordinator for more information. WW2 veterans will be recognised at the ceremony.
-
-Budget and statistics
-
-The success rate was 85 percent with a margin of error of .5 points. 15 people attended the workshop. We conducted twenty-three interviews and reviewed nine submissions. We allocated $2500 to the project and achieved a 20 % improvement. The office is located five km from the city centre, approximately 10 miles by road.
-
-Project deliverables
-
-The project will deliver:
-• phase 1 documentation;
-• phase 2 implementation;
-• phase 3 evaluation
-
-Staff responsibilities include:
-• Attending weekly meetings,
-• Completing timesheets, and
-• submitting reports on time.
-
-Required equipment:
-- Computer with internet access.
-- Security pass
-- Office supplies</textarea>
-        </div>
-        
-        <!-- Taskpane (the add-in UI) -->
-        <div class="taskpane-panel">
-            
-            <div class="header">
-                <h1>Style Manual Check</h1>
-                <p>Based on the Australian Government Style Manual</p>
-            </div>
-            
-            <button id="scanBtn" class="scan-btn">
-                Check document
-            </button>
-
-            <div id="status" class="status hidden"></div>
-
-            <div id="summary" class="summary hidden">
-                <div class="stat">
-                    <div id="issueCount" class="stat-number">0</div>
-                    <div class="stat-label">Issues</div>
-                </div>
-                <div class="stat">
-                    <div id="fixedCount" class="stat-number">0</div>
-                    <div class="stat-label">Fixed</div>
-                </div>
-            </div>
-            
-            <div id="issuesContainer" class="hidden">
-                <div class="issues-header">
-                    <h2>Issues found</h2>
-                    <select id="filterSelect" class="filter-select">
-                        <option value="all">All types</option>
-                    </select>
-                </div>
-                
-                <div id="issuesList" class="issues-list">
-                    <!-- Issues will be inserted here -->
-                </div>
-            </div>
-            
-            <div id="emptyState" class="status success hidden">
-                ✓ Check complete
-            </div>
-            
-            <div class="footer">
-                <a href="https://www.stylemanual.gov.au" target="_blank">Style Manual website</a><br>
-                <a href="https://forms.office.com/r/7qcF8K4cJN" target="_blank">Give feedback or report a bug</a>
-            </div>
-        </div>
+    <div class="seg" role="tablist" aria-label="What to check">
+      <button id="tab-document" type="button" role="tab" aria-selected="true">Word document</button>
+      <button id="tab-text" type="button" role="tab" aria-selected="false">Pasted text</button>
     </div>
-    
-    <script type="module">
-        import { checkText } from './src/rules.js';
 
-        let allIssues = [];
-        let fixedCount = 0;
-        let currentFilter = 'all';
-        let ignoredGroups = new Set();
-        let ignoredFingerprints = new Set();
+    <div class="card" id="panel-document" role="tabpanel">
+      <div id="drop-zone" tabindex="0" role="button" aria-label="Choose a Word document to check">
+        <p><strong>Choose a Word document</strong> or drag it here</p>
+        <p class="hint">.docx files only. The tool reads heading styles, list
+          formatting and bold text directly from the document.</p>
+        <p id="file-name"></p>
+      </div>
+      <input type="file" id="file-input" accept=".docx">
+    </div>
 
-        // Display names for categories
-        const categoryDisplayNames = {
-            'spelling': 'Spelling',
-            'punctuation': 'Punctuation',
-            'headings': 'Headings',
-            'readability': 'Readability',
-            'watch-words': 'Watch words',
-            'dates-and-time': 'Dates and time',
-            'government-terms': 'Government terms',
-            'numbers-and-measurements': 'Numbers and measurements',
-            'lists': 'Lists'
-        };
-        
-        const elements = {
-            documentText: document.getElementById('documentText'),
-            scanBtn: document.getElementById('scanBtn'),
-            status: document.getElementById('status'),
-            summary: document.getElementById('summary'),
-            issueCount: document.getElementById('issueCount'),
-            fixedCount: document.getElementById('fixedCount'),
-            issuesContainer: document.getElementById('issuesContainer'),
-            issuesList: document.getElementById('issuesList'),
-            filterSelect: document.getElementById('filterSelect'),
-        };
-        
-        elements.scanBtn.addEventListener('click', scanDocument);
-        elements.filterSelect.addEventListener('change', (e) => {
-            currentFilter = e.target.value;
-            displayResults();
-        });
-        
-        // Build heuristic heading/list Sets from plain text (approximates Word's paragraph styles)
-        function buildHeuristicSets(text) {
-            const lines = text.split('\n');
-            const headingLines = new Set();
-            const listLines = new Set();
-            for (let i = 0; i < lines.length; i++) {
-                const trimmed = lines[i].trim();
-                if (!trimmed) continue;
-                // List item: starts with bullet or number+period/bracket
-                if (/^[\u2022\u2023\u25e6\u2043\u2219\-\*\+]\s/.test(trimmed) ||
-                    /^\d+[\.\)]\s/.test(trimmed)) {
-                    listLines.add(i);
-                    continue;
-                }
-                // Heading: 1–12 words, no trailing sentence-ending punctuation, not all-caps
-                const words = trimmed.split(/\s+/);
-                const endsWithPunct = /[.?!;,]$/.test(trimmed);
-                const isAllCaps = trimmed === trimmed.toUpperCase() && /[A-Z]/.test(trimmed);
-                if (words.length <= 12 && !endsWithPunct && !isAllCaps) {
-                    headingLines.add(i);
-                }
-            }
-            return { headingLines, listLines };
-        }
+    <div class="card" id="panel-text" role="tabpanel" hidden>
+      <textarea id="text-input" aria-label="Text to check" spellcheck="false"
+        placeholder="Paste your text here. Pasting strips Word formatting, so heading and list checks use a best guess – for full checks, use the Word document option."></textarea>
+      <div class="card-foot">
+        <button class="btn btn-primary" id="check-text-btn" type="button">Check text</button>
+      </div>
+    </div>
+  </section>
 
-        function scanDocument() {
-            elements.scanBtn.disabled = true;
-            elements.scanBtn.textContent = 'Checking...';
+  <div class="controls">
+    <span class="ctrl-lab" id="filter-lab">Show</span>
+    <select id="category-filter" aria-labelledby="filter-lab">
+      <option value="all">All categories</option>
+    </select>
+    <label class="pill-check"><input type="checkbox" id="aihw-toggle">
+      <span id="aihw-label">AIHW house style pack</span></label>
+  </div>
 
-            const text = elements.documentText.value;
-            const { headingLines, listLines } = buildHeuristicSets(text);
-            allIssues = checkText(text, headingLines, listLines);
+  <p id="busy" hidden role="status"><span id="busy-label">Working…</span></p>
+  <p id="error-box" hidden role="alert"></p>
 
-            // Filter out ignored issues
-            if (ignoredGroups.size > 0 || ignoredFingerprints.size > 0) {
-                allIssues = allIssues.filter(i => {
-                    const gid = i.groupId || i.rule.id;
-                    if (ignoredGroups.has(gid)) return false;
-                    if (ignoredFingerprints.has(i.rule.id + ':' + i.found)) return false;
-                    return true;
-                });
-            }
+  <div id="download-bar" hidden>
+    <button class="btn btn-primary" id="download-btn" type="button">Download with comments (.docx)</button>
+    <span id="download-note">Adds a Word review comment for every issue, with a
+      link to the Style Manual. Your formatting is untouched.</span>
+  </div>
 
-            allIssues.forEach((issue, i) => { issue.id = 'issue-' + i; });
-            fixedCount = 0;
+  <section id="results-section" hidden aria-live="polite">
+    <div class="step-h" style="margin-top:6px"><span class="num">2</span><h2>Issues found</h2></div>
+    <p id="summary-line"></p>
+    <div id="issue-list"></div>
+  </section>
 
-            elements.scanBtn.disabled = false;
-            elements.scanBtn.textContent = 'Check document';
-            displayResults();
-        }
-        
-        function updateFilterDropdown() {
-            const countByCategory = {};
-            allIssues.forEach(i => {
-                countByCategory[i.rule.category] = (countByCategory[i.rule.category] || 0) + 1;
-            });
-            const sel = elements.filterSelect;
-            const prev = sel.value;
-            sel.innerHTML = `<option value="all">All types (${allIssues.length})</option>`;
-            // Emit categories in display-name order
-            for (const [cat, label] of Object.entries(categoryDisplayNames)) {
-                if (countByCategory[cat]) {
-                    const opt = document.createElement('option');
-                    opt.value = cat;
-                    opt.textContent = `${label} (${countByCategory[cat]})`;
-                    sel.appendChild(opt);
-                }
-            }
-            // Restore selection if it's still valid, else reset to 'all'
-            if ([...sel.options].some(o => o.value === prev)) {
-                sel.value = prev;
-            } else {
-                sel.value = 'all';
-                currentFilter = 'all';
-            }
-        }
+  <p class="copyright">Based on the
+    <a href="https://www.stylemanual.gov.au">Australian Government Style Manual</a>.
+    This tool checks the rules that can be applied automatically – it does not
+    replace editorial judgement.</p>
+</main>
 
-        function displayResults() {
-            updateFilterDropdown();
-            elements.summary.classList.remove('hidden');
-            elements.issueCount.textContent = allIssues.length;
-            elements.fixedCount.textContent = fixedCount;
-
-            if (allIssues.length === 0) {
-                elements.status.textContent = '✓ Check complete';
-                elements.status.className = 'status success';
-                elements.status.classList.remove('hidden');
-                elements.issuesContainer.classList.add('hidden');
-            } else {
-                elements.status.className = 'status hidden';
-                elements.issuesContainer.classList.remove('hidden');
-                const filteredIssues = currentFilter === 'all'
-                    ? allIssues
-                    : allIssues.filter(i => i.rule.category === currentFilter);
-                renderIssuesList(filteredIssues);
-            }
-        }
-        
-        function renderIssuesList(issues) {
-            elements.issuesList.innerHTML = '';
-
-            for (const issue of issues) {
-                elements.issuesList.appendChild(createIssueCard(issue));
-            }
-        }
-
-        function createIssueCard(issue) {
-            const card = document.createElement('div');
-            card.className = 'issue-card ' + issue.rule.category;
-            card.id = issue.id;
-
-            const canAutoFix = issue.autoFix !== undefined;
-            const hasReplacements = issue.replacements && issue.replacements.length > 0;
-            const fixableOfType = allIssues.filter(i => i.rule.id === issue.rule.id && i.autoFix !== undefined);
-            const sameTypeCount = fixableOfType.length;
-            const issueGroupId = issue.groupId || issue.rule.id;
-            const totalOfType = allIssues.filter(i => (i.groupId || i.rule.id) === issueGroupId).length;
-
-            let html = `
-                <div class="issue-header">
-                    <span class="issue-rule-name">${escapeHtml(issue.rule.name)}</span>
-                </div>
-                <div class="issue-text">
-                    <span class="issue-found">${escapeHtml(issue.found)}</span>
-                    <span class="issue-arrow">→</span>
-                    <span class="issue-suggestion">${escapeHtml(issue.suggestion)}</span>
-                </div>
-                <div class="issue-explanation">
-                    ${escapeHtml(issue.description || issue.rule.description)}
-                    ${issue.rule.link ? `<br><a class="learn-more" href="${issue.rule.link}" target="_blank">Learn more \u2192</a>` : ''}
-                </div>
-                <div class="issue-actions">
-            `;
-
-            if (canAutoFix) {
-                html += `<button class="btn btn-accept" data-action="accept" data-id="${issue.id}">Accept</button>`;
-            } else if (hasReplacements) {
-                html += `<button class="btn btn-accept" data-action="usereplacement" data-id="${issue.id}" data-index="0">Use '${escapeHtml(issue.replacements[0])}'</button>`;
-            }
-            html += `<button class="btn btn-ignore" data-action="ignore" data-id="${issue.id}">Ignore</button>`;
-            html += `<button class="btn btn-goto" data-action="goto" data-id="${issue.id}">Go to issue</button>`;
-            if (canAutoFix && sameTypeCount > 1) {
-                html += `<button class="btn btn-fix-all" data-action="fixall" data-ruleid="${issue.rule.id}">Fix all ${sameTypeCount}</button>`;
-            }
-            if (totalOfType > 1) {
-                html += `<button class="btn btn-ignore-all" data-action="ignoreall" data-groupid="${escapeHtml(issueGroupId)}">Ignore all ${totalOfType}</button>`;
-            }
-            html += '</div>';
-            card.innerHTML = html;
-
-            card.querySelectorAll('button[data-action]').forEach(btn => {
-                btn.onclick = () => handleAction(
-                    btn.dataset.action,
-                    btn.dataset.id,
-                    btn.dataset.ruleid,
-                    btn.dataset.index,
-                    btn.dataset.groupid
-                );
-            });
-
-            return card;
-        }
-
-        function handleAction(action, issueId, ruleId, replacementIndex, groupId) {
-            switch (action) {
-                case 'accept': {
-                    const issue = allIssues.find(i => i.id === issueId);
-                    if (issue) acceptFix(issue);
-                    break;
-                }
-                case 'usereplacement': {
-                    const issue = allIssues.find(i => i.id === issueId);
-                    if (issue) useReplacement(issue, parseInt(replacementIndex || '0'));
-                    break;
-                }
-                case 'ignore':
-                    ignoreIssue(issueId);
-                    break;
-                case 'goto': {
-                    const issue = allIssues.find(i => i.id === issueId);
-                    if (issue) goToIssue(issue);
-                    break;
-                }
-                case 'fixall':
-                    fixAllOfType(ruleId);
-                    break;
-                case 'ignoreall':
-                    ignoreAllOfType(groupId || ruleId);
-                    break;
-            }
-        }
-
-        function rescanAndDisplay() {
-            const text = elements.documentText.value;
-            const { headingLines, listLines } = buildHeuristicSets(text);
-            allIssues = checkText(text, headingLines, listLines);
-            if (ignoredGroups.size > 0 || ignoredFingerprints.size > 0) {
-                allIssues = allIssues.filter(i => {
-                    const gid = i.groupId || i.rule.id;
-                    if (ignoredGroups.has(gid)) return false;
-                    if (ignoredFingerprints.has(i.rule.id + ':' + i.found)) return false;
-                    return true;
-                });
-            }
-            allIssues.forEach((issue, i) => { issue.id = 'issue-' + i; });
-            displayResults();
-        }
-
-        function acceptFix(issue) {
-            if (issue.autoFix === undefined) return;
-            const text = elements.documentText.value;
-            const before = text.substring(0, issue.position);
-            const after = text.substring(issue.position + issue.found.length);
-            elements.documentText.value = before + issue.autoFix + after;
-            fixedCount++;
-            rescanAndDisplay();
-        }
-
-        function useReplacement(issue, replacementIndex) {
-            if (!issue.replacements || !issue.replacements[replacementIndex]) return;
-            const replacement = issue.replacements[replacementIndex];
-            let fixedReplacement = replacement;
-            if (issue.found.charAt(0) === issue.found.charAt(0).toUpperCase()) {
-                fixedReplacement = replacement.charAt(0).toUpperCase() + replacement.slice(1);
-            }
-            const text = elements.documentText.value;
-            const before = text.substring(0, issue.position);
-            const after = text.substring(issue.position + issue.found.length);
-            elements.documentText.value = before + fixedReplacement + after;
-            fixedCount++;
-            rescanAndDisplay();
-        }
-
-        function fixAllOfType(ruleId) {
-            const toFix = allIssues.filter(i => i.rule.id === ruleId && i.autoFix !== undefined);
-            if (toFix.length === 0) return;
-            toFix.sort((a, b) => b.position - a.position);
-            let text = elements.documentText.value;
-            for (const issue of toFix) {
-                const before = text.substring(0, issue.position);
-                const after = text.substring(issue.position + issue.found.length);
-                text = before + issue.autoFix + after;
-            }
-            elements.documentText.value = text;
-            fixedCount += toFix.length;
-            rescanAndDisplay();
-        }
-
-        function ignoreIssue(issueId) {
-            const issue = allIssues.find(i => i.id === issueId);
-            if (issue) {
-                ignoredFingerprints.add(issue.rule.id + ':' + issue.found);
-            }
-            allIssues = allIssues.filter(i => i.id !== issueId);
-            displayResults();
-        }
-
-        function ignoreAllOfType(groupId) {
-            ignoredGroups.add(groupId);
-            allIssues = allIssues.filter(i => (i.groupId || i.rule.id) !== groupId);
-            displayResults();
-        }
-
-        function goToIssue(issue) {
-            elements.documentText.focus();
-            elements.documentText.setSelectionRange(issue.position, issue.position + issue.found.length);
-            const textBefore = elements.documentText.value.substring(0, issue.position);
-            const linesBefore = textBefore.split('\n').length;
-            const lineHeight = 22;
-            elements.documentText.scrollTop = Math.max(0, (linesBefore - 3) * lineHeight);
-        }
-        
-        function escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
-    </script>
+<script type="module" src="src/app.js"></script>
 </body>
 </html>
