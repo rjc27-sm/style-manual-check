@@ -20,3 +20,9 @@ Style Manual Check for testers.pptx
 crawl_report.txt
 LICENSE
 SETUP_INSTRUCTIONS.md
+TestDocuments/
+style_manual_urls.*
+*.txt
+!tests/*.txt
+TestDocuments/
+style_manual_urls.*

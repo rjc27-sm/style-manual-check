@@ -13,8 +13,8 @@
 import fs from 'node:fs';
 import JSZip from 'jszip';
 import { DOMParser, XMLSerializer } from '@xmldom/xmldom';
-import { RULES } from '../docs/src/rules.js';
-import { loadDocx, annotateDocx } from '../docs/src/docx-annotate.js';
+import { RULES } from '../src/rules.js';
+import { loadDocx, annotateDocx } from '../src/docx-annotate.js';
 
 const env = { DOMParser, XMLSerializer, JSZip };
 

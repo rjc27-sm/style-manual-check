@@ -19,15 +19,14 @@ No document rebuild, no server, no build step.
 ## Files
 
 ```
-docs/                   The published site (GitHub Pages serves this folder)
-  index.html            The app - document check and quick text check
-  src/
-    rules.js            74 rules in 9 categories (canonical rule engine)
-    spellings.js        US-to-AU spelling dictionaries and word lists
-    docx-annotate.js    docx reading and comment insertion
-    app.js              UI logic
-    packs/
-      aihw.js           AIHW house style rule pack (scaffold - no rules yet)
+index.html              The app - document check and quick text check
+src/
+  rules.js              74 rules in 9 categories (canonical rule engine)
+  spellings.js          US-to-AU spelling dictionaries and word lists
+  docx-annotate.js      docx reading and comment insertion
+  app.js                UI logic
+  packs/
+    aihw.js             AIHW house style rule pack (scaffold - no rules yet)
 tests/
   run-tests.mjs         End-to-end test (Node)
   sample.docx           Test document with known issues
@@ -35,14 +34,13 @@ tests/
 
 ## Rule packs
 
-Core Style Manual rules always run. Agency packs add rules on top - same rule shape, separate file, toggled in the UI. `docs/src/packs/aihw.js` is the scaffold for the AIHW module. The toggle stays disabled until the pack has rules.
+Core Style Manual rules always run. Agency packs add rules on top - same rule shape, separate file, toggled in the UI. `src/packs/aihw.js` is the scaffold for the AIHW module. The toggle stays disabled until the pack has rules.
 
 ## Running locally
 
 ES modules will not load from `file://`. Serve the folder:
 
 ```
-cd docs
 python -m http.server 8000
 ```
 
@@ -61,7 +59,7 @@ Always open the annotated output in Word as a final check - automated verificati
 
 ## Updating rules
 
-Edit `docs/src/rules.js` (or a pack file). Each rule is:
+Edit `src/rules.js` (or a pack file). Each rule is:
 
 ```js
 {
