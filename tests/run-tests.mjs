@@ -14,13 +14,14 @@ import fs from 'node:fs';
 import JSZip from 'jszip';
 import { DOMParser, XMLSerializer } from '@xmldom/xmldom';
 import { RULES } from '../src/rules.js';
+import { LIST_RULES } from '../src/list-analysis.js';
 import { loadDocx, annotateDocx } from '../src/docx-annotate.js';
 
 const env = { DOMParser, XMLSerializer, JSZip };
 
 function runRules(text, ctx) {
     const issues = [];
-    for (const rule of RULES) {
+    for (const rule of RULES.concat(LIST_RULES)) {
         issues.push(...rule.check(
             text, ctx.headingLines, ctx.listLines, ctx.boldLines,
             ctx.italicLines, ctx.tableLines));

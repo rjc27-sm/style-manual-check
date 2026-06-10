@@ -85,7 +85,8 @@ textarea#text-input:focus{outline:none;box-shadow:inset 0 0 0 2px var(--b5)}
   border-radius:10px;padding:18px 22px;font-size:14.5px;line-height:1.65;color:#7a3d18;
   animation:rise .25s var(--ease)}
 
-#download-bar{margin-top:22px;background:#eef5f7;border:1px solid #cfe2e8;border-left:4px solid var(--blue);
+#download-section{margin-top:28px}
+#download-bar{background:#eef5f7;border:1px solid #cfe2e8;border-left:4px solid var(--blue);
   border-radius:10px;padding:18px 22px;display:flex;align-items:center;gap:18px;flex-wrap:wrap;
   animation:rise .25s var(--ease)}
 #download-note{font-size:14px;color:var(--c2);line-height:1.6;flex:1;min-width:240px}
@@ -173,14 +174,17 @@ textarea#text-input:focus{outline:none;box-shadow:inset 0 0 0 2px var(--b5)}
   <p id="busy" hidden role="status"><span id="busy-label">Working…</span></p>
   <p id="error-box" hidden role="alert"></p>
 
-  <div id="download-bar" hidden>
-    <button class="btn btn-primary" id="download-btn" type="button">Download with comments (.docx)</button>
-    <span id="download-note">Adds a Word review comment for every issue, with a
-      link to the Style Manual. Your formatting is untouched.</span>
-  </div>
+  <section id="download-section" hidden>
+    <div class="step-h" style="margin-top:6px"><span class="num">2</span><h2>Download with comments</h2></div>
+    <div id="download-bar">
+      <button class="btn btn-primary" id="download-btn" type="button">Download with comments (.docx)</button>
+      <span id="download-note">Adds a Word review comment for every issue, with a
+        link to the Style Manual. Your formatting is untouched.</span>
+    </div>
+  </section>
 
   <section id="results-section" hidden aria-live="polite">
-    <div class="step-h" style="margin-top:6px"><span class="num">2</span><h2>Issues found</h2></div>
+    <div class="step-h" style="margin-top:6px"><span class="num" id="results-num">3</span><h2>Issues found</h2></div>
     <p id="summary-line"></p>
     <div id="issue-list"></div>
   </section>

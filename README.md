@@ -21,7 +21,8 @@ No document rebuild, no server, no build step.
 ```
 index.html              The app - document check and quick text check
 src/
-  rules.js              74 rules in 9 categories (canonical rule engine)
+  rules.js              71 core rules in 9 categories
+  list-analysis.js      list-type detection and 3 list rules (ported from the list formatter)
   spellings.js          US-to-AU spelling dictionaries and word lists
   docx-annotate.js      docx reading and comment insertion
   app.js                UI logic
@@ -59,7 +60,7 @@ Always open the annotated output in Word as a final check - automated verificati
 
 ## Updating rules
 
-Edit `src/rules.js` (or a pack file). Each rule is:
+Edit `src/rules.js` or `src/list-analysis.js` (or a pack file). Each rule is:
 
 ```js
 {

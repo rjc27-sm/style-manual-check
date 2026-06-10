@@ -9,6 +9,7 @@
 
 import { RULES, getCategories } from './rules.js';
 import { AIHW_RULES } from './packs/aihw.js';
+import { LIST_RULES } from './list-analysis.js';
 import { loadDocx, annotateDocx } from './docx-annotate.js';
 
 const state = {
@@ -26,7 +27,8 @@ const $ = id => document.getElementById(id);
 // ---------------- Rule running ----------------
 
 function activeRules() {
-    return state.aihwEnabled ? RULES.concat(AIHW_RULES) : RULES;
+    const base = RULES.concat(LIST_RULES);
+    return state.aihwEnabled ? base.concat(AIHW_RULES) : base;
 }
 
 function runRules(text, ctx) {
@@ -79,7 +81,7 @@ async function handleFile(file) {
     showError('');
     $('file-name').textContent = file.name;
     $('results-section').hidden = true;
-    $('download-bar').hidden = true;
+    $('download-section').hidden = true;
     setBusy(true, 'Reading document…');
     try {
         state.fileBuffer = await file.arrayBuffer();
@@ -87,7 +89,7 @@ async function handleFile(file) {
         state.loaded = await loadDocx(state.fileBuffer.slice(0));
         state.issues = runRules(state.loaded.fullText, state.loaded);
         renderResults();
-        $('download-bar').hidden = state.issues.length === 0;
+        $('download-section').hidden = state.issues.length === 0;
     } catch (err) {
         console.error(err);
         showError('Could not read that file. ' + (err.message || ''));
@@ -209,6 +211,10 @@ function renderResults() {
             '</article>';
     }).join('');
 
+    // Step numbering: the download step only exists for documents with issues
+    const hasDownload = state.mode === 'document' && state.issues.length > 0;
+    $('results-num').textContent = hasDownload ? '3' : '2';
+
     section.hidden = false;
 }
 
@@ -252,7 +258,7 @@ function switchMode(mode) {
     $('panel-document').hidden = mode !== 'document';
     $('panel-text').hidden = mode !== 'text';
     $('results-section').hidden = true;
-    $('download-bar').hidden = true;
+    $('download-section').hidden = true;
     state.issues = [];
 }
 
