@@ -7,7 +7,7 @@
  */
 
 // Set this to your deployed Worker URL, for example:
-// export const WORKER_URL = 'https://im2026-proof-positive.YOURNAME.workers.dev';
+// export const WORKER_URL = 'https://im2026-proof-positive.jcr27.workers.dev';
 export const WORKER_URL = '';
 
 export const AI_ENABLED = WORKER_URL !== '';
@@ -15,7 +15,7 @@ export const AI_ENABLED = WORKER_URL !== '';
 export const AI_NOTICE =
     'AI features send the text you choose (and nothing else) to the Claude ' +
     'API for processing. Do not use sensitive or personal information. ' +
-    'AI suggestions can be wrong - review them before use.';
+    'AI suggestions can be wrong. Review them before use.';
 
 class AiError extends Error {
     constructor(message, kind) { super(message); this.kind = kind; }
@@ -38,7 +38,7 @@ async function callWorker(path, body) {
     if (res.status === 429) {
         const data = await res.json().catch(() => ({}));
         throw new AiError(data.error ||
-            'The daily AI usage limit has been reached. The rule-based tools still work - try the AI features again tomorrow.', 'limit');
+            'The daily AI usage limit has been reached. The rule-based tools still work; try the AI features again tomorrow.', 'limit');
     }
     if (res.status === 413) {
         throw new AiError('That text is too long for the AI service. Try a shorter passage.', 'toolong');

@@ -11,7 +11,7 @@ compatibility_date = "2026-06-01"
 # then paste the id it prints below.
 [[kv_namespaces]]
 binding = "RATE_KV"
-id = "PASTE_KV_NAMESPACE_ID_HERE"
+id = "3cace9b99cdd430ba1a873add185c670"
 
 [vars]
 # Lock this down to your GitHub Pages origin once you know it, for example:
