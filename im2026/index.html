@@ -98,13 +98,6 @@ textarea#text-input:focus{outline:none;box-shadow:inset 0 0 0 2px var(--b5)}
   text-underline-offset:2px;margin-right:14px}
 .issue-links{margin-top:5px}
 
-.how-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin:18px 0 34px}
-.how-card{background:#fff;border:1px solid var(--line);border-top:4px solid var(--b4);
-  border-radius:10px;padding:16px 18px}
-.how-card h3{font-size:14.5px;color:var(--b1);margin:0 0 6px}
-.how-card p{font-size:13.5px;color:var(--c2);line-height:1.6;margin:0}
-.how-card a{color:var(--b2);font-weight:600}
-
 @media (max-width:720px){
   .wrap{padding:26px 18px 44px}
   .hero h1{font-size:24px}
@@ -128,10 +121,10 @@ textarea#text-input:focus{outline:none;box-shadow:inset 0 0 0 2px var(--b5)}
 </header>
 <nav class="gov-nav" aria-label="Tools">
   <div class="gov-nav-inner">
-    <a href="index.html" aria-current="page">Check a document</a>
-    <a href="lists.html">Format a list</a>
-    <a href="citations.html">Create a citation</a>
-    <a href="ask.html">Ask the Style Manual</a>
+    <a href="index.html" aria-current="page" aria-describedby="tip-check">Check a document<span class="gov-tip" id="tip-check" aria-hidden="true">Upload a Word document and get it back with a review comment on every style issue – formatting untouched.</span></a>
+    <a href="lists.html" aria-describedby="tip-lists">Format a list<span class="gov-tip" id="tip-lists" aria-hidden="true">Turn rough bullet points into a correctly punctuated sentence, fragment or stand-alone list.</span></a>
+    <a href="citations.html" aria-describedby="tip-cite">Create a citation<span class="gov-tip" id="tip-cite" aria-hidden="true">Build an author–date reference from a DOI, a form or a messy pasted reference.</span></a>
+    <a href="ask.html" aria-describedby="tip-ask">Ask the Style Manual<span class="gov-tip" id="tip-ask" aria-hidden="true">Ask a question and get an answer from Style Manual content with a link to the relevant page.</span></a>
   </div>
 </nav>
 <main class="wrap" id="main">
@@ -147,24 +140,6 @@ textarea#text-input:focus{outline:none;box-shadow:inset 0 0 0 2px var(--b5)}
       is not uploaded anywhere. AI features (marked ✦) send only the text you
       choose to the Claude API. Don't use sensitive or personal information.</p>
   </header>
-
-  <section aria-label="What this bot can do">
-    <h2 style="position:absolute;left:-9999px">What this bot can do</h2>
-    <div class="how-cards">
-      <div class="how-card"><h3>Check a document</h3>
-        <p>Upload a Word file and download it back with a review comment on
-          every style issue – formatting untouched. You're on this page.</p></div>
-      <div class="how-card"><h3>Format a list</h3>
-        <p><a href="lists.html">Turn rough bullet points</a> into a correctly
-          punctuated sentence, fragment or stand-alone list.</p></div>
-      <div class="how-card"><h3>Create a citation</h3>
-        <p><a href="citations.html">Build an author–date reference</a> from a
-          DOI, a form, or ✦ a messy pasted reference.</p></div>
-      <div class="how-card"><h3>Ask the Style Manual</h3>
-        <p><a href="ask.html">✦ Ask a question in plain words</a> and get an
-          answer that links to the relevant Style Manual page.</p></div>
-    </div>
-  </section>
 
   <section>
     <div class="step-h"><span class="num">1</span><h2>Your content</h2>

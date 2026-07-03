@@ -48,6 +48,18 @@ function runRules(text, ctx) {
     return issues;
 }
 
+/** Point list issues at the Format a list tool (used in docx comments). */
+const LISTS_TOOL_URL = 'https://rjc27-sm.github.io/style-manual-check/im2026/lists.html';
+function addListToolNotes(issues) {
+    for (const issue of issues) {
+        if (issue.rule.category === 'lists') {
+            issue.note = (issue.note ? issue.note + ' ' : '') +
+                "You can fix the list automatically with Proof Positive's " +
+                "'Format a list' tool: " + LISTS_TOOL_URL;
+        }
+    }
+}
+
 // Heuristic structure detection for pasted plain text
 function buildHeuristicSets(text) {
     const lines = text.split('\n');
@@ -105,7 +117,9 @@ async function downloadAnnotated() {
     try {
         const loaded = await loadDocx(state.fileBuffer.slice(0));
         const issues = runRules(loaded.fullText, loaded);
-        const { zip, commentCount } = await annotateDocx(loaded, issues);
+        addListToolNotes(issues);
+        const { zip, commentCount } = await annotateDocx(loaded, issues, undefined,
+            { author: 'Proof Positive', initials: 'PP' });
         const blob = await zip.generateAsync({
             type: 'blob',
             mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
@@ -238,6 +252,8 @@ function renderResults() {
             (rule.link ? '<a class="learn-more" href="' + escapeHtml(rule.link) +
                 '" target="_blank" rel="noopener">Style Manual guidance<span style="position:absolute;left:-9999px"> for ' +
                 escapeHtml(rule.name) + ' (opens in a new tab)</span></a>' : '') +
+            (rule.category === 'lists'
+                ? '<a class="learn-more" href="lists.html">Fix it with the Format a list tool</a>' : '') +
             (aiEligible(issue)
                 ? '<button type="button" class="ai-ghost-btn" data-ai-fix="' + idx +
                   '">✦ Fix with AI</button>' : '') +

@@ -107,7 +107,8 @@ or fewer where possible; active voice; plain everyday words; minimal capitals
 day month year (15 October 2023); times like 3:30 pm; spaced en dashes for
 parenthetical phrases, never unspaced em dashes; single quotation marks; no
 serial comma unless needed for clarity; '%' with no space; 'per cent' only as
-a noun phrase where required.`;
+a noun phrase where required. Never use 'e.g.', 'i.e.' or 'etc.' - write
+'for example', 'that is' and 'and so on'. Never use emojis.`;
 
 const PROMPTS = {
     fix: {
@@ -208,6 +209,8 @@ Rules for answers:
   paraphrase the extracts - do not rely on your own memory of style rules,
   which may drift towards American conventions.
 - Be concise: a short direct answer first, then a brief example if useful.
+- Format simply: short paragraphs, '- ' for any list items, **bold** only for
+  the key term or correct form. No headings, no tables, no nested lists.
 - End with 'Read more:' followed by the Source URL of every extract you
   relied on - each URL on its own line. Cite one URL if only one extract was
   relevant, more if several were. Never cite any URL that is not in the

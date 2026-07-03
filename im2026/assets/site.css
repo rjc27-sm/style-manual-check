@@ -79,6 +79,24 @@
   color: var(--smm-b1); font-weight: 700; border-bottom-color: var(--smm-blue);
 }
 
+/* Nav tooltips: shown on hover AND keyboard focus; described to screen
+   readers via aria-describedby on the link. */
+.gov-nav a { position: relative; }
+.gov-tip {
+  position: absolute; top: calc(100% + 4px); left: 0; z-index: 60;
+  width: 250px; max-width: 78vw;
+  background: var(--smm-b1); color: #fff;
+  font-size: 12.5px; font-weight: 400; line-height: 1.55;
+  padding: 9px 13px; border-radius: 8px;
+  box-shadow: 0 4px 14px rgba(25, 47, 56, .25);
+  opacity: 0; visibility: hidden; pointer-events: none;
+  transition: opacity .12s ease;
+  white-space: normal; text-align: left;
+}
+.gov-nav a:last-child .gov-tip { left: auto; right: 0; }
+.gov-nav a:hover .gov-tip,
+.gov-nav a:focus-visible .gov-tip { opacity: 1; visibility: visible; }
+
 /* ---------- challenge notice ---------- */
 .gov-notice {
   background: var(--smm-o-bg); border-bottom: 1px solid var(--smm-o-line);
