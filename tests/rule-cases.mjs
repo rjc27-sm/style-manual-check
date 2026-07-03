@@ -198,7 +198,16 @@ const CASES = [
     ['numbers-phone-format', 'mobile 0491 570 159', false],
     ['numbers-phone-format', 'call 13 24 68 now', false],
     ['numbers-phone-format', 'ABN 51 824 753 556', false],
-    ['numbers-phone-format', 'the fee was $1300 this year', false]
+    ['numbers-phone-format', 'the fee was $1300 this year', false],
+
+    // ---- readability-passive-voice (PL-01, by-agent only) ----
+    ['readability-passive-voice', 'the report was approved by the board', true],
+    ['readability-passive-voice', 'staff are employed by RACHs under the measure', true],
+    ['readability-passive-voice', 'the framework has been endorsed by ministers', true],
+    ['readability-passive-voice', 'the board approved the report', false],
+    ['readability-passive-voice', 'data were collected in 2024', false],
+    ['readability-passive-voice', 'the venue is located by the river', false],
+    ['readability-passive-voice', 'people aged by decade groupings', false]
 ];
 
 const ruleById = new Map(RULES.map(r => [r.id, r]));

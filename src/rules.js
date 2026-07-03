@@ -3593,6 +3593,35 @@ const RULES = [
             }
             return issues;
         }
+    },
+    {
+        id: 'readability-passive-voice',
+        name: 'Passive voice with named doer',
+        category: 'readability',
+        description: 'Prefer active voice. When the doer appears after \'by\', the sentence can usually be turned around: \'the board approved the report\', not \'the report was approved by the board\'. Passive voice is sometimes appropriate - this is advisory only.',
+        link: 'https://www.stylemanual.gov.au/writing-and-designing-content/clear-language-and-writing-style/sentences',
+        check: function(text) {
+            const issues = [];
+            const irregular = 'given|taken|made|done|seen|known|shown|held|kept|found|told|paid|met|set|put|sent|built|spent|led|left|lost|won|sold|bought|brought|taught|caught|sought|thought|felt|heard|read|said|understood|written|driven|chosen|spoken|broken|hidden|drawn|withdrawn|grown|thrown|borne|worn|torn|sworn|laid|undertaken|overseen|begun';
+            // Participles that read as adjectives after 'be' + 'by' (usually locative, not passive)
+            const adjectival = new Set(['located', 'situated', 'positioned', 'surrounded', 'bounded', 'aged']);
+            const regex = new RegExp(
+                '\\b(is|are|was|were|been|being|be)' +
+                '(?:\\s+(?:not|also|often|only|already|currently|generally|usually|typically|previously|widely))?' +
+                '\\s+([A-Za-z]{2,}ed|' + irregular + ')\\s+by\\b', 'gi');
+            let match;
+            while ((match = regex.exec(text)) !== null) {
+                if (adjectival.has(match[2].toLowerCase())) continue;
+                issues.push({
+                    found: match[0],
+                    suggestion: 'Consider active voice: put the doer (after \'by\') before the verb',
+                    // No autoFix - rewording needs the author's judgement
+                    position: match.index,
+                    rule: this
+                });
+            }
+            return issues;
+        }
     }
 ];
 
