@@ -26,3 +26,9 @@ style_manual_urls.*
 !tests/*.txt
 TestDocuments/
 style_manual_urls.*
+
+# IM2026 Proof Positive entry - everything in im2026 is published.
+# These negations override the general excludes above (*.md, Assets/, etc.)
+# and must stay at the end of this file.
+!im2026/
+!im2026/**
