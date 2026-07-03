@@ -210,6 +210,53 @@ const CASES = [
     ['readability-passive-voice', 'people aged by decade groupings', false]
 ];
 
+// Batch 3 structure rules: [ruleId, text, docCtx, shouldFlag, expectedFix?]
+// docCtx mimics the object returned by loadDocx.
+const CTX_CASES = [
+    // ---- heading-skipped-level (HS-01) ----
+    ['heading-skipped-level', 'Report title\nSome body text\nDeep subsection',
+        { headingLevels: new Map([[0, 1], [2, 3]]) }, true],
+    ['heading-skipped-level', 'Report title\nSome body text\nNext section',
+        { headingLevels: new Map([[0, 1], [2, 2]]) }, false],
+    ['heading-skipped-level', 'Deep start heading\nSome body text',
+        { headingLevels: new Map([[0, 3]]) }, false],
+    ['heading-skipped-level', 'Plain text\nwith no headings', null, false],
+
+    // ---- format-underline-not-link (HS-03) ----
+    ['format-underline-not-link', 'This is an important note here',
+        { underlines: [{ text: 'important note', position: 11, length: 14, line: 0 }] }, true],
+    ['format-underline-not-link', 'This is an important note here',
+        { underlines: [] }, false],
+    ['format-underline-not-link', 'This is an important note here', null, false],
+
+    // ---- link-generic-text (LK-01) ----
+    ['link-generic-text', 'To apply, click here for the form',
+        { links: [{ text: 'click here', position: 10, length: 10, target: 'https://example.gov.au', line: 0 }] }, true],
+    ['link-generic-text', 'Read more about the changes',
+        { links: [{ text: 'Read more', position: 0, length: 9, target: 'https://example.gov.au', line: 0 }] }, true],
+    ['link-generic-text', 'See the permit application form online',
+        { links: [{ text: 'permit application form', position: 8, length: 23, target: 'https://example.gov.au', line: 0 }] }, false],
+
+    // ---- link-full-stop (LK-02) ----
+    ['link-full-stop', 'Complete the application form. Then wait.',
+        { links: [{ text: 'application form.', position: 13, length: 17, target: 'https://example.gov.au', line: 0 }] }, true],
+    ['link-full-stop', 'Complete the application form. Then wait.',
+        { links: [{ text: 'application form', position: 13, length: 16, target: 'https://example.gov.au', line: 0 }] }, false],
+    ['link-full-stop', 'Visit www.health.gov.au. for details',
+        { links: [{ text: 'www.health.gov.au.', position: 6, length: 18, target: 'https://www.health.gov.au', line: 0 }] }, false],
+
+    // ---- accessibility-nonbreaking-space (DT-06) ----
+    ['accessibility-nonbreaking-space', 'the meeting is at 3:30 pm today',
+        { paragraphs: [] }, true, '3:30 pm'],
+    ['accessibility-nonbreaking-space', 'a dose of 5 mg daily',
+        { paragraphs: [] }, true, '5 mg'],
+    ['accessibility-nonbreaking-space', 'call 02 6244 1000 for help',
+        { paragraphs: [] }, true, '02 6244 1000'],
+    ['accessibility-nonbreaking-space', 'the meeting is at 3:30 pm today',
+        { paragraphs: [] }, false],
+    ['accessibility-nonbreaking-space', 'the meeting is at 3:30 pm today', null, false]
+];
+
 const ruleById = new Map(RULES.map(r => [r.id, r]));
 let pass = 0;
 let fail = 0;
@@ -248,6 +295,49 @@ for (const [ruleId, text, shouldFlag, expectedFix] of CASES) {
     ok ? pass++ : fail++;
 }
 
+// Structure rules (Batch 3): run with a synthetic docCtx
+const NONE = undefined;
+for (const [ruleId, text, docCtx, shouldFlag, expectedFix] of CTX_CASES) {
+    const rule = ruleById.get(ruleId);
+    if (!rule) {
+        console.log('FAIL - unknown rule id: ' + ruleId);
+        fail++;
+        continue;
+    }
+    let issues;
+    try {
+        issues = rule.check(text, NONE, NONE, NONE, NONE, NONE, docCtx);
+    } catch (err) {
+        console.log('FAIL - ' + ruleId + ' threw :: ' + err.message);
+        fail++;
+        continue;
+    }
+    const flagged = issues.length > 0;
+    let ok = flagged === shouldFlag;
+    let detail = '';
+    if (ok && shouldFlag && expectedFix !== undefined) {
+        const fix = issues[0].autoFix !== undefined ? issues[0].autoFix : issues[0].suggestion;
+        if (fix !== expectedFix) {
+            ok = false;
+            detail = ' :: expected fix ' + JSON.stringify(expectedFix) + ', got ' + JSON.stringify(fix);
+        }
+    }
+    if (ok && flagged) {
+        // Position integrity for structure rules too
+        for (const issue of issues) {
+            if (text.substr(issue.position, issue.found.length) !== issue.found) {
+                ok = false;
+                detail = ' :: position mismatch for ' + JSON.stringify(issue.found);
+            }
+        }
+    }
+    if (!ok && detail === '') {
+        detail = ' :: expected ' + (shouldFlag ? 'flag' : 'no flag') + ', got ' + issues.length + ' issue(s)';
+    }
+    console.log((ok ? 'PASS' : 'FAIL') + ' - ' + ruleId + ' (ctx) :: ' + JSON.stringify(text.slice(0, 40)) + detail);
+    ok ? pass++ : fail++;
+}
+
 // Position integrity: every reported position must match the found text
 let posErrors = 0;
 for (const [ruleId, text] of CASES) {
@@ -266,5 +356,5 @@ for (const [ruleId, text] of CASES) {
 }
 if (posErrors === 0) console.log('PASS - all issue positions match their found text');
 
-console.log('\n' + pass + ' passed, ' + (fail + posErrors) + ' failed, ' + CASES.length + ' cases');
+console.log('\n' + pass + ' passed, ' + (fail + posErrors) + ' failed, ' + (CASES.length + CTX_CASES.length) + ' cases');
 process.exit(fail + posErrors ? 1 : 0);

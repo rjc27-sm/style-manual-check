@@ -3622,6 +3622,173 @@ const RULES = [
             }
             return issues;
         }
+    },
+
+    // ==================== BATCH 3 - DOCUMENT STRUCTURE RULES (July 2026) ====================
+    // These rules need docCtx (the object returned by loadDocx). They pass
+    // silently on pasted plain text, which has no styles or hyperlinks.
+    {
+        id: 'heading-skipped-level',
+        name: 'Skipped heading level',
+        category: 'headings',
+        description: 'Don\'t skip heading levels - a Heading 3 should not follow a Heading 1 directly. Screen reader users rely on heading levels to understand how content is organised.',
+        link: 'https://www.stylemanual.gov.au/structuring-content/headings',
+        check: function(text, headingLines, listLines, boldLines, italicLines, tableLines, docCtx) {
+            const issues = [];
+            if (!docCtx || !docCtx.headingLevels || docCtx.headingLevels.size === 0) return issues;
+            const lines = text.split('\n');
+            let lineStart = 0;
+            let prevLevel = 0;
+            for (let i = 0; i < lines.length; i++) {
+                const level = docCtx.headingLevels.get(i);
+                if (level !== undefined && lines[i].trim()) {
+                    if (prevLevel > 0 && level > prevLevel + 1) {
+                        const trimmed = lines[i].trim();
+                        issues.push({
+                            found: trimmed,
+                            suggestion: 'Heading level jumps from Heading ' + prevLevel +
+                                ' to Heading ' + level + ' - use Heading ' + (prevLevel + 1) +
+                                ' or restructure the section',
+                            // No autoFix - restructuring is the author's call
+                            position: lineStart + lines[i].indexOf(trimmed),
+                            rule: this
+                        });
+                    }
+                    prevLevel = level;
+                }
+                lineStart += lines[i].length + 1;
+            }
+            return issues;
+        }
+    },
+    {
+        id: 'format-underline-not-link',
+        name: 'Underlined text that is not a link',
+        category: 'accessibility',
+        description: 'Underlining signals hyperlinks. Don\'t underline text for emphasis or headings - users will try to click it. Use bold or a heading style instead.',
+        link: 'https://www.stylemanual.gov.au/structuring-content/headings',
+        check: function(text, headingLines, listLines, boldLines, italicLines, tableLines, docCtx) {
+            const issues = [];
+            if (!docCtx || !docCtx.underlines) return issues;
+            for (const u of docCtx.underlines) {
+                issues.push({
+                    found: u.text,
+                    suggestion: 'Remove the underline - use bold or a heading style for emphasis',
+                    // No autoFix - this is a formatting change, not a text change
+                    position: u.position,
+                    rule: this
+                });
+            }
+            return issues;
+        }
+    },
+    {
+        id: 'link-generic-text',
+        name: 'Generic link text',
+        category: 'links',
+        description: 'Link text should describe the destination. Generic text like \'click here\' or \'read more\' doesn\'t make sense out of context, especially for screen reader users who navigate by links.',
+        link: 'https://www.stylemanual.gov.au/structuring-content/links',
+        check: function(text, headingLines, listLines, boldLines, italicLines, tableLines, docCtx) {
+            const issues = [];
+            if (!docCtx || !docCtx.links) return issues;
+            const generic = new Set([
+                'click here', 'here', 'click', 'read more', 'more',
+                'more information', 'more info', 'learn more', 'find out more',
+                'this page', 'this link', 'link', 'website', 'see more',
+                'details', 'more details', 'info', 'continue reading', 'go'
+            ]);
+            for (const link of docCtx.links) {
+                const label = link.text.trim().toLowerCase().replace(/[.,:;!?…]+$/, '');
+                if (generic.has(label)) {
+                    issues.push({
+                        found: link.text,
+                        suggestion: 'Rewrite the link text to describe the destination (for example, \'Apply for a permit\' instead of \'click here\')',
+                        // No autoFix - descriptive text depends on the destination
+                        position: link.position,
+                        rule: this
+                    });
+                }
+            }
+            return issues;
+        }
+    },
+    {
+        id: 'link-full-stop',
+        name: 'Full stop inside link text',
+        category: 'links',
+        description: 'Don\'t include the sentence\'s full stop in the link text. Move it outside the link.',
+        link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/punctuation/full-stops',
+        check: function(text, headingLines, listLines, boldLines, italicLines, tableLines, docCtx) {
+            const issues = [];
+            if (!docCtx || !docCtx.links) return issues;
+            for (const link of docCtx.links) {
+                const t = link.text.trim();
+                // A single trailing full stop - not an ellipsis, not a domain like '.au'
+                if (/[^.\s]\.$/.test(t) && !/\.\.$/.test(t) &&
+                    !/\.(?:au|com|org|net|gov|edu)\.$/i.test(t)) {
+                    issues.push({
+                        found: link.text,
+                        suggestion: 'Move the full stop outside the link text',
+                        position: link.position,
+                        rule: this
+                    });
+                }
+            }
+            return issues;
+        }
+    },
+    {
+        id: 'accessibility-nonbreaking-space',
+        name: 'Non-breaking space in times, units and phone numbers',
+        category: 'accessibility',
+        description: 'Use a non-breaking space so the number and what follows it stay together on one line - between numerals and \'am\'/\'pm\', between numbers and units, and between phone number chunks.',
+        link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/numbers-and-measurements/dates-and-time',
+        check: function(text, headingLines, listLines, boldLines, italicLines, tableLines, docCtx) {
+            const issues = [];
+            // docx uploads only - pasted plain text can't hold the distinction reliably
+            if (!docCtx || !docCtx.paragraphs) return issues;
+            const push = (match, replacement) => {
+                issues.push({
+                    found: match[0],
+                    suggestion: replacement,
+                    autoFix: replacement,
+                    position: match.index,
+                    rule: this
+                });
+            };
+            let match;
+            // Ordinary space before am/pm
+            const ampm = /\b(\d{1,2}(?::\d{2})?) (am|pm)\b/g;
+            while ((match = ampm.exec(text)) !== null) {
+                push(match, match[1] + ' ' + match[2]);
+            }
+            // Ordinary space between number and whitelisted unit
+            // (keep this list in sync with numbers-unit-space)
+            const units = ['km/h', 'mmHg', 'Mbps', 'Gbps', 'kWh', 'MWh', 'kHz', 'MHz',
+                'GHz', 'kPa', 'ppm', 'mcg', 'min', 'km', 'kg', 'mg', 'µg', 'mL', 'ml',
+                'dL', 'kL', 'ML', 'GL', 'mm', 'cm', 'ha', 'kJ', 'MJ', 'kW', 'MW', 'GW',
+                'Hz', 'kB', 'MB', 'GB', 'TB', 'dB', 'L', 'g', 't'];
+            const unitRegex = new RegExp(
+                '\\b(\\d+(?:\\.\\d+)?) (' +
+                units.map(u => u.replace('/', '\\/')).join('|') +
+                ')(?![A-Za-z0-9\\/])', 'g');
+            while ((match = unitRegex.exec(text)) !== null) {
+                push(match, match[1] + ' ' + match[2]);
+            }
+            // Ordinary spaces between phone number chunks (standard formats only)
+            const phones = [
+                /\b(0[2378]) (\d{4}) (\d{4})\b(?!\d)/g,
+                /\b(04\d{2}) (\d{3}) (\d{3})\b(?!\d)/g,
+                /\b(1[38]00) (\d{3}) (\d{3})\b(?!\d)/g,
+                /\b(13) (\d{2}) (\d{2})\b(?!\d)/g
+            ];
+            for (const regex of phones) {
+                while ((match = regex.exec(text)) !== null) {
+                    push(match, match[1] + ' ' + match[2] + ' ' + match[3]);
+                }
+            }
+            return issues;
+        }
     }
 ];
 
@@ -3695,10 +3862,10 @@ function numberToWords(num) {
 // headingLines: optional Set of line indices with a Word heading style applied
 // listLines: optional Set of line indices that are list items (bullets/numbered)
 // boldLines: optional Set of line indices where the entire paragraph is bold
-function checkText(text, headingLines, listLines, boldLines, italicLines, tableLines) {
+function checkText(text, headingLines, listLines, boldLines, italicLines, tableLines, docCtx) {
     const allIssues = [];
     for (const rule of RULES) {
-        const issues = rule.check(text, headingLines, listLines, boldLines, italicLines, tableLines);
+        const issues = rule.check(text, headingLines, listLines, boldLines, italicLines, tableLines, docCtx);
         allIssues.push(...issues);
     }
     // Sort by position in text

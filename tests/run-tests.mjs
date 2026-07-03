@@ -24,7 +24,7 @@ function runRules(text, ctx) {
     for (const rule of RULES.concat(LIST_RULES)) {
         issues.push(...rule.check(
             text, ctx.headingLines, ctx.listLines, ctx.boldLines,
-            ctx.italicLines, ctx.tableLines));
+            ctx.italicLines, ctx.tableLines, ctx));
     }
     issues.sort((a, b) => a.position - b.position);
     return issues;

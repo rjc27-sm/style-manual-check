@@ -39,7 +39,7 @@ function runRules(text, ctx) {
         try {
             issues.push(...rule.check(
                 text, ctx.headingLines, ctx.listLines, ctx.boldLines,
-                ctx.italicLines, ctx.tableLines));
+                ctx.italicLines, ctx.tableLines, ctx));
         } catch (err) {
             console.error('Rule failed: ' + rule.id, err);
         }

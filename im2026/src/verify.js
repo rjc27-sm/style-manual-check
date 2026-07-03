@@ -20,7 +20,7 @@ export function verifyText(text) {
     const issues = [];
     for (const rule of RULES.concat(LIST_RULES)) {
         try {
-            issues.push(...rule.check(text, empty, empty, empty, empty, empty));
+            issues.push(...rule.check(text, empty, empty, empty, empty, empty, null));
         } catch (err) {
             // A rule failure must never hide the text - log and continue.
             console.error('Verification rule failed: ' + rule.id, err);

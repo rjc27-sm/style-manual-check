@@ -150,8 +150,24 @@ export async function loadDocx(arrayBuffer, env) {
     const boldLines = new Set();
     const italicLines = new Set();
     const tableLines = new Set();
+    const headingLevels = new Map();
+    const links = [];
+    const underlines = [];
     const lineStarts = [];
     let fullText = '';
+
+    // Hyperlink targets live in the document rels part
+    const relTargets = {};
+    const relsFile = zip.file('word/_rels/document.xml.rels');
+    if (relsFile) {
+        const relsXml = await relsFile.async('string');
+        const relTags = relsXml.match(/<Relationship\b[^>]*>/g) || [];
+        for (const tag of relTags) {
+            const id = /\bId="([^"]+)"/.exec(tag);
+            const target = /\bTarget="([^"]*)"/.exec(tag);
+            if (id && target) relTargets[id[1]] = target[1];
+        }
+    }
 
     paragraphEls.forEach((pEl, i) => {
         const { text, segments } = collectParagraphSegments(pEl);
@@ -161,6 +177,8 @@ export async function loadDocx(arrayBuffer, env) {
 
         const style = getPStyle(pEl);
         if (/^(Heading[1-9]|Title|Subtitle)/i.test(style)) headingLines.add(i);
+        const hMatch = /^Heading([1-9])/i.exec(style);
+        if (hMatch) headingLevels.set(i, parseInt(hMatch[1], 10));
         if (hasNumPr(pEl) || /^(ListParagraph|ListBullet|ListNumber)/i.test(style)) {
             listLines.add(i);
         }
@@ -170,12 +188,62 @@ export async function loadDocx(arrayBuffer, env) {
         }
         if (hasAncestor(pEl, 'tbl')) tableLines.add(i);
 
+        const lineStart = lineStarts[i];
+
+        // Hyperlinks: display text, position and target
+        const hlinkEls = Array.from(pEl.getElementsByTagName('w:hyperlink'));
+        for (const h of hlinkEls) {
+            const tNodes = new Set(Array.from(h.getElementsByTagName('w:t')));
+            const segs = segments.filter(s => s.kind === 't' && tNodes.has(s.tNode));
+            if (segs.length === 0) continue;
+            const startOff = Math.min(...segs.map(s => s.start));
+            const endOff = Math.max(...segs.map(s => s.start + s.length));
+            const rId = h.getAttribute('r:id');
+            links.push({
+                text: text.substring(startOff, endOff),
+                position: lineStart + startOff,
+                length: endOff - startOff,
+                target: (rId && relTargets[rId]) || h.getAttribute('w:anchor') || '',
+                line: i
+            });
+        }
+
+        // Underlined runs that are not hyperlinks (merge adjacent runs)
+        const pushURange = (r) => {
+            const t = text.substring(r.startOff, r.endOff);
+            if (t.trim()) {
+                underlines.push({
+                    text: t, position: lineStart + r.startOff,
+                    length: r.endOff - r.startOff, line: i
+                });
+            }
+        };
+        let uRange = null;
+        for (const seg of segments) {
+            const underlined = seg.kind === 't' && seg.run &&
+                toggleOn(getRPr(seg.run), 'u') &&
+                !hasAncestor(seg.run, 'hyperlink', pEl);
+            if (underlined) {
+                if (uRange && uRange.endOff === seg.start) {
+                    uRange.endOff = seg.start + seg.length;
+                } else {
+                    if (uRange) pushURange(uRange);
+                    uRange = { startOff: seg.start, endOff: seg.start + seg.length };
+                }
+            } else if (uRange) {
+                pushURange(uRange);
+                uRange = null;
+            }
+        }
+        if (uRange) pushURange(uRange);
+
         paragraphs.push({ el: pEl, text, segments });
     });
 
     return {
         zip, doc, paragraphs, fullText, lineStarts,
-        headingLines, listLines, boldLines, italicLines, tableLines
+        headingLines, listLines, boldLines, italicLines, tableLines,
+        headingLevels, links, underlines
     };
 }
 
