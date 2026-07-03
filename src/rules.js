@@ -1,9 +1,10 @@
 /**
  * Australian Government Style Manual - Rule definitions
  * Each rule has: id, name, category, description, link, check function
+ * Batch 1 triage-register rules added July 2026.
  */
 
-import { SPELLINGS, COMMON_ERRORS, ERRORS_WITH_NOTES, WATCH_WORDS, WORDY_PHRASES } from './spellings.js';
+import { SPELLINGS, COMMON_ERRORS, ERRORS_WITH_NOTES, WATCH_WORDS, WORDY_PHRASES, PREFIX_SPELLINGS } from './spellings.js';
 
 const RULES = [
     // ==================== SPELLING RULES ====================
@@ -1288,6 +1289,20 @@ const RULES = [
             const regex = /\bet\s+al\.?/gi;
             let match;
             while ((match = regex.exec(text)) !== null) {
+                const end = match.index + match[0].length;
+                const after = text.substring(end, Math.min(text.length, end + 12));
+                // RF-01: 'et al.' is correct in author-date citations.
+                // Skip 'Smith et al. (2008)' and 'Smith et al., 2008'
+                if (/^[.,]?\s*\(?\s*(?:19|20)\d\d/.test(after)) continue;
+                // Skip citations inside parentheses: '(Smith et al. 2008)'
+                const lastOpen = text.lastIndexOf('(', match.index);
+                if (lastOpen !== -1) {
+                    const between = text.substring(lastOpen, match.index);
+                    const closeAfter = text.indexOf(')', end);
+                    if (!between.includes(')') && closeAfter !== -1 &&
+                        closeAfter - end < 60 &&
+                        /(?:19|20)\d\d/.test(text.substring(end, closeAfter))) continue;
+                }
                 issues.push({
                     found: match[0],
                     suggestion: 'and others',
@@ -2470,6 +2485,31 @@ const RULES = [
                     });
                 }
             }
+
+            // NM-06: space-separated thousands ('6 500' -> '6,500')
+            const spaceRegex = /\b(\d{1,3})((?:[  ]\d{3})+)\b/g;
+            while ((match = spaceRegex.exec(text)) !== null) {
+                const found = match[0];
+                const end = match.index + found.length;
+                const before = text.substring(Math.max(0, match.index - 25), match.index);
+                const after = text.substring(end, Math.min(text.length, end + 5));
+                // Skip if part of a longer digit sequence (phone numbers, IDs)
+                if (/\d[  ]?$/.test(before)) continue;
+                if (/^[  ]?\d/.test(after)) continue;
+                // Skip labels followed by an independent number ('Figure 1 500 people')
+                if (/(?:figure|table|section|chapter|part|page|appendix|box|step|no\.?|number)\s*$/i.test(before)) continue;
+                // Skip phone-like contexts
+                if (/(?:tel|phone|fax|call|mobile)[\s:.]*$/i.test(before)) continue;
+                const joined = parseInt(found.replace(/[  ]/g, ''), 10);
+                const withCommas = joined.toLocaleString('en-AU');
+                issues.push({
+                    found: found,
+                    suggestion: withCommas,
+                    autoFix: withCommas,
+                    position: match.index,
+                    rule: this
+                });
+            }
             return issues;
         }
     },
@@ -2753,6 +2793,803 @@ const RULES = [
                     position: match.index,
                     rule: this
                 });
+            }
+            return issues;
+        }
+    },
+
+    // ==================== BATCH 1 - TRIAGE REGISTER RULES (July 2026) ====================
+    {
+        id: 'punct-and-or',
+        name: "'and/or'",
+        category: 'punctuation',
+        description: 'Do not use \'and/or\' in text. It could mean either \'and\' or \'or\', which confuses many users. Rewrite the sentence to make the meaning clear - use \'or\' alone, or \'either ... or\'.',
+        link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/punctuation/forward-slashes',
+        check: function(text) {
+            const issues = [];
+            const regex = /\band\/or\b/gi;
+            let match;
+            while ((match = regex.exec(text)) !== null) {
+                issues.push({
+                    found: match[0],
+                    suggestion: "Reword: use 'or' alone, or 'either ... or'",
+                    // No autoFix - rewording needs the author's judgement
+                    position: match.index,
+                    rule: this
+                });
+            }
+            return issues;
+        }
+    },
+    {
+        id: 'punct-ellipsis',
+        name: 'Ellipsis format and spacing',
+        category: 'punctuation',
+        description: 'Use the ellipsis character (…), not a string of full stops. Put a single space before and after each ellipsis. Don\'t use a full stop, comma or semicolon after an ellipsis (a question mark or exclamation mark is fine).',
+        link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/punctuation/ellipses',
+        check: function(text) {
+            const issues = [];
+            // Three or more full stops -> ellipsis character
+            const dotsRegex = /\.{3,}/g;
+            let match;
+            while ((match = dotsRegex.exec(text)) !== null) {
+                const prev = match.index > 0 ? text[match.index - 1] : '';
+                const next = text[match.index + match[0].length] || '';
+                const pre = (prev && !/[\s([‘“'"]/.test(prev)) ? ' ' : '';
+                const post = (next && !/[\s)\]’”'"?!]/.test(next)) ? ' ' : '';
+                const replacement = pre + '…' + post;
+                issues.push({
+                    found: match[0],
+                    suggestion: replacement,
+                    autoFix: replacement,
+                    position: match.index,
+                    rule: this
+                });
+            }
+            // Ellipsis character: check spacing and trailing punctuation
+            const ellRegex = /…/g;
+            while ((match = ellRegex.exec(text)) !== null) {
+                const i = match.index;
+                const prev = i > 0 ? text[i - 1] : '';
+                const afterStr = text.substring(i + 1, i + 4);
+                // Full stop, comma or semicolon after the ellipsis
+                const trail = afterStr.match(/^ ?([.,;])/);
+                if (trail) {
+                    issues.push({
+                        found: text.substring(i, i + 1 + trail[0].length),
+                        suggestion: '…',
+                        autoFix: '…',
+                        position: i,
+                        rule: this
+                    });
+                    continue;
+                }
+                // Missing space before
+                if (prev && !/[\s([‘“'"]/.test(prev)) {
+                    issues.push({
+                        found: prev + '…',
+                        suggestion: prev + ' …',
+                        autoFix: prev + ' …',
+                        position: i - 1,
+                        rule: this
+                    });
+                }
+                // Missing space after (question and exclamation marks are allowed unspaced)
+                const next = text[i + 1] || '';
+                if (next && !/[\s)\]’”'"?!.,;]/.test(next)) {
+                    issues.push({
+                        found: '…' + next,
+                        suggestion: '… ' + next,
+                        autoFix: '… ' + next,
+                        position: i,
+                        rule: this
+                    });
+                }
+            }
+            return issues;
+        }
+    },
+    {
+        id: 'punct-exclamation-multiple',
+        name: 'Multiple exclamation marks',
+        category: 'punctuation',
+        description: 'Use only one exclamation mark, not several. Multiple exclamation marks are not suitable for government content.',
+        link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/punctuation/exclamation-marks',
+        check: function(text) {
+            const issues = [];
+            const regex = /!{2,}/g;
+            let match;
+            while ((match = regex.exec(text)) !== null) {
+                issues.push({
+                    found: match[0],
+                    suggestion: '!',
+                    autoFix: '!',
+                    position: match.index,
+                    rule: this
+                });
+            }
+            return issues;
+        }
+    },
+    {
+        id: 'punct-parentheses-nested',
+        name: 'Nested or unmatched parentheses',
+        category: 'punctuation',
+        description: 'Don\'t use sets of parentheses inside each other. Use square brackets for parenthetical information within parentheses, or reword. Also flags parentheses that don\'t appear to have a matching pair.',
+        link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/punctuation/brackets-and-parentheses',
+        check: function(text) {
+            const issues = [];
+            const lines = text.split('\n');
+            let offset = 0;
+            for (const line of lines) {
+                const stack = [];
+                for (let i = 0; i < line.length; i++) {
+                    const ch = line[i];
+                    if (ch === '(') {
+                        if (stack.length >= 1) {
+                            issues.push({
+                                found: '(',
+                                suggestion: 'Use square brackets [ ] inside parentheses, or reword',
+                                position: offset + i,
+                                rule: this
+                            });
+                        }
+                        stack.push(i);
+                    } else if (ch === ')') {
+                        if (stack.length) {
+                            stack.pop();
+                        } else {
+                            // Skip list markers like '1)' or 'a)' at the start of a line
+                            if (/^\s*\(?\w{1,4}\)$/.test(line.substring(0, i + 1))) continue;
+                            // Skip emoticons
+                            if (/[:;]-?$/.test(line.substring(Math.max(0, i - 2), i))) continue;
+                            issues.push({
+                                found: ')',
+                                suggestion: 'Check this closing parenthesis - it has no matching opening parenthesis',
+                                position: offset + i,
+                                rule: this
+                            });
+                        }
+                    }
+                }
+                if (stack.length) {
+                    issues.push({
+                        found: '(',
+                        suggestion: 'Check this opening parenthesis - it has no matching closing parenthesis',
+                        position: offset + stack[0],
+                        rule: this
+                    });
+                }
+                offset += line.length + 1;
+            }
+            return issues;
+        }
+    },
+    {
+        id: 'punct-possessive-pronoun',
+        name: 'Apostrophe in possessive pronoun',
+        category: 'punctuation',
+        description: 'Possessive pronouns never take apostrophes. Write \'theirs\', \'yours\', \'ours\', \'hers\' and \'its\', not \'their\'s\' or \'its\'\'.',
+        link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/punctuation/apostrophes',
+        check: function(text) {
+            const issues = [];
+            const regex = /\b(your|their|our|her)['’]s\b/gi;
+            let match;
+            while ((match = regex.exec(text)) !== null) {
+                const replacement = match[1] + 's';
+                issues.push({
+                    found: match[0],
+                    suggestion: replacement,
+                    autoFix: replacement,
+                    position: match.index,
+                    rule: this
+                });
+            }
+            // its' is never correct
+            const itsRegex = /\bits['’](?![a-z])/gi;
+            while ((match = itsRegex.exec(text)) !== null) {
+                issues.push({
+                    found: match[0],
+                    suggestion: 'its',
+                    autoFix: 'its',
+                    position: match.index,
+                    rule: this
+                });
+            }
+            return issues;
+        }
+    },
+    {
+        id: 'punct-plural-time-apostrophe',
+        name: 'Apostrophe in plural time period',
+        category: 'punctuation',
+        description: 'Noun phrases about plural time periods don\'t need apostrophes because they\'re descriptive, not possessive. Write \'6 weeks time\' and \'3 months wages\'. This has been the Style Manual\'s guidance for many years. Singular forms keep the apostrophe (\'a day\'s work\').',
+        link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/punctuation/apostrophes',
+        check: function(text) {
+            const issues = [];
+            const regex = /\b(\d+|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|twenty|thirty|forty|fifty|several|few|many)\s+(days|weeks|months|years|hours|minutes|seconds|decades|centuries|fortnights)['’](?=\s+[a-z])/gi;
+            let match;
+            while ((match = regex.exec(text)) !== null) {
+                const replacement = match[1] + ' ' + match[2];
+                issues.push({
+                    found: match[0],
+                    suggestion: replacement,
+                    autoFix: replacement,
+                    position: match.index,
+                    rule: this
+                });
+            }
+            return issues;
+        }
+    },
+    {
+        id: 'punct-eg-ie-comma',
+        name: "Comma after 'e.g.' or 'i.e.'",
+        category: 'punctuation',
+        description: 'Don\'t put a comma after \'e.g.\' or \'i.e.\'. The comma after these forms is an American convention. (Better still, replace them with \'for example\' or \'that is\'.)',
+        link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/punctuation/commas',
+        check: function(text) {
+            const issues = [];
+            const regex = /\b(e\.g\.|i\.e\.)\s?,/gi;
+            let match;
+            while ((match = regex.exec(text)) !== null) {
+                issues.push({
+                    found: match[0],
+                    suggestion: match[1],
+                    autoFix: match[1],
+                    position: match.index,
+                    rule: this
+                });
+            }
+            return issues;
+        }
+    },
+    {
+        id: 'punct-ratio-colon-space',
+        name: 'Spaced colon in ratio',
+        category: 'punctuation',
+        description: 'Write mathematical ratios with an unspaced colon. Write \'50:50\', not \'50 : 50\'.',
+        link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/punctuation/colons',
+        check: function(text) {
+            const issues = [];
+            const regex = /\b(\d+(?:\.\d+)?)([  ]+:[  ]*|[  ]*:[  ]+)(\d+(?:\.\d+)?)\b/g;
+            let match;
+            while ((match = regex.exec(text)) !== null) {
+                const replacement = match[1] + ':' + match[3];
+                issues.push({
+                    found: match[0],
+                    suggestion: replacement,
+                    autoFix: replacement,
+                    position: match.index,
+                    rule: this
+                });
+            }
+            return issues;
+        }
+    },
+    {
+        id: 'punct-hyphen-hanging',
+        name: 'Hanging hyphen',
+        category: 'punctuation',
+        description: 'Hanging hyphens (\'full- and part-time\') can be difficult to follow. Consider repeating the words instead to be clearer (\'full-time and part-time\').',
+        link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/punctuation/hyphens',
+        check: function(text) {
+            const issues = [];
+            const flagged = new Set();
+            // Detailed pattern: 'full- and part-time' -> can compute the repeated form
+            const detailed = /\b([A-Za-z]+)-\s+(and|or)\s+([A-Za-z]+)-([A-Za-z]+)\b/g;
+            let match;
+            while ((match = detailed.exec(text)) !== null) {
+                flagged.add(match.index);
+                issues.push({
+                    found: match[0],
+                    suggestion: match[1] + '-' + match[4] + ' ' + match[2] + ' ' + match[3] + '-' + match[4],
+                    // No autoFix - advisory; the construction is grammatical
+                    position: match.index,
+                    rule: this
+                });
+            }
+            // Generic pattern: any word ending in a hanging hyphen before 'and'/'or'
+            const generic = /\b([A-Za-z]+)-\s+(and|or)\b/g;
+            while ((match = generic.exec(text)) !== null) {
+                if (flagged.has(match.index)) continue;
+                issues.push({
+                    found: match[0],
+                    suggestion: 'Consider repeating the shared word instead of using a hanging hyphen',
+                    position: match.index,
+                    rule: this
+                });
+            }
+            return issues;
+        }
+    },
+    {
+        id: 'punct-dash-from-between',
+        name: "'from' or 'between' with a dash",
+        category: 'punctuation',
+        description: 'Never mix \'from\' or \'between\' with an en dash. Pair \'from\' with \'to\' and \'between\' with \'and\'. Write \'from 2017 to 2019\', not \'from 2017–2019\'.',
+        link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/punctuation/dashes',
+        check: function(text) {
+            const issues = [];
+            const regex = /\b(from|between)\s+(\d[\w:.]*(?:\s?(?:am|pm))?)\s*[–—-]\s*(\d[\w:.]*(?:\s?(?:am|pm))?)/gi;
+            let match;
+            while ((match = regex.exec(text)) !== null) {
+                const end = match.index + match[0].length;
+                const after = text.substring(end, Math.min(text.length, end + 8));
+                // Skip financial-year spans used correctly: 'from 2017-18 to 2018-19'
+                if (/^\s+(?:to|and)\b/i.test(after)) continue;
+                const isFrom = match[1].toLowerCase() === 'from';
+                const replacement = match[1] + ' ' + match[2] + (isFrom ? ' to ' : ' and ') + match[3];
+                issues.push({
+                    found: match[0],
+                    suggestion: replacement,
+                    autoFix: replacement,
+                    position: match.index,
+                    rule: this
+                });
+            }
+            return issues;
+        }
+    },
+    {
+        id: 'time-ampm-space',
+        name: "Missing space before 'am' or 'pm'",
+        category: 'dates-and-time',
+        description: 'Separate the numerals and \'am\' or \'pm\' with a space (a non-breaking space in Word). Write \'3 pm\', not \'3pm\'.',
+        link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/numbers-and-measurements/dates-and-time',
+        check: function(text) {
+            const issues = [];
+            const regex = /\b(\d{1,2}(?:[.:]\d{2})?)(am|pm)\b/gi;
+            let match;
+            while ((match = regex.exec(text)) !== null) {
+                const replacement = match[1] + ' ' + match[2].toLowerCase();
+                issues.push({
+                    found: match[0],
+                    suggestion: replacement,
+                    autoFix: replacement,
+                    position: match.index,
+                    rule: this
+                });
+            }
+            return issues;
+        }
+    },
+    {
+        id: 'time-ampm-case',
+        name: "Capitalised or punctuated 'am'/'pm'",
+        category: 'dates-and-time',
+        description: 'Write \'am\' and \'pm\' in lower case without full stops. Write \'10 am\', not \'10 AM\' or \'10 a.m.\'.',
+        link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/numbers-and-measurements/dates-and-time',
+        check: function(text) {
+            const issues = [];
+            const patterns = [
+                /\b(\d{1,2}(?:[.:]\d{2})?)\s+([APap]\.?\s?[Mm]\.?)(?![A-Za-z])/g,
+                /\b(\d{1,2}(?:[.:]\d{2})?)([APap]\.[Mm]\.?)(?![A-Za-z])/g
+            ];
+            for (const regex of patterns) {
+                let match;
+                while ((match = regex.exec(text)) !== null) {
+                    const marker = match[2];
+                    if (marker === 'am' || marker === 'pm') continue; // already correct
+                    const base = /^[Aa]/.test(marker) ? 'am' : 'pm';
+                    const replacement = match[1] + ' ' + base;
+                    const end = match.index + match[0].length;
+                    const after = text.substring(end, Math.min(text.length, end + 3));
+                    // If the marker's final full stop may end the sentence, don't auto-fix
+                    const ambiguous = marker.endsWith('.') && /^\s*[A-Z]/.test(after);
+                    issues.push({
+                        found: match[0],
+                        suggestion: replacement,
+                        autoFix: ambiguous ? undefined : replacement,
+                        position: match.index,
+                        rule: this
+                    });
+                }
+            }
+            return issues;
+        }
+    },
+    {
+        id: 'time-noon-midnight',
+        name: "'12 noon' or '12 midnight'",
+        category: 'dates-and-time',
+        description: 'The \'12\' is redundant. Write \'noon\', \'midday\' or \'midnight\' on their own.',
+        link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/numbers-and-measurements/dates-and-time',
+        check: function(text) {
+            const issues = [];
+            const regex = /\b12\s*(noon|midday|midnight)\b/gi;
+            let match;
+            while ((match = regex.exec(text)) !== null) {
+                issues.push({
+                    found: match[0],
+                    suggestion: match[1],
+                    autoFix: match[1],
+                    position: match.index,
+                    rule: this
+                });
+            }
+            return issues;
+        }
+    },
+    {
+        id: 'time-24hour-ampm',
+        name: "'am' or 'pm' on 24-hour time",
+        category: 'dates-and-time',
+        description: '24-hour times don\'t take \'am\' or \'pm\' - the hour already shows whether it\'s morning or evening. Write \'23:18\', not \'23:18 pm\'.',
+        link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/numbers-and-measurements/dates-and-time',
+        check: function(text) {
+            const issues = [];
+            const regex = /\b((?:0\d|1[3-9]|2[0-3]):?[0-5]\d)\s*(am|pm)\b/gi;
+            let match;
+            while ((match = regex.exec(text)) !== null) {
+                issues.push({
+                    found: match[0],
+                    suggestion: match[1],
+                    autoFix: match[1],
+                    position: match.index,
+                    rule: this
+                });
+            }
+            return issues;
+        }
+    },
+    {
+        id: 'numbers-currency-space',
+        name: 'Space after currency symbol',
+        category: 'numbers-and-measurements',
+        description: 'Don\'t put a space between the currency symbol and the numerals. Write \'$50\', not \'$ 50\'.',
+        link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/numbers-and-measurements/currency',
+        check: function(text) {
+            const issues = [];
+            const regex = /([$£€¥])[  ]+(?=\d)/g;
+            let match;
+            while ((match = regex.exec(text)) !== null) {
+                issues.push({
+                    found: match[0],
+                    suggestion: match[1],
+                    autoFix: match[1],
+                    position: match.index,
+                    rule: this
+                });
+            }
+            return issues;
+        }
+    },
+    {
+        id: 'numbers-percent-noun',
+        name: "'per cent' used as a noun",
+        category: 'numbers-and-measurements',
+        description: 'Use \'percentage\' as the noun. Write \'the percentage of Australians\', not \'the per cent of Australians\'.',
+        link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/numbers-and-measurements/percentages',
+        check: function(text) {
+            const issues = [];
+            const regex = /\b(the|a|what|which|this|that)\s+per\s?cent\b(?!\s+(?:sign|symbol))/gi;
+            let match;
+            while ((match = regex.exec(text)) !== null) {
+                const replacement = match[1] + ' percentage';
+                issues.push({
+                    found: match[0],
+                    suggestion: replacement,
+                    autoFix: replacement,
+                    position: match.index,
+                    rule: this
+                });
+            }
+            return issues;
+        }
+    },
+    {
+        id: 'numbers-comparison-operators',
+        name: 'Programming comparison operators',
+        category: 'numbers-and-measurements',
+        description: '\'>=\' and \'<=\' are not mathematical notation. Use the proper symbols (≥, ≤) or words (\'greater than or equal to\', \'less than or equal to\').',
+        link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/numbers-and-measurements/mathematical-relationships',
+        check: function(text) {
+            const issues = [];
+            const regex = /(>=|<=)/g;
+            let match;
+            while ((match = regex.exec(text)) !== null) {
+                const gte = match[1] === '>=';
+                issues.push({
+                    found: match[0],
+                    suggestion: gte ? "'≥' or 'greater than or equal to'" : "'≤' or 'less than or equal to'",
+                    // No autoFix - symbol or words is the author's choice
+                    position: match.index,
+                    rule: this
+                });
+            }
+            return issues;
+        }
+    },
+    {
+        id: 'readability-double-negative',
+        name: 'Double negative',
+        category: 'readability',
+        description: 'Double negatives can lead to misunderstandings, so avoid them. Write \'common\' instead of \'not uncommon\'.',
+        link: 'https://www.stylemanual.gov.au/writing-and-designing-content/clear-language-and-writing-style/sentences',
+        check: function(text) {
+            const issues = [];
+            const pairs = [
+                ['uncommon', 'common'], ['unusual', 'usual'], ['unlikely', 'likely'],
+                ['unreasonable', 'reasonable'], ['unnecessary', 'necessary'], ['unclear', 'clear'],
+                ['unaware', 'aware'], ['unable', 'able'], ['unwilling', 'willing'],
+                ['unimportant', 'important'], ['uncertain', 'certain'], ['unfamiliar', 'familiar'],
+                ['unexpected', 'expected'], ['insignificant', 'significant'], ['inaccurate', 'accurate'],
+                ['incorrect', 'correct'], ['incomplete', 'complete'], ['inconsistent', 'consistent'],
+                ['infrequent', 'frequent'], ['impossible', 'possible'], ['impractical', 'practical'],
+                ['irrelevant', 'relevant']
+            ];
+            for (const [neg, pos] of pairs) {
+                const regex = new RegExp('\\bnot\\s+' + neg + '\\b', 'gi');
+                let match;
+                while ((match = regex.exec(text)) !== null) {
+                    issues.push({
+                        found: match[0],
+                        suggestion: "'" + pos + "', or reword positively",
+                        // No autoFix - the positive form can shift the meaning
+                        position: match.index,
+                        rule: this
+                    });
+                }
+            }
+            return issues;
+        }
+    },
+    {
+        id: 'readability-if-unless',
+        name: "'if' and 'unless' in one sentence",
+        category: 'readability',
+        description: 'Don\'t use \'if\' and \'unless\' in the same sentence - the combined conditions are hard to follow. Split them into 2 sentences.',
+        link: 'https://www.stylemanual.gov.au/writing-and-designing-content/clear-language-and-writing-style/sentences',
+        check: function(text) {
+            const issues = [];
+            const sentenceRegex = /[^.!?\n]+[.!?]?/g;
+            let sentence;
+            while ((sentence = sentenceRegex.exec(text)) !== null) {
+                const s = sentence[0];
+                if (/\bif\b/i.test(s) && /\bunless\b/i.test(s)) {
+                    const unlessIndex = s.search(/\bunless\b/i);
+                    issues.push({
+                        found: s.substr(unlessIndex, 6),
+                        suggestion: "Split into 2 sentences - don't use 'if' and 'unless' together",
+                        position: sentence.index + unlessIndex,
+                        rule: this
+                    });
+                }
+            }
+            return issues;
+        }
+    },
+    {
+        id: 'inclusive-atsi',
+        name: "'ATSI'",
+        category: 'inclusive-language',
+        description: 'Never use the shorthand \'ATSI\'. Write \'Aboriginal and Torres Strait Islander\' in full, or \'First Nations\'.',
+        link: 'https://www.stylemanual.gov.au/accessible-and-inclusive-content/inclusive-language/aboriginal-and-torres-strait-islander-peoples',
+        check: function(text) {
+            const issues = [];
+            const regex = /\bATSI\b/g;
+            let match;
+            while ((match = regex.exec(text)) !== null) {
+                issues.push({
+                    found: match[0],
+                    suggestion: "'Aboriginal and Torres Strait Islander' or 'First Nations'",
+                    // No autoFix - may be a dataset variable name in technical content
+                    position: match.index,
+                    rule: this
+                });
+            }
+            return issues;
+        }
+    },
+    {
+        id: 'inclusive-aborigines',
+        name: "'Aborigines' or 'Aboriginals' as nouns",
+        category: 'inclusive-language',
+        description: 'These nouns are outdated and can cause offence. Write \'Aboriginal and Torres Strait Islander people\' or \'First Nations people\'. (\'Aboriginal\' as an adjective is fine.)',
+        link: 'https://www.stylemanual.gov.au/accessible-and-inclusive-content/inclusive-language/aboriginal-and-torres-strait-islander-peoples',
+        check: function(text) {
+            const issues = [];
+            const regex = /\b[Aa]borigin(?:es|als)\b/g;
+            let match;
+            while ((match = regex.exec(text)) !== null) {
+                issues.push({
+                    found: match[0],
+                    suggestion: "'Aboriginal and Torres Strait Islander people' or 'First Nations people'",
+                    // No autoFix - historical quotations and older publication titles keep the original wording
+                    position: match.index,
+                    rule: this
+                });
+            }
+            return issues;
+        }
+    },
+    {
+        id: 'inclusive-indigenous-capital',
+        name: "Lower-case 'indigenous' or 'aboriginal' for peoples",
+        category: 'inclusive-language',
+        description: 'Capitalise \'Indigenous\' and \'Aboriginal\' when referring to Aboriginal and Torres Strait Islander people. Lower case is only correct for generic uses such as \'indigenous species\'.',
+        link: 'https://www.stylemanual.gov.au/accessible-and-inclusive-content/inclusive-language/aboriginal-and-torres-strait-islander-peoples',
+        check: function(text) {
+            const issues = [];
+            const regex = /\b(indigenous|aboriginal)(\s+)(Australians?|peoples?|person|communit(?:y|ies)|child(?:ren)?|wom[ae]n|m[ae]n|famil(?:y|ies)|elders?|health|cultures?|languages?|nations?|status|adults?|youth|girls?|boys?)\b/gi;
+            let match;
+            while ((match = regex.exec(text)) !== null) {
+                if (!/[a-z]/.test(match[1][0])) continue; // already capitalised
+                const replacement = match[1][0].toUpperCase() + match[1].slice(1);
+                issues.push({
+                    found: match[1],
+                    suggestion: replacement,
+                    autoFix: replacement,
+                    position: match.index,
+                    rule: this
+                });
+            }
+            // Lower-case 'torres strait islander'
+            const torresRegex = /\btorres\s+strait\s+islander(s?)\b/gi;
+            while ((match = torresRegex.exec(text)) !== null) {
+                const proper = 'Torres Strait Islander' + match[1];
+                if (match[0] === proper) continue;
+                issues.push({
+                    found: match[0],
+                    suggestion: proper,
+                    autoFix: proper,
+                    position: match.index,
+                    rule: this
+                });
+            }
+            return issues;
+        }
+    },
+    {
+        id: 'inclusive-christian-name',
+        name: "'Christian name'",
+        category: 'inclusive-language',
+        description: 'Not everyone has a Christian name. Write \'given name\' instead.',
+        link: 'https://www.stylemanual.gov.au/accessible-and-inclusive-content/inclusive-language/cultural-and-linguistic-diversity',
+        check: function(text) {
+            const issues = [];
+            const regex = /\b[Cc]hristian\s+name(s?)\b/g;
+            let match;
+            while ((match = regex.exec(text)) !== null) {
+                const replacement = 'given name' + match[1];
+                issues.push({
+                    found: match[0],
+                    suggestion: replacement,
+                    autoFix: replacement,
+                    position: match.index,
+                    rule: this
+                });
+            }
+            return issues;
+        }
+    },
+
+    // ==================== BATCH 2 - TRIAGE REGISTER RULES (July 2026) ====================
+    {
+        id: 'spelling-prefix-hyphen',
+        name: 'Prefix hyphenation',
+        category: 'spelling',
+        description: 'Use a hyphen when a single-syllable prefix ends with the same vowel that starts the word (\'re-enter\', \'pre-existing\'). The \'co-\' family closes up (\'coordinate\', \'cooperate\'). Spellings follow the Macquarie Dictionary.',
+        link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/punctuation/hyphens',
+        check: function(text) {
+            const issues = [];
+            for (const [wrong, correct] of Object.entries(PREFIX_SPELLINGS)) {
+                const escaped = wrong.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                const regex = new RegExp('\\b' + escaped + '\\b', 'gi');
+                let match;
+                while ((match = regex.exec(text)) !== null) {
+                    const replacement = preserveCase(match[0], correct);
+                    issues.push({
+                        found: match[0],
+                        suggestion: replacement,
+                        autoFix: replacement,
+                        position: match.index,
+                        rule: this
+                    });
+                }
+            }
+            return issues;
+        }
+    },
+    {
+        id: 'numbers-unit-space',
+        name: 'Missing space between number and unit',
+        category: 'numbers-and-measurements',
+        description: 'Put a non-breaking space between the number and the unit of measurement. Write \'5 kg\', not \'5kg\'.',
+        link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/numbers-and-measurements/measurement-and-units',
+        check: function(text) {
+            const issues = [];
+            // Agreed whitelist (July 2026). Longest first so 'km/h' wins over 'km'.
+            // Deliberately excluded: m, s, h, %, °C, am/pm (see triage register notes).
+            const units = ['km/h', 'mmHg', 'Mbps', 'Gbps', 'kWh', 'MWh', 'kHz', 'MHz',
+                'GHz', 'kPa', 'ppm', 'mcg', 'min', 'km', 'kg', 'mg', 'µg', 'mL', 'ml',
+                'dL', 'kL', 'ML', 'GL', 'mm', 'cm', 'ha', 'kJ', 'MJ', 'kW', 'MW', 'GW',
+                'Hz', 'kB', 'MB', 'GB', 'TB', 'dB', 'L', 'g', 't'];
+            const unitPattern = units.map(u => u.replace('/', '\\/')).join('|');
+            const regex = new RegExp('(\\d+(?:\\.\\d+)?)(' + unitPattern + ')(?![A-Za-z0-9\\/])', 'g');
+            let match;
+            while ((match = regex.exec(text)) !== null) {
+                // Skip if the number is part of a word or code ('A4', 'COVID-19')
+                const before = text.substring(Math.max(0, match.index - 2), match.index);
+                if (/[A-Za-z]$/.test(before)) continue;
+                if (/[A-Za-z][-–]$/.test(before)) continue;
+                const replacement = match[1] + ' ' + match[2];
+                issues.push({
+                    found: match[0],
+                    suggestion: replacement,
+                    autoFix: replacement,
+                    position: match.index,
+                    rule: this
+                });
+            }
+            return issues;
+        }
+    },
+    {
+        id: 'numbers-phone-format',
+        name: 'Telephone number format',
+        category: 'numbers-and-measurements',
+        description: 'Write Australian phone numbers in standard chunks with non-breaking spaces: \'02 6244 1000\' (landline), \'0491 570 159\' (mobile), \'1300 975 707\', \'13 24 68\'. Don\'t use parentheses, hyphens or unbroken digits.',
+        link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/numbers-and-measurements/telephone-numbers',
+        check: function(text) {
+            const issues = [];
+            const flaggedSpans = [];
+            const overlaps = (start, end) =>
+                flaggedSpans.some(([s, e]) => start < e && end > s);
+            const pushIssue = (match, digits, chunks) => {
+                const start = match.index;
+                const end = start + match[0].length;
+                if (overlaps(start, end)) return;
+                flaggedSpans.push([start, end]);
+                // Normalise the found text; skip if it already matches the standard chunking
+                const foundNorm = match[0].replace(/ /g, ' ');
+                const canonical = chunks.join(' ');
+                if (foundNorm === canonical) return;
+                const replacement = chunks.join(' ');
+                issues.push({
+                    found: match[0],
+                    suggestion: replacement,
+                    autoFix: replacement,
+                    position: start,
+                    rule: this
+                });
+            };
+
+            // 10-digit numbers starting with 0 (landline and mobile), any separators
+            const tenDigit = /(?:\(0\d\)|\b0\d)(?:[  ().-]*\d){8}\b(?!\d)/g;
+            let match;
+            while ((match = tenDigit.exec(text)) !== null) {
+                const digits = match[0].replace(/\D/g, '');
+                if (digits.length !== 10) continue;
+                if (digits.startsWith('04')) {
+                    // Mobile: 4 + 3 + 3
+                    pushIssue(match, digits,
+                        [digits.slice(0, 4), digits.slice(4, 7), digits.slice(7)]);
+                } else if (/^0[2378]/.test(digits)) {
+                    // Landline: 2 + 4 + 4
+                    pushIssue(match, digits,
+                        [digits.slice(0, 2), digits.slice(2, 6), digits.slice(6)]);
+                }
+                // Other leading digits: not a known Australian format - don't flag
+            }
+
+            // 1300 and 1800 numbers: 4 + 3 + 3
+            const thirteenHundred = /\b1[38]00(?:[  .-]*\d){6}\b(?!\d)/g;
+            while ((match = thirteenHundred.exec(text)) !== null) {
+                const digits = match[0].replace(/\D/g, '');
+                if (digits.length !== 10) continue;
+                pushIssue(match, digits,
+                    [digits.slice(0, 4), digits.slice(4, 7), digits.slice(7)]);
+            }
+
+            // 13 numbers (6 digits): 2 + 2 + 2
+            const thirteen = /\b13(?:[  .-]*\d){4}\b(?!\d)/g;
+            while ((match = thirteen.exec(text)) !== null) {
+                const digits = match[0].replace(/\D/g, '');
+                if (digits.length !== 6) continue;
+                pushIssue(match, digits,
+                    [digits.slice(0, 2), digits.slice(2, 4), digits.slice(4)]);
             }
             return issues;
         }

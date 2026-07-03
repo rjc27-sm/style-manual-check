@@ -565,3 +565,67 @@ export const WORDY_PHRASES = {
     "with regard to": "Consider using 'about'",
     "with respect to": "Consider using 'about'"
 };
+
+// PU-17: doubled-vowel prefix spellings (triage register, Batch 2).
+// Two directions, both per the Macquarie Dictionary (checked July 2026):
+// - closed-up doubled-vowel forms take a hyphen (reenter -> re-enter)
+// - the co- family closes up (co-ordinate -> coordinate)
+export const PREFIX_SPELLINGS = {
+    // Add a hyphen (single-syllable prefix ending in the vowel that starts the word)
+    "reenter": "re-enter", "reenters": "re-enters", "reentered": "re-entered",
+    "reentering": "re-entering", "reentry": "re-entry", "reentries": "re-entries",
+    "reexamine": "re-examine", "reexamines": "re-examines", "reexamined": "re-examined",
+    "reexamining": "re-examining", "reexamination": "re-examination", "reexaminations": "re-examinations",
+    "reelect": "re-elect", "reelects": "re-elects", "reelected": "re-elected",
+    "reelecting": "re-electing", "reelection": "re-election", "reelections": "re-elections",
+    "reemerge": "re-emerge", "reemerges": "re-emerges", "reemerged": "re-emerged",
+    "reemerging": "re-emerging", "reemergence": "re-emergence",
+    "reenact": "re-enact", "reenacts": "re-enacts", "reenacted": "re-enacted",
+    "reenacting": "re-enacting", "reenactment": "re-enactment", "reenactments": "re-enactments",
+    "reenrol": "re-enrol", "reenrols": "re-enrols", "reenrolled": "re-enrolled",
+    "reenrolling": "re-enrolling", "reenrolment": "re-enrolment", "reenrolments": "re-enrolments",
+    "reestablish": "re-establish", "reestablishes": "re-establishes", "reestablished": "re-established",
+    "reestablishing": "re-establishing", "reestablishment": "re-establishment",
+    "reevaluate": "re-evaluate", "reevaluates": "re-evaluates", "reevaluated": "re-evaluated",
+    "reevaluating": "re-evaluating", "reevaluation": "re-evaluation", "reevaluations": "re-evaluations",
+    "reengage": "re-engage", "reengages": "re-engages", "reengaged": "re-engaged",
+    "reengaging": "re-engaging", "reengagement": "re-engagement",
+    "reeducate": "re-educate", "reeducates": "re-educates", "reeducated": "re-educated",
+    "reeducating": "re-educating", "reeducation": "re-education",
+    "reemploy": "re-employ", "reemploys": "re-employs", "reemployed": "re-employed",
+    "reemploying": "re-employing", "reemployment": "re-employment",
+    "reenergise": "re-energise", "reenergises": "re-energises", "reenergised": "re-energised",
+    "reenergising": "re-energising",
+    "deemphasise": "de-emphasise", "deemphasises": "de-emphasises", "deemphasised": "de-emphasised",
+    "deemphasising": "de-emphasising",
+    "deescalate": "de-escalate", "deescalates": "de-escalates", "deescalated": "de-escalated",
+    "deescalating": "de-escalating", "deescalation": "de-escalation",
+    "deenergise": "de-energise", "deenergises": "de-energises", "deenergised": "de-energised",
+    "deenergising": "de-energising",
+    "preeminent": "pre-eminent", "preeminently": "pre-eminently", "preeminence": "pre-eminence",
+    "preexist": "pre-exist", "preexists": "pre-exists", "preexisted": "pre-existed",
+    "preexisting": "pre-existing",
+    "preeclampsia": "pre-eclampsia",
+    "preelection": "pre-election",
+    "preempt": "pre-empt", "preempts": "pre-empts", "preempted": "pre-empted",
+    "preempting": "pre-empting", "preemptive": "pre-emptive", "preemptively": "pre-emptively",
+    "preemption": "pre-emption",
+    "antiinflammatory": "anti-inflammatory", "antiinflammatories": "anti-inflammatories",
+    "intraabdominal": "intra-abdominal", "intraarterial": "intra-arterial",
+    "intraarticular": "intra-articular",
+
+    // Remove the hyphen (Macquarie closes these up)
+    "co-ordinate": "coordinate", "co-ordinates": "coordinates", "co-ordinated": "coordinated",
+    "co-ordinating": "coordinating", "co-ordination": "coordination",
+    "co-ordinator": "coordinator", "co-ordinators": "coordinators",
+    "co-operate": "cooperate", "co-operates": "cooperates", "co-operated": "cooperated",
+    "co-operating": "cooperating", "co-operation": "cooperation",
+    "co-operative": "cooperative", "co-operatives": "cooperatives", "co-operatively": "cooperatively",
+    "unco-operative": "uncooperative",
+    "co-exist": "coexist", "co-exists": "coexists", "co-existed": "coexisted",
+    "co-existing": "coexisting", "co-existence": "coexistence",
+    "co-education": "coeducation", "co-educational": "coeducational",
+    "co-opt": "coopt", "co-opts": "coopts", "co-opted": "coopted",
+    "co-opting": "coopting", "co-option": "cooption",
+    "micro-organism": "microorganism", "micro-organisms": "microorganisms"
+};
