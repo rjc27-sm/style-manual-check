@@ -8,7 +8,7 @@
 
 // Set this to your deployed Worker URL, for example:
 // export const WORKER_URL = 'https://im2026-proof-positive.jcr27.workers.dev';
-export const WORKER_URL = '';
+export const WORKER_URL = 'https://im2026-proof-positive.jcr27.workers.dev';
 
 export const AI_ENABLED = WORKER_URL !== '';
 
