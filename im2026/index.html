@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Check a document – Proof Positive (IM2026)</title>
+<meta name="description" content="Proof Positive, an IM2026 Bureaucrat Bot: check Word documents and text against the Australian Government Style Manual, with AI-drafted fixes that are verified by the rule engine.">
+<link rel="icon" type="image/png" sizes="32x32" href="assets/style-check-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="assets/style-check-16x16.png">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<link rel="stylesheet" href="assets/site.css">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700;800&display=swap');
+:root{
+  --blue:#2d7e98;--b1:#192f38;--b2:#295665;--b4:#61a9be;--b5:#b7d6df;
+  --teal:#27854e;--orange:#f36f21;
+  --c1:#2b2d2d;--c2:#4f5152;--c3:#707678;--c4:#9c9fa0;--c5:#cfd1d1;
+  --bg:#f6f7f7;--line:#e3e6e6;--ease:cubic-bezier(.2,0,.2,1);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{font-family:'Open Sans',Arial,sans-serif;background:var(--bg);color:var(--c1);
+  font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased}
+[hidden]{display:none !important}
+
+.wrap{max-width:960px;margin:0 auto;padding:36px 28px 56px}
+
+.hero h1{font-size:28px;font-weight:800;color:var(--b1);letter-spacing:-.01em;line-height:1.15;margin:0}
+.lede{font-size:15.5px;color:var(--c2);margin:10px 0 0;max-width:680px;line-height:1.65}
+.privacy{font-size:13.5px;color:var(--c3);margin-top:10px;max-width:680px;line-height:1.6}
+.hero{margin-bottom:30px}
+
+.step-h{display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+.num{width:26px;height:26px;border-radius:999px;background:var(--blue);color:#fff;
+  font:700 13px 'Open Sans',sans-serif;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.step-h h2{font-size:16px;font-weight:700;color:var(--b1);margin:0}
+.step-hint{font-size:12.5px;color:var(--c3)}
+
+.seg{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+.seg button{display:inline-flex;align-items:center;gap:7px;padding:9px 15px;border:1px solid var(--c5);
+  border-radius:999px;font:600 14px 'Open Sans',sans-serif;color:var(--c2);cursor:pointer;background:#fff;
+  transition:all .15s var(--ease)}
+.seg button:hover{border-color:var(--b4)}
+.seg button[aria-selected="true"]{background:#eef5f7;border-color:var(--blue);color:var(--b2);font-weight:700}
+
+.card{background:#fff;border:1px solid var(--line);border-radius:10px;overflow:hidden;
+  box-shadow:0 1px 2px rgba(25,47,56,.04)}
+
+#drop-zone{margin:14px;border:2px dashed var(--b5);border-radius:8px;padding:36px 20px;text-align:center;
+  cursor:pointer;transition:all .15s var(--ease)}
+#drop-zone:hover,#drop-zone.drag{background:#eef5f7;border-color:var(--blue)}
+#drop-zone strong{color:var(--b2)}
+#drop-zone .hint{font-size:13px;color:var(--c3);margin-top:6px;line-height:1.55}
+#file-name{font-weight:700;color:var(--b2);margin-top:10px;font-size:14.5px}
+#file-input{display:none}
+
+textarea#text-input{width:100%;min-height:230px;padding:18px 20px;border:0;resize:vertical;display:block;
+  font:15px/1.6 'Open Sans',Arial,sans-serif;color:var(--c1);background:#fff}
+textarea#text-input::placeholder{color:var(--c4)}
+textarea#text-input:focus{outline:none;box-shadow:inset 0 0 0 2px var(--b5)}
+.card-foot{border-top:1px solid var(--line);padding:11px 16px;display:flex;justify-content:flex-end;
+  align-items:center}
+
+.btn{font:700 15px 'Open Sans',sans-serif;border-radius:8px;padding:12px 26px;cursor:pointer;border:none;
+  min-height:46px;display:inline-flex;align-items:center;gap:8px}
+.btn-primary{background:var(--blue);color:#fff}
+.btn-primary:hover{background:var(--b2)}
+.btn:disabled{background:var(--c4);cursor:default}
+
+.controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:22px 0 0}
+.controls .ctrl-lab{font-size:13px;font-weight:600;color:var(--c3)}
+.controls select{font:600 14px 'Open Sans',sans-serif;color:var(--c2);padding:9px 12px;
+  border:1px solid var(--c5);border-radius:999px;background:#fff;cursor:pointer}
+
+#busy{margin-top:18px;font-size:14.5px;font-weight:600;color:var(--b2)}
+
+#error-box{margin-top:22px;background:#fdf3ec;border:1px solid #f4d4bd;border-left:4px solid var(--orange);
+  border-radius:10px;padding:18px 22px;font-size:14.5px;line-height:1.65;color:#7a3d18}
+
+#download-section{margin-top:28px}
+#download-bar{background:#eef5f7;border:1px solid #cfe2e8;border-left:4px solid var(--blue);
+  border-radius:10px;padding:18px 22px;display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+#download-note{font-size:14px;color:var(--c2);line-height:1.6;flex:1;min-width:240px}
+
+#results-section{margin-top:28px}
+#summary-line{font-size:15px;font-weight:700;color:var(--b1);margin-bottom:14px}
+
+.issue-card{background:#fff;border:1px solid var(--line);border-left:4px solid var(--blue);border-radius:10px;
+  padding:15px 20px;margin-bottom:10px;box-shadow:0 1px 2px rgba(13,36,54,.04)}
+.issue-head{display:flex;gap:10px;align-items:baseline;margin-bottom:5px;flex-wrap:wrap}
+.badge{font-size:12px;font-weight:700;color:var(--b2);background:#eef5f7;border:1px solid var(--b5);
+  border-radius:999px;padding:2px 11px}
+.para-ref{font-size:12.5px;color:var(--c3)}
+.issue-found{font-size:15px;font-weight:700;color:var(--c1)}
+.issue-suggestion{font-size:14.5px;font-weight:700;color:var(--teal);margin-top:1px}
+.issue-desc{font-size:14px;color:var(--c2);line-height:1.6;margin-top:3px}
+.learn-more{display:inline-block;font-size:13.5px;color:var(--b2);margin-top:5px;
+  text-underline-offset:2px;margin-right:14px}
+.issue-links{margin-top:5px}
+
+.how-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin:18px 0 34px}
+.how-card{background:#fff;border:1px solid var(--line);border-top:4px solid var(--b4);
+  border-radius:10px;padding:16px 18px}
+.how-card h3{font-size:14.5px;color:var(--b1);margin:0 0 6px}
+.how-card p{font-size:13.5px;color:var(--c2);line-height:1.6;margin:0}
+.how-card a{color:var(--b2);font-weight:600}
+
+@media (max-width:720px){
+  .wrap{padding:26px 18px 44px}
+  .hero h1{font-size:24px}
+}
+</style>
+</head>
+<body>
+
+<a class="gov-skip" href="#main">Skip to main content</a>
+
+<header class="gov-header">
+  <div class="gov-header-inner">
+    <div class="gov-masthead">
+      <img class="gov-mark" src="assets/style-check-96x96.png" alt="" width="42" height="42">
+      <div>
+        <p class="gov-sitename">Proof Positive <span class="gov-im">IM2026</span></p>
+        <p class="gov-tagline">A Bureaucrat Bot for Innovation Month 2026</p>
+      </div>
+    </div>
+  </div>
+</header>
+<nav class="gov-nav" aria-label="Tools">
+  <div class="gov-nav-inner">
+    <a href="index.html" aria-current="page">Check a document</a>
+    <a href="lists.html">Format a list</a>
+    <a href="citations.html">Create a citation</a>
+    <a href="ask.html">Ask the Style Manual</a>
+  </div>
+</nav>
+<main class="wrap" id="main">
+  <header class="hero">
+    <h1>Write it right, then prove it</h1>
+    <p class="lede">Proof Positive checks your writing against the
+      <a href="https://www.stylemanual.gov.au" rel="noopener">Australian Government Style Manual</a>
+      using a deterministic rule engine – the same check gives the same answer
+      every time. Where fixing an issue takes judgement, generative AI drafts a
+      rewrite and <strong>the rule engine verifies the AI's work before you see
+      it</strong>. The bot marks the AI's homework.</p>
+    <p class="privacy">Rule checks run entirely in your browser – your document
+      is not uploaded anywhere. AI features (marked ✦) send only the text you
+      choose to the Claude API. Don't use sensitive or personal information.</p>
+  </header>
+
+  <section aria-label="What this bot can do">
+    <h2 style="position:absolute;left:-9999px">What this bot can do</h2>
+    <div class="how-cards">
+      <div class="how-card"><h3>Check a document</h3>
+        <p>Upload a Word file and download it back with a review comment on
+          every style issue – formatting untouched. You're on this page.</p></div>
+      <div class="how-card"><h3>Format a list</h3>
+        <p><a href="lists.html">Turn rough bullet points</a> into a correctly
+          punctuated sentence, fragment or stand-alone list.</p></div>
+      <div class="how-card"><h3>Create a citation</h3>
+        <p><a href="citations.html">Build an author–date reference</a> from a
+          DOI, a form, or ✦ a messy pasted reference.</p></div>
+      <div class="how-card"><h3>Ask the Style Manual</h3>
+        <p><a href="ask.html">✦ Ask a question in plain words</a> and get an
+          answer that links to the relevant Style Manual page.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="step-h"><span class="num">1</span><h2>Your content</h2>
+      <span class="step-hint">a Word document, or pasted text for a quick check</span></div>
+
+    <div class="seg" role="tablist" aria-label="What to check">
+      <button id="tab-document" type="button" role="tab" aria-selected="true">Word document</button>
+      <button id="tab-text" type="button" role="tab" aria-selected="false">Pasted text</button>
+    </div>
+
+    <div class="card" id="panel-document" role="tabpanel">
+      <div id="drop-zone" tabindex="0" role="button" aria-label="Choose a Word document to check">
+        <p><strong>Choose a Word document</strong> or drag it here</p>
+        <p class="hint">.docx files only. The tool reads heading styles, list
+          formatting and bold text directly from the document. It stays in your
+          browser.</p>
+        <p id="file-name"></p>
+      </div>
+      <input type="file" id="file-input" accept=".docx">
+    </div>
+
+    <div class="card" id="panel-text" role="tabpanel" hidden>
+      <label for="text-input" style="position:absolute;left:-9999px">Text to check</label>
+      <textarea id="text-input" spellcheck="false"
+        placeholder="Paste your text here. Pasting strips Word formatting, so heading and list checks use a best guess – for full checks, use the Word document option."></textarea>
+      <div class="card-foot">
+        <button class="btn btn-primary" id="check-text-btn" type="button">Check text</button>
+      </div>
+    </div>
+  </section>
+
+  <p id="busy" hidden role="status"><span id="busy-label">Working…</span></p>
+  <p id="error-box" hidden role="alert"></p>
+
+  <section id="download-section" hidden>
+    <div class="step-h" style="margin-top:6px"><span class="num">2</span><h2>Download with comments</h2></div>
+    <div id="download-bar">
+      <button class="btn btn-primary" id="download-btn" type="button">Download with comments (.docx)</button>
+      <span id="download-note">Adds a Word review comment for every issue, with a
+        link to the Style Manual. Your formatting is untouched.</span>
+    </div>
+  </section>
+
+  <section id="results-section" hidden aria-live="polite">
+    <div class="step-h" style="margin-top:6px"><span class="num" id="results-num">3</span><h2>Issues found</h2></div>
+    <p id="summary-line"></p>
+    <div class="controls" style="margin:0 0 14px">
+      <span class="ctrl-lab" id="filter-lab">Show</span>
+      <select id="category-filter" aria-labelledby="filter-lab">
+        <option value="all">All categories</option>
+      </select>
+    </div>
+    <div id="issue-list"></div>
+  </section>
+</main>
+
+<footer class="gov-footer">
+  <div class="gov-footer-inner">
+    <h2>About this bot</h2>
+    <p>Proof Positive (IM2026) is an entry in the APS Innovation Month 2026
+      ‘Build a Bureaucrat Bot’ challenge. It is a personal project, not an
+      official government service, and it does not replace editorial judgement
+      or the <a href="https://www.stylemanual.gov.au" rel="noopener">Australian
+      Government Style Manual</a>.</p>
+    <h2>Your data</h2>
+    <p>Rule-based checks run entirely in your browser – nothing is uploaded.
+      Features marked with ✦ send the text you choose to the Claude API
+      (Anthropic) to generate a suggestion; it is not used to train models.
+      Don't enter classified, sensitive or personal information.</p>
+    <p class="gov-footer-meta">Rules based on the Australian Government Style
+      Manual, © Commonwealth of Australia, used under
+      <a href="https://creativecommons.org/licenses/by/4.0/" rel="noopener">CC BY 4.0</a>.
+      Deterministic rule engine – AI is only used where judgement is needed,
+      and its output is re-checked by the rules.</p>
+  </div>
+</footer>
+
+<script type="module" src="src/app.js"></script>
+</body>
+</html>

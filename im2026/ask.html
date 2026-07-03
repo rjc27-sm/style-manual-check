@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ask the Style Manual – Proof Positive (IM2026)</title>
+<meta name="description" content="Proof Positive, an IM2026 Bureaucrat Bot: ask questions about the Australian Government Style Manual in plain words and get answers drawn from the actual guidance.">
+<link rel="icon" type="image/png" sizes="32x32" href="assets/style-check-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="assets/style-check-16x16.png">
+<link rel="stylesheet" href="assets/site.css">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700;800&display=swap');
+:root{
+  --blue:#2d7e98;--b1:#192f38;--b2:#295665;--b4:#61a9be;--b5:#b7d6df;
+  --c1:#2b2d2d;--c2:#4f5152;--c3:#707678;--c4:#9c9fa0;--c5:#cfd1d1;
+  --bg:#f6f7f7;--line:#e3e6e6;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{font-family:'Open Sans',Arial,sans-serif;background:var(--bg);color:var(--c1);
+  font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased}
+[hidden]{display:none !important}
+.wrap{max-width:820px;margin:0 auto;padding:36px 28px 56px}
+.hero h1{font-size:28px;font-weight:800;color:var(--b1);letter-spacing:-.01em;line-height:1.15;margin:0}
+.lede{font-size:15.5px;color:var(--c2);margin:10px 0 0;max-width:640px;line-height:1.65}
+.hero{margin-bottom:26px}
+
+#chat{display:flex;flex-direction:column;gap:12px;margin-bottom:16px}
+.msg{max-width:85%;padding:12px 17px;border-radius:12px;font-size:15px;line-height:1.65;white-space:pre-wrap}
+.msg-user{align-self:flex-end;background:var(--blue);color:#fff;border-bottom-right-radius:4px}
+.msg-bot{align-self:flex-start;background:#fff;border:1px solid var(--line);border-bottom-left-radius:4px}
+.msg-bot a{color:var(--b2);word-break:break-all}
+.msg-label{font-size:11.5px;font-weight:700;opacity:.75;display:block;margin-bottom:3px;
+  text-transform:uppercase;letter-spacing:.04em}
+
+.suggests{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
+.suggests button{font:600 13.5px 'Open Sans',sans-serif;color:var(--b2);background:#fff;
+  border:1px solid var(--c5);border-radius:999px;padding:9px 15px;cursor:pointer;text-align:left}
+.suggests button:hover{border-color:var(--b4);background:#eef5f7}
+
+.ask-bar{display:flex;gap:10px;align-items:flex-end}
+.ask-bar textarea{flex:1;min-height:52px;max-height:160px;padding:14px 16px;resize:vertical;
+  border:1px solid var(--c5);border-radius:10px;font:15px/1.5 'Open Sans',Arial,sans-serif;color:var(--c1)}
+.ask-bar textarea:focus{outline:none;box-shadow:0 0 0 3px var(--b5);border-color:var(--blue)}
+.btn{font:700 15px 'Open Sans',sans-serif;border-radius:8px;padding:12px 26px;cursor:pointer;border:none;
+  min-height:52px;background:var(--blue);color:#fff}
+.btn:hover{background:var(--b2)}
+.btn:disabled{background:var(--c4);cursor:default}
+
+#ask-busy{font-size:14px;font-weight:600;color:#5b3d8f;margin-top:12px}
+#ask-error{margin-top:12px}
+.not-configured{background:#fff8e8;border:1px solid #ecd9a0;border-radius:10px;
+  padding:16px 20px;font-size:14.5px;color:#574410;line-height:1.6;margin-bottom:20px}
+@media (max-width:720px){
+  .wrap{padding:26px 18px 44px}
+  .hero h1{font-size:24px}
+  .msg{max-width:95%}
+}
+</style>
+</head>
+<body>
+
+<a class="gov-skip" href="#main">Skip to main content</a>
+
+<header class="gov-header">
+  <div class="gov-header-inner">
+    <div class="gov-masthead">
+      <img class="gov-mark" src="assets/style-check-96x96.png" alt="" width="42" height="42">
+      <div>
+        <p class="gov-sitename">Proof Positive <span class="gov-im">IM2026</span></p>
+        <p class="gov-tagline">A Bureaucrat Bot for Innovation Month 2026</p>
+      </div>
+    </div>
+  </div>
+</header>
+<nav class="gov-nav" aria-label="Tools">
+  <div class="gov-nav-inner">
+    <a href="index.html">Check a document</a>
+    <a href="lists.html">Format a list</a>
+    <a href="citations.html">Create a citation</a>
+    <a href="ask.html" aria-current="page">Ask the Style Manual</a>
+  </div>
+</nav>
+<main class="wrap" id="main">
+  <header class="hero">
+    <h1>Ask the Style Manual ✦</h1>
+    <p class="lede">Ask a question – ‘is it 5 pm or 5pm?’,
+      ‘when do I write numbers as words?’ – and get a short answer with a link
+      to the relevant Style Manual page. Answers are AI-generated: check the
+      linked guidance before relying on them. Don't include sensitive or
+      personal information in your questions.</p>
+  </header>
+
+  <div class="not-configured" id="not-configured" hidden>
+    AI features are not switched on for this copy of the tool, so the chat is
+    unavailable. The <a href="index.html">document checker</a>,
+    <a href="lists.html">list formatter</a> and
+    <a href="citations.html">citation generator</a> all work without AI.
+  </div>
+
+  <div id="chat" aria-live="polite" aria-label="Conversation"></div>
+
+  <div class="suggests" id="suggests" aria-label="Example questions">
+    <button type="button">Is it ‘5 pm’ or ‘5pm’?</button>
+    <button type="button">When do I use numerals instead of words?</button>
+    <button type="button">Single or double quotation marks?</button>
+    <button type="button">How do I punctuate a bullet list?</button>
+    <button type="button">When should I use capital letters?</button>
+  </div>
+
+  <div class="ask-bar">
+    <label for="ask-input" style="position:absolute;left:-9999px">Your question</label>
+    <textarea id="ask-input" placeholder="Type your style question…" maxlength="1000"></textarea>
+    <button class="btn" id="ask-btn" type="button">Ask</button>
+  </div>
+  <p id="ask-busy" hidden role="status">✦ Thinking…</p>
+  <p id="ask-error" class="ai-error" hidden role="alert"></p>
+</main>
+
+<footer class="gov-footer">
+  <div class="gov-footer-inner">
+    <h2>About this bot</h2>
+    <p>Proof Positive (IM2026) is an entry in the APS Innovation Month 2026
+      ‘Build a Bureaucrat Bot’ challenge. It is a personal project, not an
+      official government service, and it does not replace editorial judgement
+      or the <a href="https://www.stylemanual.gov.au" rel="noopener">Australian
+      Government Style Manual</a>.</p>
+    <h2>Your data</h2>
+    <p>Questions on this page are sent to the Claude API (Anthropic) to
+      generate an answer; they are not used to train models. Don't enter
+      classified, sensitive or personal information.</p>
+    <p class="gov-footer-meta">Answers are drawn from extracts of the actual
+      Style Manual pages, not the AI's general knowledge, and can only link to
+      the pages it read – the bot cannot invent rules or references.</p>
+  </div>
+</footer>
+
+<script type="module">
+import { aiAsk, AI_ENABLED } from './src/ai.js';
+
+const $ = id => document.getElementById(id);
+const history = [];
+
+function escapeHtml(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+/** Render text, turning bare stylemanual.gov.au URLs into links. */
+function linkify(text) {
+    return escapeHtml(text).replace(
+        /https:\/\/www\.stylemanual\.gov\.au[\w\-\/]*/g,
+        u => '<a href="' + u + '" target="_blank" rel="noopener">' + u + '</a>');
+}
+
+function addMsg(role, text) {
+    const div = document.createElement('div');
+    div.className = 'msg ' + (role === 'user' ? 'msg-user' : 'msg-bot');
+    div.innerHTML = '<span class="msg-label">' +
+        (role === 'user' ? 'You' : 'Proof Positive') + '</span>' +
+        (role === 'user' ? escapeHtml(text) : linkify(text));
+    $('chat').appendChild(div);
+    div.scrollIntoView({ block: 'nearest' });
+}
+
+async function ask(question) {
+    question = (question || '').trim();
+    if (!question) return;
+    $('ask-error').hidden = true;
+    addMsg('user', question);
+    $('ask-input').value = '';
+    $('ask-btn').disabled = true;
+    $('ask-busy').hidden = false;
+    try {
+        const { answer } = await aiAsk({ question, history });
+        history.push({ role: 'user', content: question });
+        history.push({ role: 'assistant', content: answer });
+        if (history.length > 12) history.splice(0, history.length - 12);
+        addMsg('assistant', answer);
+    } catch (err) {
+        $('ask-error').textContent = err.message;
+        $('ask-error').hidden = false;
+    } finally {
+        $('ask-btn').disabled = false;
+        $('ask-busy').hidden = true;
+        $('ask-input').focus();
+    }
+}
+
+if (!AI_ENABLED) {
+    $('not-configured').hidden = false;
+    $('ask-input').disabled = true;
+    $('ask-btn').disabled = true;
+}
+
+$('ask-btn').addEventListener('click', () => ask($('ask-input').value));
+$('ask-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); ask($('ask-input').value); }
+});
+$('suggests').addEventListener('click', e => {
+    const b = e.target.closest('button');
+    if (b) ask(b.textContent);
+});
+</script>
+</body>
+</html>

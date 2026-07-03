@@ -1,0 +1,30 @@
+# Proof Positive (IM2026) - Worker configuration
+# Deploy with: npx wrangler deploy   (from this folder)
+# See ../DEPLOY.md for the full step-by-step guide.
+
+name = "im2026-proof-positive"
+main = "worker.js"
+compatibility_date = "2026-06-01"
+
+# KV namespace for rate-limit counters.
+# Create it with: npx wrangler kv namespace create RATE_KV
+# then paste the id it prints below.
+[[kv_namespaces]]
+binding = "RATE_KV"
+id = "PASTE_KV_NAMESPACE_ID_HERE"
+
+[vars]
+# Lock this down to your GitHub Pages origin once you know it, for example:
+# ALLOWED_ORIGINS = "https://rjc27-sm.github.io"
+ALLOWED_ORIGINS = ""
+MODEL = "claude-haiku-4-5"
+# Ask answers from scraped Style Manual pages and uses a stronger model.
+ASK_MODEL = "claude-sonnet-5"
+# Where the scraped page extracts are hosted (the im2026/pages/ folder).
+PAGES_BASE_URL = "https://rjc27-sm.github.io/style-manual-check/im2026/pages/"
+IP_DAILY_LIMIT = "40"
+GLOBAL_DAILY_LIMIT = "500"
+
+# The API key is a SECRET, never a var. Set it with:
+#   npx wrangler secret put ANTHROPIC_API_KEY
+# (it will prompt you to paste the key - nothing is stored in this file)

@@ -1,0 +1,3315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create a citation – Proof Positive (IM2026)</title>
+<meta name="description" content="Proof Positive, an IM2026 Bureaucrat Bot: build Australian Government Style Manual author–date citations from a DOI, a form, or an AI-parsed messy reference.">
+<link rel="icon" type="image/png" sizes="32x32" href="assets/style-check-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="assets/style-check-16x16.png">
+<link rel="stylesheet" href="assets/site.css">
+    <link rel="icon" href="favicon.ico" sizes="48x48">
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+    <link rel="apple-touch-icon" href="apple-touch-icon.png">
+    <style>
+
+        @import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700;800&display=swap');
+
+        /* ===== TOKENS ===== */
+        :root{
+          --blue:#2d7e98;--b1:#192f38;--b2:#295665;--b4:#61a9be;--b5:#b7d6df;
+          --teal:#27854e;--green:#4d8227;--orange:#f36f21;--o2:#863a0d;
+          --c1:#2b2d2d;--c2:#4f5152;--c3:#707678;--c4:#9c9fa0;--c5:#cfd1d1;
+          --bg:#f6f7f7;--line:#e3e6e6;--ease:cubic-bezier(.2,0,.2,1);
+        }
+
+        /* ===== RESET & BASE ===== */
+        *, *::before, *::after { box-sizing: border-box; }
+
+        body {
+            font-family: 'Open Sans', Arial, sans-serif;
+            line-height: 1.5;
+            color: var(--c1);
+            background: var(--bg);
+            margin: 0;
+            padding: 0 20px 48px;
+            -webkit-font-smoothing: antialiased;
+            text-rendering: optimizeLegibility;
+        }
+
+        :focus-visible { outline: 3px solid rgba(45,126,152,.45); outline-offset: 2px; border-radius: 4px; }
+
+        .keyline { height: 4px; background: linear-gradient(90deg, var(--b2), var(--blue) 55%, var(--b4)); margin: 0 -20px; }
+
+        /* ===== LAYOUT ===== */
+        .container { max-width: 860px; margin: 0 auto; }
+
+        header {
+            background: transparent;
+            color: inherit;
+            padding: 32px 4px 20px;
+            border-radius: 0;
+        }
+
+        .header-inner { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
+
+        header h1 { margin: 0; font-size: 30px; font-weight: 800; color: var(--b1); letter-spacing: -.01em; line-height: 1.12; }
+
+        header p { margin: 8px 0 0; color: var(--c2); font-size: 15.5px; opacity: 1; line-height: 1.55; max-width: 640px; }
+
+        .header-help-link {
+            color: var(--blue);
+            opacity: 1;
+            font-size: 14px;
+            font-weight: 600;
+            text-decoration: none;
+            border-bottom: 1px solid var(--b5);
+            white-space: nowrap;
+            margin-left: 16px;
+            padding-bottom: 1px;
+            flex-shrink: 0;
+        }
+        .header-help-link:hover { color: var(--b2); border-bottom-color: var(--blue); }
+
+        main {
+            background: #fff;
+            padding: 28px 32px;
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            box-shadow: 0 1px 2px rgba(25,47,56,.04);
+        }
+
+        /* ===== LOOKUP PANEL ===== */
+        #lookup-panel label { display: block; font-weight: 700; margin-bottom: 8px; font-size: 15px; color: var(--b1); }
+
+        .input-with-button { display: flex; gap: 12px; }
+        .input-with-button input { flex: 1; }
+
+        .help-text { font-size: 13px; color: var(--c3); margin: 8px 0 0; line-height: 1.5; }
+        .help-text code, code { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: .92em; background: var(--bg); padding: 1px 5px; border-radius: 4px; color: var(--b2); }
+
+        /* ===== TABS ===== */
+        .tabs { display: flex; gap: 4px; margin-bottom: 24px; border-bottom: 1px solid var(--line); }
+        .tab { padding: 11px 18px; border: none; background: none; font-size: 14.5px; font-weight: 600; color: var(--c3); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; font-family: inherit; }
+        .tab:hover { color: var(--b2); }
+        .tab.active { color: var(--blue); border-bottom-color: var(--blue); }
+        .tab-panel { display: none; }
+        .tab-panel.active { display: block; }
+
+        /* ===== SOURCE TYPE GRID ===== */
+        .source-type-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 24px; }
+        .source-type-btn {
+            padding: 13px 10px;
+            border: 1px solid var(--c5);
+            border-radius: 8px;
+            background: #fff;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--c2);
+            text-align: center;
+            cursor: pointer;
+            transition: all .15s var(--ease);
+            font-family: inherit;
+        }
+        .source-type-btn:hover { border-color: var(--b4); background: #eef5f7; }
+        .source-type-btn.active { border-color: var(--blue); background: var(--blue); color: #fff; }
+
+        /* ===== FORMS ===== */
+        .form-section { margin-bottom: 24px; }
+        .form-section > label, .field-label { display: block; font-weight: 600; margin-bottom: 6px; font-size: 14px; color: var(--b2); }
+
+        input[type="text"], select, textarea {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--c5);
+            border-radius: 6px;
+            font-size: 15px;
+            font-family: inherit;
+            color: var(--c1);
+            background: #fff;
+            transition: border-color .15s, box-shadow .15s;
+        }
+        input[type="text"]:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: var(--blue);
+            box-shadow: 0 0 0 3px rgba(45,126,152,.2);
+        }
+        textarea { min-height: 80px; resize: vertical; line-height: 1.5; }
+
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+        .form-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+        .form-field { margin-bottom: 16px; }
+        .form-field label { display: block; font-weight: 600; margin-bottom: 6px; font-size: 14px; color: var(--b2); }
+        .form-field .help-text { margin-top: 4px; }
+
+        .checkbox-field { display: flex; align-items: center; gap: 8px; padding-top: 28px; }
+        .checkbox-field input[type="checkbox"] { width: 16px; height: 16px; flex-shrink: 0; cursor: pointer; accent-color: var(--blue); }
+        .checkbox-field label { font-size: 14px; color: var(--c2); cursor: pointer; font-weight: 600; margin-bottom: 0; }
+
+        .field-inline { display: flex; align-items: center; gap: 8px; }
+        .field-inline label { margin-bottom: 0; white-space: nowrap; }
+
+        /* ===== AUTHOR INPUT COMPONENT ===== */
+        .author-component { margin-bottom: 20px; padding: 16px; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; }
+        .author-component > .component-label { font-weight: 700; font-size: 14px; color: var(--b1); margin-bottom: 10px; display: block; }
+
+        .author-mode-toggle { display: flex; gap: 16px; margin-bottom: 12px; font-size: 14px; }
+        .author-mode-toggle label { display: flex; align-items: center; gap: 6px; cursor: pointer; font-weight: 400; color: var(--c2); }
+        .author-mode-toggle input { accent-color: var(--blue); }
+
+        .author-row { display: flex; gap: 8px; margin-bottom: 8px; align-items: center; }
+        .author-row input { flex: 1; padding: 8px 10px; font-size: 14px; margin: 0; }
+
+        .author-remove {
+            width: 34px; height: 38px; border: 1px solid var(--c5); border-radius: 6px; background: #fff; color: var(--c3);
+            font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+            transition: all .15s var(--ease); font-family: inherit;
+        }
+        .author-remove:hover { background: #fbeaea; color: #9b2c2c; border-color: #e2a8a8; }
+
+        .author-add {
+            padding: 7px 14px; border: 1px dashed var(--c5); border-radius: 6px; background: #fff; color: var(--c3);
+            font-size: 13px; font-weight: 600; cursor: pointer; transition: all .15s var(--ease); font-family: inherit; margin-top: 4px;
+        }
+        .author-add:hover { border-color: var(--blue); color: var(--b2); background: #eef5f7; }
+
+        .org-fields { display: flex; gap: 12px; }
+        .org-fields input { flex: 1; padding: 8px 10px; font-size: 14px; }
+
+        .paste-authors { margin-top: 8px; font-size: 13px; color: var(--c3); }
+        .paste-authors summary { cursor: pointer; user-select: none; }
+        .paste-authors summary:hover { color: var(--b2); }
+        .paste-authors textarea { margin-top: 8px; font-size: 13px; min-height: 50px; }
+        .paste-parse-btn {
+            margin-top: 6px; padding: 5px 12px; border: 1px solid var(--c5); border-radius: 6px; background: #fff;
+            font-size: 13px; font-weight: 600; color: var(--b2); cursor: pointer; font-family: inherit;
+        }
+        .paste-parse-btn:hover { background: #eef5f7; border-color: var(--b4); }
+
+        .sentence-case-btn {
+            display: inline-block; padding: 5px 12px; border: 1px solid var(--c5); border-radius: 6px; background: #fff;
+            font-size: 12px; color: var(--b2); cursor: pointer; font-family: inherit; font-weight: 600; margin-bottom: 8px;
+        }
+        .sentence-case-btn:hover { background: #eef5f7; border-color: var(--b4); color: var(--b1); }
+
+        /* ===== BUTTONS ===== */
+        button { font-family: inherit; cursor: pointer; }
+        .btn {
+            padding: 11px 22px; border: none; border-radius: 8px; font-size: 14.5px; font-weight: 700;
+            min-height: 44px; transition: all .15s var(--ease);
+        }
+        .btn-primary { background: var(--blue); color: #fff; }
+        .btn-primary:hover { background: var(--b2); }
+        .btn-primary:disabled { background: var(--c4); cursor: not-allowed; }
+        .btn-secondary { background: var(--blue); color: #fff; font-weight: 700; }
+        .btn-secondary:hover { background: var(--b2); }
+        .btn-link { padding: 6px 0; border: none; background: none; color: var(--blue); font-size: 13px; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; font-family: inherit; }
+        .btn-link:hover { color: var(--b2); }
+        #generate-btn { margin-top: 8px; }
+
+        /* ===== RESULTS ===== */
+        .result-area { margin-top: 24px; padding: 20px; background: #eef5f7; border-radius: 10px; border: 1px solid #cfe2e8; display: none; }
+        .result-area.visible { display: block; }
+        .result-label { font-size: 12px; text-transform: none; letter-spacing: 0; color: var(--b2); margin-bottom: 8px; font-weight: 700; }
+        .result-citation {
+            font-size: 15px; line-height: 1.7; padding: 16px; background: #fff; border-radius: 8px; border: 1px solid var(--line);
+            margin-bottom: 12px; word-break: break-word; color: var(--c1);
+        }
+        .result-citation em { font-style: italic; }
+        .result-citation a { color: var(--blue); text-decoration: underline; text-decoration-color: var(--b4); }
+        .result-citation a:hover { text-decoration-color: var(--blue); }
+
+        /* ===== COPY BUTTONS ===== */
+        .copy-buttons { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+        .copy-btn {
+            font-size: 13px; padding: 9px 16px; background: #fff; color: var(--b2); border: 1px solid var(--c5);
+            border-radius: 6px; font-family: inherit; font-weight: 600; white-space: nowrap; transition: all .15s var(--ease);
+        }
+        .copy-btn:hover { background: #eef5f7; border-color: var(--b4); }
+        .copy-btn.copied { background: var(--teal); color: #fff; border-color: var(--teal); }
+
+        /* ===== FIX / LINK TITLES PANEL ===== */
+        #fix-input[contenteditable] {
+            min-height: 200px; max-height: 480px; overflow-y: auto; width: 100%; padding: 10px 12px;
+            border: 1px solid var(--c5); border-radius: 6px; font-size: 14px; font-family: inherit; color: var(--c1);
+            line-height: 1.6; transition: border-color .15s, box-shadow .15s; box-sizing: border-box; outline: none; background: #fff;
+        }
+        #fix-input[contenteditable]:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(45,126,152,.2); }
+        #fix-input[contenteditable]:empty::before { content: attr(data-placeholder); color: var(--c4); pointer-events: none; }
+        #fix-input[contenteditable] p { margin: 0 0 10px; }
+        #fix-input[contenteditable] p:last-child { margin-bottom: 0; }
+
+        .fix-actions { display: flex; gap: 12px; align-items: center; margin-top: 12px; flex-wrap: wrap; }
+        .fix-result-area { margin-top: 24px; display: none; }
+        .fix-result-area.visible { display: block; }
+        .fix-summary { font-size: 13px; color: var(--c3); margin-bottom: 12px; font-weight: 600; }
+        .fix-summary strong { color: var(--teal); }
+        .fix-ref-list { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; margin-bottom: 16px; }
+        .fix-ref-item { padding: 14px 16px; font-size: 14px; line-height: 1.7; border-bottom: 1px solid #eef0f0; word-break: break-word; border-left: 3px solid transparent; }
+        .fix-ref-item:last-child { border-bottom: none; }
+        .fix-ref-item.changed { border-left-color: var(--teal); background: #eef6f0; }
+        .fix-ref-item.skipped { border-left-color: var(--orange); background: #fdf3ec; }
+        .fix-ref-item a { color: var(--blue); text-decoration: underline; text-decoration-color: var(--b4); }
+        .fix-ref-item a:hover { text-decoration-color: var(--blue); }
+        .fix-skip-reason { font-size: 12px; color: var(--c4); }
+        .fix-copy-bar { display: flex; gap: 8px; flex-wrap: wrap; }
+
+        /* ===== IN-TEXT CITATIONS ===== */
+        .intext-section { margin-top: 16px; padding-top: 16px; border-top: 1px solid #cfe2e8; }
+        .intext-options { display: flex; gap: 10px; flex-wrap: wrap; }
+        .intext-option {
+            padding: 9px 14px; background: #fff; border: 1px solid var(--c5); border-radius: 6px; font-size: 14px;
+            font-family: inherit; cursor: pointer; transition: all .15s var(--ease); color: var(--c1);
+        }
+        .intext-option:hover { border-color: var(--blue); background: #eef5f7; }
+        .intext-option.copied { background: var(--teal); color: #fff; border-color: var(--teal); }
+
+        /* ===== STATUS MESSAGES ===== */
+        .status { padding: 12px 16px; border-radius: 8px; font-size: 14px; margin-bottom: 16px; display: none; line-height: 1.5; }
+        .status.visible { display: block; margin-top: 20px; }
+        .status.loading { background: #fff4e0; color: #8a5a00; }
+        .status.error { background: #fdecec; color: #9b2c2c; }
+        .status.success { background: #eaf5ee; color: #1d6b41; }
+
+        /* ===== FOOTER ===== */
+        .footer-note { margin-top: 28px; padding-top: 20px; border-top: 1px solid var(--line); font-size: 13px; color: var(--c3); line-height: 1.6; }
+        .footer-note p { margin: 0 0 6px 0; }
+        .footer-note a { color: var(--b2); }
+
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 600px) {
+            body { padding: 0 14px 36px; }
+            .keyline { margin: 0 -14px; }
+            header { padding: 24px 2px 16px; }
+            header h1 { font-size: 23px; }
+            main { padding: 20px; }
+            .source-type-grid { grid-template-columns: repeat(2, 1fr); }
+            .form-row, .form-row-3 { grid-template-columns: 1fr; }
+            .input-with-button { flex-direction: column; }
+            .author-row { flex-wrap: wrap; }
+            .author-row input { min-width: 0; }
+            .org-fields { flex-direction: column; }
+            .copy-buttons { flex-direction: column; }
+            .copy-btn { width: 100%; text-align: center; }
+            .fix-actions { flex-direction: column; align-items: stretch; }
+        }
+        @media (max-width: 400px) {
+            .source-type-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+            .source-type-btn { padding: 10px 8px; font-size: 12px; }
+        }
+    
+    </style>
+</head>
+<body>
+<a class="gov-skip" href="#main">Skip to main content</a>
+
+<header class="gov-header">
+  <div class="gov-header-inner">
+    <div class="gov-masthead">
+      <img class="gov-mark" src="assets/style-check-96x96.png" alt="" width="42" height="42">
+      <div>
+        <p class="gov-sitename">Proof Positive <span class="gov-im">IM2026</span></p>
+        <p class="gov-tagline">A Bureaucrat Bot for Innovation Month 2026</p>
+      </div>
+    </div>
+  </div>
+</header>
+<nav class="gov-nav" aria-label="Tools">
+  <div class="gov-nav-inner">
+    <a href="index.html">Check a document</a>
+    <a href="lists.html">Format a list</a>
+    <a href="citations.html" aria-current="page">Create a citation</a>
+    <a href="ask.html">Ask the Style Manual</a>
+  </div>
+</nav>
+    <div class="container" id="main">
+        <header>
+            <div class="header-inner">
+                <div>
+                    <h1>Create a citation</h1>
+                    <p>Generate citations in the Australian Government Style Manual author&ndash;date format, using either the quick look up tab or the manual entry tab.</p>
+                </div>
+            </div>
+        </header>
+
+        <main>
+            <!-- Tabs -->
+            <div class="tabs">
+                <button class="tab active" data-tab="lookup" type="button">Quick look up</button>
+                <button class="tab" data-tab="manual" type="button">Manual entry</button>
+                <button class="tab" data-tab="aiparse" type="button" id="aiparse-tab" hidden>✦ Messy reference</button>
+            </div>
+
+            <!-- Tab 1: Quick lookup -->
+            <div id="lookup-panel" class="tab-panel active">
+                <label for="smart-input">Paste a DOI, ISBN, or URL</label>
+                <div class="input-with-button">
+                    <input type="text" id="smart-input" placeholder="e.g. 10.1111/j.1460-2466.2008.01410.x" autocomplete="off">
+                    <button class="btn btn-secondary" id="lookup-btn" type="button">Look up</button>
+                </div>
+                <p class="help-text">
+                    <strong>DOI</strong> (e.g. 10.1038/nature12373) &middot;
+                    <strong>ISBN</strong> (e.g. 978-0-855-75279-7) &middot;
+                    <strong>URL</strong> (e.g. https://www.example.gov.au/page)
+                </p>
+            </div>
+
+            <!-- Tab: AI messy reference -->
+            <div id="aiparse-panel" class="tab-panel">
+                <label for="aiparse-input">Paste a reference in any state – incomplete, badly formatted or copied from anywhere</label>
+                <textarea id="aiparse-input" rows="4" style="width:100%;padding:12px 14px;border:1.5px solid #cfd1d1;border-radius:8px;font:inherit;resize:vertical" placeholder="e.g. smith j &amp; lee p, closing the gap report 2023, AIHW canberra, viewed june 2024"></textarea>
+                <div style="margin-top:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+                    <button class="ai-btn" id="aiparse-btn" type="button"><span class="ai-star" aria-hidden="true">✦</span>Read it with AI</button>
+                    <span class="ai-busy" id="aiparse-busy" hidden role="status">✦ Reading the reference…</span>
+                </div>
+                <p class="ai-error" id="aiparse-error" hidden role="alert"></p>
+                <p class="ai-disclaimer">AI fills in the manual entry form for you – it never writes the citation itself. The deterministic formatter builds the citation from the fields you confirm. Check every field: AI extraction can be wrong, and it is told to never invent a DOI or URL. Your reference is sent to the Claude API; don't use sensitive or personal information.</p>
+            </div>
+
+            <!-- Tab 2: Manual entry -->
+            <div id="manual-panel" class="tab-panel">
+                <div class="source-type-grid" role="radiogroup" aria-label="Source type">
+                    <button class="source-type-btn active" data-type="journal" role="radio" aria-checked="true" type="button">Journal article</button>
+                    <button class="source-type-btn" data-type="book" role="radio" aria-checked="false" type="button">Book</button>
+                    <button class="source-type-btn" data-type="chapter" role="radio" aria-checked="false" type="button">Book chapter</button>
+                    <button class="source-type-btn" data-type="website" role="radio" aria-checked="false" type="button">Webpage</button>
+                    <button class="source-type-btn" data-type="report" role="radio" aria-checked="false" type="button">Govt report</button>
+                    <button class="source-type-btn" data-type="newspaper" role="radio" aria-checked="false" type="button">Newspaper</button>
+                    <button class="source-type-btn" data-type="dataset" role="radio" aria-checked="false" type="button">Data set</button>
+                    <button class="source-type-btn" data-type="mediarelease" role="radio" aria-checked="false" type="button">Media release</button>
+                    <button class="source-type-btn" data-type="conferencepaper" role="radio" aria-checked="false" type="button">Conference paper</button>
+                    <button class="source-type-btn" data-type="thesis" role="radio" aria-checked="false" type="button">Thesis</button>
+                    <button class="source-type-btn" data-type="legislation" role="radio" aria-checked="false" type="button">Legislation</button>
+                </div>
+                <div id="url-notice" class="status" role="status" aria-live="polite"></div>
+                <div id="manual-form"></div>
+                <button class="btn btn-primary" id="generate-btn" type="button">Generate citation</button>
+            </div>
+
+            <!-- Status message -->
+            <div id="status" class="status" role="status" aria-live="polite"></div>
+
+            <!-- Results area -->
+            <div id="result-area" class="result-area" aria-live="polite">
+                <div class="result-label">Reference list entry</div>
+                <div id="result-citation" class="result-citation"></div>
+                <div class="copy-buttons">
+                    <button class="copy-btn" id="copy-plain" type="button">Copy plain text</button>
+                    <button class="copy-btn" id="copy-rich" type="button">Copy with formatting</button>
+                    <button class="copy-btn" id="edit-details-btn" type="button">Edit details</button>
+                    <button class="copy-btn" id="new-citation-btn" type="button">New citation</button>
+                </div>
+
+                <div class="intext-section">
+                    <div class="result-label">In-text citations <span style="font-weight:400;text-transform:none;letter-spacing:0">(click to copy)</span></div>
+                    <div id="intext-options" class="intext-options"></div>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="footer-note">
+                <p>This tool generates citations following the <a href="https://www.stylemanual.gov.au/referencing-and-attribution/author-date" target="_blank" rel="noopener">Australian Government Style Manual author&ndash;date system</a>.</p>
+                <p>Always check generated citations for accuracy, especially for complex sources.</p>
+            </div>
+        </main>
+    </div>
+
+<footer class="gov-footer">
+  <div class="gov-footer-inner">
+    <h2>About this bot</h2>
+    <p>Proof Positive (IM2026) is an entry in the APS Innovation Month 2026
+      ‘Build a Bureaucrat Bot’ challenge. It is a personal project, not an
+      official government service, and it does not replace editorial judgement
+      or the <a href="https://www.stylemanual.gov.au" rel="noopener">Australian
+      Government Style Manual</a>.</p>
+    <h2>Your data</h2>
+    <p>The quick lookup queries public citation databases (such as CrossRef)
+      with the DOI or URL you enter. The ✦ messy reference reader sends your
+      pasted reference to the Claude API (Anthropic); it is not used to train
+      models. Don't enter classified, sensitive or personal information.
+      Everything else runs in your browser.</p>
+  </div>
+</footer>
+
+    <script>
+    // ===== CONFIGURATION & STATE =====
+
+    const state = {
+        sourceType: 'journal',
+        lookupData: null,     // Raw data from last API lookup (for edit flow)
+        lastResult: null,     // Last formatted citation result (for copy)
+    };
+
+    // Per-component author state, keyed by component ID
+    const authorComponents = {};
+
+    // Persisted field values per source type (survives tab/type switches until page refresh)
+    const formState = {};
+
+    // Results from the last Fix references run — used by copy functions
+    let fixResults = [];
+
+    // Human-readable display names for source types
+    const TYPE_DISPLAY_NAMES = {
+        journal: 'journal article',
+        book: 'book',
+        chapter: 'book chapter',
+        website: 'webpage',
+        report: 'govt report',
+        newspaper: 'newspaper',
+    };
+
+    // ===== SOURCE TYPE DEFINITIONS =====
+
+    // Fields for each source type (author component is always added automatically)
+    const SOURCE_FIELDS = {
+        journal: [
+            { id: 'title', label: 'Article title', required: true, sentenceCase: true },
+            { id: 'journalName', label: 'Journal name', required: true },
+            { id: 'year', label: 'Year', half: true, placeholder: 'e.g. 2024' },
+            { id: 'volume', label: 'Volume', half: true },
+            { id: 'issue', label: 'Issue', half: true },
+            { id: 'pages', label: 'Pages', half: true, placeholder: 'e.g. 172\u2013188' },
+            { id: 'doi', label: 'DOI', placeholder: 'e.g. 10.1111/j.1460-2466.2008.01410.x' },
+            { id: 'url', label: 'URL (if no DOI)', helpText: 'URL automatically omitted if DOI provided' },
+        ],
+        book: [
+            { id: 'title', label: 'Book title', required: true, sentenceCase: true },
+            { id: 'year', label: 'Year', half: true, placeholder: 'e.g. 2013' },
+            { id: 'edition', label: 'Edition (if not first)', half: true, placeholder: 'e.g. 2' },
+            { id: 'publisher', label: 'Publisher' },
+            { id: 'place', label: 'Place of publication', placeholder: 'e.g. Canberra', helpText: 'Place is automatically omitted if DOI provided' },
+            { id: 'doi', label: 'DOI (if available)' },
+            { id: 'url', label: 'URL (if no DOI)', helpText: 'URL automatically omitted if DOI provided' },
+        ],
+        chapter: [
+            { id: 'chapterTitle', label: 'Chapter title', required: true, sentenceCase: true },
+            { id: 'year', label: 'Year', half: true },
+            { id: 'edition', label: 'Edition (if not first)', half: true, placeholder: 'e.g. 2' },
+            { id: '_editors', label: '__editors__' }, // Special marker: editor component goes here
+            { id: 'bookTitle', label: 'Book title', required: true, sentenceCase: true },
+            { id: 'publisher', label: 'Publisher' },
+            { id: 'place', label: 'Place of publication', placeholder: 'e.g. Canberra', helpText: 'Place is automatically omitted if DOI provided' },
+            { id: 'doi', label: 'DOI (if available)' },
+            { id: 'url', label: 'URL (if no DOI)', helpText: 'URL automatically omitted if DOI provided' },
+        ],
+        website: [
+            { id: 'title', label: 'Page title', required: true, sentenceCase: true },
+            { id: 'series', label: 'Larger publication or series', placeholder: 'e.g. Australian Pregnancy Care Guidelines', helpText: 'Fill in if this page belongs to a larger publication or series', sentenceCase: true },
+            { id: 'websiteName', label: 'Website name', placeholder: 'e.g. Department of Health or aihw.gov.au' },
+            { id: 'year', label: 'Year (or leave blank for n.d.)', half: true },
+            { id: 'accessDate', label: 'Access date', half: true, placeholder: 'e.g. 20 January 2025' },
+            { id: 'url', label: 'URL' },
+        ],
+        report: [
+            { id: 'title', label: 'Report title', required: true, sentenceCase: true },
+            { id: 'year', label: 'Year', half: true },
+            { id: 'unpublished', label: 'Unpublished', type: 'checkbox', half: true },
+            { id: 'governmentName', label: 'Government name', placeholder: 'e.g. Australian Government', defaultValue: 'Australian Government' },
+            { id: 'accessDate', label: 'Access date', placeholder: 'e.g. 3 February 2020' },
+            { id: 'url', label: 'URL' },
+        ],
+        newspaper: [
+            { id: 'title', label: 'Article title', required: true, sentenceCase: true },
+            { id: 'publicationName', label: 'Publication name', required: true, placeholder: 'e.g. The Conversation' },
+            { id: 'fullDate', label: 'Full publication date', placeholder: 'e.g. 24 May 2018', helpText: 'Enter as D Month YYYY, D/M/YYYY, or Month D, YYYY – auto-converted on leaving field' },
+            { id: 'accessDate', label: 'Access date', placeholder: 'e.g. 29 January 2020' },
+            { id: 'url', label: 'URL' },
+        ],
+        dataset: [
+            { id: 'title', label: 'Data set title', required: true, sentenceCase: true },
+            { id: 'year', label: 'Year', half: true },
+            { id: 'unpublished', label: 'Unpublished', type: 'checkbox', half: true },
+            { id: 'websiteName', label: 'Website name', placeholder: 'e.g. data.gov.au' },
+            { id: 'accessDate', label: 'Access date', placeholder: 'e.g. 4 January 2020' },
+            { id: 'url', label: 'URL' },
+        ],
+        mediarelease: [
+            { id: 'title', label: 'Title', required: true, sentenceCase: true },
+            { id: 'fullDate', label: 'Full publication date', placeholder: 'e.g. 4 February 2020', helpText: 'Enter as D Month YYYY, D/M/YYYY, or Month D, YYYY – auto-converted on leaving field' },
+            { id: 'organisation', label: 'Issuing organisation', placeholder: 'e.g. ACT Government' },
+            { id: 'accessDate', label: 'Access date', placeholder: 'e.g. 5 February 2020' },
+            { id: 'url', label: 'URL' },
+        ],
+        conferencepaper: [
+            { id: 'fullDate', label: 'Date', required: true, placeholder: 'e.g. 9\u201312 May 2007', helpText: 'Enter as D Month YYYY, D/M/YYYY, or Month D, YYYY \u2013 auto-converted on leaving field; for date ranges, enter as written' },
+            { id: 'unpublished', label: 'Unpublished', type: 'checkbox', half: true },
+            { id: 'title', label: 'Paper title', required: true, sentenceCase: true },
+            { id: 'conference', label: 'Conference name', required: true },
+            { id: 'place', label: 'Place' },
+            { id: 'url', label: 'URL' },
+            { id: 'accessDate', label: 'Access date', placeholder: 'e.g. 3 May 2019' },
+        ],
+        thesis: [
+            { id: 'title', label: 'Thesis title', required: true, sentenceCase: true },
+            { id: 'year', label: 'Year', half: true, placeholder: 'e.g. 2013' },
+            { id: 'unpublished', label: 'Unpublished', type: 'checkbox', half: true },
+            { id: 'thesisType', label: 'Thesis type', placeholder: 'e.g. master\u2019s thesis' },
+            { id: 'university', label: 'University', required: true },
+            { id: 'url', label: 'URL' },
+            { id: 'accessDate', label: 'Access date', placeholder: 'e.g. 5 May 2017' },
+        ],
+        legislation: [
+            { id: 'title', label: 'Title', required: true,
+              placeholder: 'e.g. Major Bank Levy Act 2017',
+              helpText: 'Include the year as it appears in the title' },
+            { id: 'jurisdiction', label: 'Jurisdiction', half: true,
+              placeholder: 'e.g. Cth',
+              helpText: 'Cth, ACT, NSW, NT, Qld, SA, Tas, Vic or WA \u2014 omit if obvious from context' },
+            { id: 'url', label: 'URL' },
+        ],
+    };
+
+    // ===== UTILITY FUNCTIONS =====
+
+    /**
+     * Format a single author name for the reference list.
+     * Style Manual: Family name then initials, NO comma, NO full stops.
+     * e.g., "Tim" + "Kelleher" → "Kelleher T"
+     */
+    function formatAuthorName(given, family) {
+        if (!family) return given || '';
+        let initials = '';
+        if (given) {
+            initials = given.split(/[\s.-]+/)
+                .filter(Boolean)
+                .map(part => part.charAt(0).toUpperCase())
+                .join('');
+        }
+        return initials ? `${family} ${initials}` : family;
+    }
+
+    /**
+     * Format author list for reference list.
+     * All authors listed; commas between; 'and' before last (never '&').
+     */
+    function formatAuthorList(authors) {
+        if (!authors || authors.length === 0) return '';
+        const names = authors.map(a => formatAuthorName(a.given, a.family));
+        if (names.length === 1) return names[0];
+        if (names.length === 2) return `${names[0]} and ${names[1]}`;
+        return names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1];
+    }
+
+    /**
+     * Format authors for in-text citation.
+     * 1 author: "Jones", 2: "Black and Jones", 3+: "Holmes et al."
+     * No italics on "et al."
+     */
+    function formatAuthorsInText(authors) {
+        if (!authors || authors.length === 0) return '';
+        if (authors.length === 1) return authors[0].family;
+        if (authors.length === 2) return `${authors[0].family} and ${authors[1].family}`;
+        return `${authors[0].family} et al.`;
+    }
+
+    /**
+     * Format an organisation author for reference list.
+     * If abbreviation provided: "ABBREV (Full Name)"
+     * Otherwise just full name.
+     */
+    function formatOrgAuthor(abbrev, fullName) {
+        if (abbrev && fullName) return `${abbrev} (${fullName})`;
+        return fullName || abbrev || '';
+    }
+
+    /**
+     * Get the short form of an org author for in-text citation.
+     */
+    function formatOrgAuthorInText(abbrev, fullName) {
+        return abbrev || fullName || '';
+    }
+
+    /**
+     * Convert page ranges with hyphens to en dashes.
+     * "172-188" → "172–188"
+     */
+    function convertEnDash(str) {
+        if (!str) return '';
+        return str.replace(/(\d)\s*-\s*(\d)/g, '$1\u2013$2');
+    }
+
+    /**
+     * Format a page range: expand abbreviated end pages and convert hyphens to en dashes.
+     * CrossRef sometimes returns abbreviated ranges like "153-72" (meaning 153–172).
+     * This expands them back to the full form.
+     * e.g., "153-72" → "153–172", "234-56" → "234–256", "172-188" → "172–188"
+     */
+    function formatPageRange(str) {
+        if (!str) return '';
+        return str.replace(/(\d+)\s*[-\u2013]\s*(\d+)/g, (match, start, end) => {
+            // Expand abbreviated end page if shorter than start
+            if (end.length < start.length) {
+                end = start.slice(0, start.length - end.length) + end;
+            }
+            // Sanity check: end must be >= start after expansion
+            if (parseInt(end) < parseInt(start)) return `${start}\u2013${end}`;
+            return `${start}\u2013${end}`;
+        });
+    }
+
+    /**
+     * Clean a DOI to bare form (e.g., "10.1111/j.1460-2466.2008.01410.x").
+     */
+    function cleanDOI(input) {
+        let doi = input.trim();
+        doi = doi.replace(/^https?:\/\/(dx\.)?doi\.org\//i, '');
+        doi = doi.replace(/^doi:\s*/i, '');
+        return doi;
+    }
+
+    /**
+     * Clean an ISBN (remove hyphens and spaces).
+     */
+    function cleanISBN(input) {
+        return input.replace(/[-\s]/g, '');
+    }
+
+    /**
+     * Format a DOI for citation output: "doi:10.xxxx/yyyy"
+     */
+    function formatDOI(doi) {
+        if (!doi) return '';
+        return 'doi:' + cleanDOI(doi);
+    }
+
+    /**
+     * Format edition string. Normalises to "Xth edn" style.
+     */
+    function formatEdition(input) {
+        if (!input) return '';
+        const trimmed = input.trim();
+        if (!trimmed) return '';
+        // Normalise "edition" to "edn"
+        if (/edition/i.test(trimmed)) return trimmed.replace(/edition/i, 'edn');
+        if (/edn/i.test(trimmed)) return trimmed;
+        const num = parseInt(trimmed);
+        if (!isNaN(num) && num > 1) {
+            return `${num}${ordinalSuffix(num)} edn`;
+        }
+        return trimmed;
+    }
+
+    /** Get ordinal suffix for a number: 1st, 2nd, 3rd, 4th, 11th, 21st, etc. */
+    function ordinalSuffix(n) {
+        const mod100 = n % 100;
+        if (mod100 >= 11 && mod100 <= 13) return 'th';
+        const mod10 = n % 10;
+        if (mod10 === 1) return 'st';
+        if (mod10 === 2) return 'nd';
+        if (mod10 === 3) return 'rd';
+        return 'th';
+    }
+
+    /**
+     * Get today's date formatted for "accessed" field: "15 January 2026"
+     */
+    function getTodayFormatted() {
+        const months = ['January','February','March','April','May','June',
+                        'July','August','September','October','November','December'];
+        const d = new Date();
+        return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
+    }
+
+    /**
+     * Attempt sentence case conversion.
+     * Preserves ALL-CAPS acronyms (2+ chars), unless the entire title is all-caps
+     * (in which case the title is just uppercased text, not a mix of acronyms).
+     */
+    function toSentenceCase(title) {
+        if (!title) return '';
+        const words = title.split(/\s+/);
+        // If the whole title is all-caps, treat it as plain text — don't preserve any "acronyms"
+        const allCaps = words.every(w => /^[^a-z]+$/.test(w));
+        return words.map((word, i) => {
+            // Keep ALL-CAPS acronyms (2+ chars) only when the title is mixed case
+            if (!allCaps && word.length >= 2 && word === word.toUpperCase() && /[A-Z]/.test(word)) return word;
+            // First word: capitalise first letter, lowercase rest
+            if (i === 0) return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+            return word.toLowerCase();
+        }).join(' ');
+    }
+
+    /**
+     * Attempt to parse a date string in common formats and reformat to "D Month YYYY".
+     * Handles: D/M/YY, D/M/YYYY, DD/MM/YY, DD/MM/YYYY (slash or hyphen separators),
+     * and US format "Month D, YYYY" (e.g. "May 11, 2023").
+     * Returns the original string unchanged if the format is not recognised.
+     */
+    function autoFormatDate(value) {
+        if (!value) return value;
+        const trimmed = value.trim();
+
+        const months = ['January','February','March','April','May','June',
+                        'July','August','September','October','November','December'];
+
+        // US format: "Month D, YYYY" or "Month DD, YYYY" (e.g. "May 11, 2023")
+        const us = trimmed.match(/^([A-Za-z]+)\s+(\d{1,2}),\s*(\d{4})$/);
+        if (us) {
+            const monthName = us[1];
+            const monthIdx = months.findIndex(n => n.toLowerCase() === monthName.toLowerCase());
+            if (monthIdx !== -1) {
+                const day = parseInt(us[2], 10);
+                const year = parseInt(us[3], 10);
+                if (day >= 1 && day <= 31) return `${day} ${months[monthIdx]} ${year}`;
+            }
+            return trimmed;
+        }
+
+        // Numeric format: D/M/YY, D/M/YYYY (slash or hyphen separators)
+        const m = trimmed.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
+        if (!m) return trimmed;
+
+        const day = parseInt(m[1], 10);
+        const month = parseInt(m[2], 10);
+        let year = parseInt(m[3], 10);
+
+        // Expand 2-digit year (00–49 → 2000s, 50–99 → 1900s)
+        if (year < 100) year += (year < 50 ? 2000 : 1900);
+
+        if (month < 1 || month > 12 || day < 1 || day > 31) return trimmed;
+        return `${day} ${months[month - 1]} ${year}`;
+    }
+
+    /**
+     * Append "website" to a website name if not already present.
+     */
+    function formatWebsiteName(name) {
+        if (!name) return '';
+        const trimmed = name.trim();
+        if (/website$/i.test(trimmed)) return trimmed;
+        if (/^[^\s]+\.[^\s]+$/.test(trimmed)) return trimmed;  // URL-style name — no 'website' suffix
+        return trimmed + ' website';
+    }
+
+    /**
+     * Build a hyperlinked title for the HTML citation when a URL or DOI is available.
+     * DOI takes priority over URL. Returns the title wrapped in an <a> tag if linkable.
+     */
+    function linkTitle(titleHtml, data) {
+        const href = data.doi ? `https://doi.org/${cleanDOI(data.doi)}` : (data.url || '');
+        if (!href) return titleHtml;
+        return `<a href="${escAttr(href)}" target="_blank" rel="noopener">${titleHtml}</a>`;
+    }
+
+    /**
+     * Detect the input type from a smart-paste string.
+     * Returns: 'doi', 'isbn', 'url', or 'unknown'
+     */
+    function detectInputType(input) {
+        const trimmed = input.trim();
+        const lower = trimmed.toLowerCase();
+
+        // DOI patterns
+        if (lower.startsWith('10.') || lower.includes('doi.org/') || lower.startsWith('doi:')) {
+            return 'doi';
+        }
+
+        // URL patterns
+        if (/^https?:\/\//i.test(trimmed)) {
+            return 'url';
+        }
+
+        // ISBN pattern (10 or 13 digits, possibly with hyphens)
+        const digitsOnly = trimmed.replace(/[-\s]/g, '');
+        if (/^\d{10}(\d{3})?$/.test(digitsOnly)) {
+            return 'isbn';
+        }
+
+        return 'unknown';
+    }
+
+    /**
+     * Suggest a source type from a URL's domain.
+     */
+    function suggestTypeFromURL(url) {
+        try {
+            const hostname = new URL(url).hostname.toLowerCase().replace(/^www\./, '');
+            if (hostname === 'aihw.gov.au' || hostname.endsWith('.aihw.gov.au')) return 'report';
+            if (hostname.startsWith('legislation.')) return 'legislation';
+            if (hostname.endsWith('.gov.au') || hostname.endsWith('.gov')) return 'website';
+            const newsDomains = [
+                'abc.net.au','sbs.com.au','smh.com.au','theaustralian.com.au',
+                'theguardian.com','bbc.com','bbc.co.uk','nytimes.com',
+                'washingtonpost.com','reuters.com','theconversation.com',
+                'news.com.au','dailytelegraph.com.au','couriermail.com.au',
+                'heraldsun.com.au','watoday.com.au','theage.com.au',
+                'afr.com','crikey.com.au',
+            ];
+            if (newsDomains.some(d => hostname.includes(d))) return 'newspaper';
+            return 'website';
+        } catch {
+            return 'website';
+        }
+    }
+
+    function resetAll() {
+        document.getElementById('smart-input').value = '';
+        state.lookupData = null;
+        state.lastResult = null;
+        Object.keys(formState).forEach(k => delete formState[k]);
+        Object.keys(authorComponents).forEach(k => delete authorComponents[k]);
+        state.sourceType = 'journal';
+        document.querySelectorAll('.source-type-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.type === 'journal');
+            btn.setAttribute('aria-checked', btn.dataset.type === 'journal' ? 'true' : 'false');
+        });
+        buildForm('journal');
+        document.getElementById('result-area').classList.remove('visible');
+        hideStatus();
+        hideUrlNotice();
+    }
+
+    // ===== AUSTRALIAN GOVERNMENT BODY LOOKUP =====
+
+    /**
+     * Map of website hostname → { full: 'Full Body Name', abbrev: 'ACRONYM' }
+     * Sourced from the Australian Government Organisations Register (AGOR), December 2025.
+     * Hostname keys are lowercase, without protocol, and without leading 'www.'.
+     */
+    const GOV_AU_ORGS = {
+        'ahl.gov.au':                        { full: 'Aboriginal Hostels Limited', abbrev: 'AHL' },
+        'art.gov.au':                        { full: 'Administrative Review Tribunal', abbrev: 'ART' },
+        'agedcarequality.gov.au':            { full: 'Aged Care Quality and Safety Commission', abbrev: 'ACQSC' },
+        'airservicesaustralia.com':          { full: 'Airservices Australia', abbrev: 'AA' },
+        'aafcans.gov.au':                    { full: 'Army and Air Force Canteen Service', abbrev: 'AAFCS' },
+        'asbestossafety.gov.au':             { full: 'Asbestos and Silica Safety and Eradication Agency', abbrev: 'ASSEA' },
+        'ag.gov.au':                         { full: 'Attorney-General\'s Department', abbrev: 'AG' },
+        'abc.net.au':                        { full: 'Australian Broadcasting Corporation', abbrev: 'ABC' },
+        'abs.gov.au':                        { full: 'Australian Bureau of Statistics', abbrev: 'ABS' },
+        'aciar.gov.au':                      { full: 'Australian Centre for International Agricultural Research', abbrev: 'ACIAR' },
+        'safetyandquality.gov.au':           { full: 'Australian Commission on Safety and Quality in Health Care', abbrev: 'ACSQHC' },
+        'acma.gov.au':                       { full: 'Australian Communications and Media Authority', abbrev: 'ACMA' },
+        'accc.gov.au':                       { full: 'Australian Competition and Consumer Commission', abbrev: 'ACCC' },
+        'acic.gov.au':                       { full: 'Australian Criminal Intelligence Commission', abbrev: 'ACIC' },
+        'acara.edu.au':                      { full: 'Australian Curriculum, Assessment and Reporting Authority', abbrev: 'ACARA' },
+        'digitalhealth.gov.au':              { full: 'Australian Digital Health Agency', abbrev: 'ADHA' },
+        'aec.gov.au':                        { full: 'Australian Electoral Commission', abbrev: 'AEC' },
+        'afp.gov.au':                        { full: 'Australian Federal Police', abbrev: 'AFP' },
+        'aftrs.edu.au':                      { full: 'Australian Film, Television and Radio School', abbrev: 'AFTRS' },
+        'afsa.gov.au':                       { full: 'Australian Financial Security Authority', abbrev: 'AFSA' },
+        'afma.gov.au':                       { full: 'Australian Fisheries Management Authority', abbrev: 'AFMA' },
+        'hearing.com.au':                    { full: 'Hearing Australia', abbrev: '' },
+        'humanrights.gov.au':                { full: 'Australian Human Rights Commission', abbrev: 'AHRC' },
+        'aitsl.edu.au':                      { full: 'Australian Institute for Teaching and School Leadership', abbrev: 'AITSL' },
+        'aiatsis.gov.au':                    { full: 'Australian Institute of Aboriginal and Torres Strait Islander Studies', abbrev: 'AIATSIS' },
+        'aic.gov.au':                        { full: 'Australian Institute of Criminology', abbrev: 'AIC' },
+        'aifs.gov.au':                       { full: 'Australian Institute of Family Studies', abbrev: 'AIFS' },
+        'aihw.gov.au':                       { full: 'Australian Institute of Health and Welfare', abbrev: 'AIHW' },
+        'aims.gov.au':                       { full: 'Australian Institute of Marine Science', abbrev: 'AIMS' },
+        'alrc.gov.au':                       { full: 'Australian Law Reform Commission', abbrev: 'ALRC' },
+        'amsa.gov.au':                       { full: 'Australian Maritime Safety Authority', abbrev: 'AMSA' },
+        'anao.gov.au':                       { full: 'Australian National Audit Office', abbrev: 'ANAO' },
+        'anmm.gov.au':                       { full: 'Australian National Maritime Museum', abbrev: 'ANMM' },
+        'anu.edu.au':                        { full: 'Australian National University', abbrev: 'ANU' },
+        'annpsr.gov.au':                     { full: 'Australian Naval Nuclear Power Safety Regulator', abbrev: 'ANNPSR' },
+        'ansto.gov.au':                      { full: 'Australian Nuclear Science and Technology Organisation', abbrev: 'ANSTO' },
+        'aofm.gov.au':                       { full: 'Australian Office of Financial Management', abbrev: 'AOFM' },
+        'apvma.gov.au':                      { full: 'Australian Pesticides and Veterinary Medicines Authority', abbrev: 'APVMA' },
+        'auspost.com.au':                    { full: 'Australian Postal Corporation', abbrev: '' },
+        'apra.gov.au':                       { full: 'Australian Prudential Regulation Authority', abbrev: 'APRA' },
+        'apsc.gov.au':                       { full: 'Australian Public Service Commission', abbrev: 'APSC' },
+        'stylemanual.gov.au':                { full: 'Australian Public Service Commission', abbrev: 'APSC' },
+        'arpansa.gov.au':                    { full: 'Australian Radiation Protection and Nuclear Safety Agency', abbrev: 'ARPANSA' },
+        'arpc.gov.au':                       { full: 'Australian Reinsurance Pool Corporation', abbrev: 'ARPC' },
+        'arena.gov.au':                      { full: 'Australian Renewable Energy Agency', abbrev: 'ARENA' },
+        'arc.gov.au':                        { full: 'Australian Research Council', abbrev: 'ARC' },
+        'asis.gov.au':                       { full: 'Australian Secret Intelligence Service', abbrev: 'ASIS' },
+        'asic.gov.au':                       { full: 'Australian Securities and Investments Commission', abbrev: 'ASIC' },
+        'asio.gov.au':                       { full: 'Australian Security Intelligence Organisation', abbrev: 'ASIO' },
+        'asd.gov.au':                        { full: 'Australian Signals Directorate', abbrev: 'ASD' },
+        'asqa.gov.au':                       { full: 'Australian Skills Quality Authority', abbrev: 'ASQA' },
+        'ausport.gov.au':                    { full: 'Australian Sports Commission', abbrev: 'ASC' },
+        'aspi.org.au':                       { full: 'Australian Strategic Policy Institute', abbrev: 'ASPI' },
+        'asa.gov.au':                        { full: 'Australian Submarine Agency', abbrev: 'ASA' },
+        'ato.gov.au':                        { full: 'Australian Taxation Office', abbrev: 'ATO' },
+        'austrade.gov.au':                   { full: 'Australian Trade and Investment Commission', abbrev: 'Austrade' },
+        'austrac.gov.au':                    { full: 'Australian Transaction Reports and Analysis Centre', abbrev: 'AUSTRAC' },
+        'atsb.gov.au':                       { full: 'Australian Transport Safety Bureau', abbrev: 'ATSB' },
+        'awm.gov.au':                        { full: 'Australian War Memorial', abbrev: 'AWM' },
+        'bom.gov.au':                        { full: 'Bureau of Meteorology', abbrev: 'BOM' },
+        'canceraustralia.gov.au':            { full: 'Cancer Australia', abbrev: 'CA' },
+        'casa.gov.au':                       { full: 'Civil Aviation Safety Authority', abbrev: 'CASA' },
+        'cefc.com.au':                       { full: 'Clean Energy Finance Corporation', abbrev: 'CEFC' },
+        'cleanenergyregulator.gov.au':       { full: 'Clean Energy Regulator', abbrev: 'CER' },
+        'climatechangeauthority.gov.au':     { full: 'Climate Change Authority', abbrev: 'CCA' },
+        'comcare.gov.au':                    { full: 'Comcare', abbrev: '' },
+        'cgc.gov.au':                        { full: 'Commonwealth Grants Commission', abbrev: 'CGC' },
+        'csiro.au':                          { full: 'Commonwealth Scientific and Industrial Research Organisation', abbrev: 'CSIRO' },
+        'csc.gov.au':                        { full: 'Commonwealth Superannuation Corporation', abbrev: 'CSC' },
+        'creative.gov.au':                   { full: 'Creative Australia', abbrev: '' },
+        'dvsc.gov.au':                       { full: 'Defence and Veterans\' Services Commission', abbrev: 'DVSC' },
+        'dha.gov.au':                        { full: 'Defence Housing Australia', abbrev: 'DHA' },
+        'agriculture.gov.au':                { full: 'Department of Agriculture, Fisheries and Forestry', abbrev: 'DAFF' },
+        'dcceew.gov.au':                     { full: 'Department of Climate Change, Energy, the Environment and Water', abbrev: 'DCCEEW' },
+        'defence.gov.au':                    { full: 'Department of Defence', abbrev: '' },
+        'education.gov.au':                  { full: 'Department of Education', abbrev: '' },
+        'dewr.gov.au':                       { full: 'Department of Employment and Workplace Relations', abbrev: 'DEWR' },
+        'finance.gov.au':                    { full: 'Department of Finance', abbrev: '' },
+        'dfat.gov.au':                       { full: 'Department of Foreign Affairs and Trade', abbrev: 'DFAT' },
+        'health.gov.au':                     { full: 'Department of Health, Disability and Ageing', abbrev: 'DHDA' },
+        'homeaffairs.gov.au':                { full: 'Department of Home Affairs', abbrev: 'DHA' },
+        'industry.gov.au':                   { full: 'Department of Industry, Science and Resources', abbrev: 'DISR' },
+        'infrastructure.gov.au':             { full: 'Department of Infrastructure, Transport, Regional Development, Communications, Sport and the Arts', abbrev: 'DITRDCSA' },
+        'dss.gov.au':                        { full: 'Department of Social Services', abbrev: 'DSS' },
+        'pmc.gov.au':                        { full: 'Department of the Prime Minister and Cabinet', abbrev: 'PMC' },
+        'treasury.gov.au':                   { full: 'Department of the Treasury', abbrev: 'Treasury' },
+        'dva.gov.au':                        { full: 'Department of Veterans\' Affairs', abbrev: 'DVA' },
+        'dta.gov.au':                        { full: 'Digital Transformation Agency', abbrev: 'DTA' },
+        'dfsvc.gov.au':                      { full: 'Domestic, Family and Sexual Violence Commission', abbrev: 'DFSVC' },
+        'exportfinance.gov.au':              { full: 'Export Finance Australia', abbrev: 'EFA' },
+        'fwc.gov.au':                        { full: 'Fair Work Commission', abbrev: 'FWC' },
+        'fedcourt.gov.au':                   { full: 'Federal Court of Australia', abbrev: 'FCA' },
+        'foodstandards.gov.au':              { full: 'Food Standards Australia New Zealand', abbrev: 'FSANZ' },
+        'futurefund.gov.au':                 { full: 'Future Fund Management Agency', abbrev: 'FFMA' },
+        'ga.gov.au':                         { full: 'Geoscience Australia', abbrev: 'GA' },
+        'gbrmpa.gov.au':                     { full: 'Great Barrier Reef Marine Park Authority', abbrev: 'GBRMPA' },
+        'hsra.gov.au':                       { full: 'High Speed Rail Authority', abbrev: 'HSRA' },
+        'housingaustralia.gov.au':           { full: 'Housing Australia', abbrev: '' },
+        'ihacpa.gov.au':                     { full: 'Independent Health and Aged Care Pricing Authority', abbrev: 'IHACPA' },
+        'ipea.gov.au':                       { full: 'Independent Parliamentary Expenses Authority', abbrev: 'IPEA' },
+        'iba.gov.au':                        { full: 'Indigenous Business Australia', abbrev: 'IBA' },
+        'ilsc.gov.au':                       { full: 'Indigenous Land and Sea Corporation', abbrev: 'ILSC' },
+        'infrastructureaustralia.gov.au':    { full: 'Infrastructure Australia', abbrev: 'IA' },
+        'igt.gov.au':                        { full: 'Inspector-General of Taxation', abbrev: 'IGT' },
+        'ipaustralia.gov.au':                { full: 'IP Australia', abbrev: '' },
+        'mdba.gov.au':                       { full: 'Murray-Darling Basin Authority', abbrev: 'MDBA' },
+        'nacc.gov.au':                       { full: 'National Anti-Corruption Commission', abbrev: 'NACC' },
+        'naa.gov.au':                        { full: 'National Archives of Australia', abbrev: 'NAA' },
+        'blood.gov.au':                      { full: 'National Blood Authority', abbrev: 'NBA' },
+        'nca.gov.au':                        { full: 'National Capital Authority', abbrev: 'NCA' },
+        'ncatsicyp.gov.au':                  { full: 'National Commission for Aboriginal and Torres Strait Islander Children and Young People', abbrev: 'NCATSICYP' },
+        'ndis.gov.au':                       { full: 'National Disability Insurance Agency', abbrev: 'NDIS' },
+        'nema.gov.au':                       { full: 'National Emergency Management Agency', abbrev: 'NEMA' },
+        'nfsa.gov.au':                       { full: 'National Film and Sound Archive of Australia', abbrev: 'NFSA' },
+        'nga.gov.au':                        { full: 'National Gallery of Australia', abbrev: 'NGA' },
+        'nhmrc.gov.au':                      { full: 'National Health and Medical Research Council', abbrev: 'NHMRC' },
+        'nhfb.gov.au':                       { full: 'National Health Funding Body', abbrev: 'NHFB' },
+        'niaa.gov.au':                       { full: 'National Indigenous Australians Agency', abbrev: 'NIAA' },
+        'nla.gov.au':                        { full: 'National Library of Australia', abbrev: 'NLA' },
+        'nma.gov.au':                        { full: 'National Museum of Australia', abbrev: 'NMA' },
+        'nopsema.gov.au':                    { full: 'National Offshore Petroleum Safety and Environmental Management Authority', abbrev: 'NOPSEMA' },
+        'portrait.gov.au':                   { full: 'National Portrait Gallery of Australia', abbrev: 'NPGA' },
+        'nrf.gov.au':                        { full: 'National Reconstruction Fund Corporation', abbrev: 'NRFC' },
+        'ntc.gov.au':                        { full: 'National Transport Commission', abbrev: 'NTC' },
+        'ndiscommission.gov.au':             { full: 'NDIS Quality and Safeguards Commission', abbrev: 'NDISQSC' },
+        'netzero.gov.au':                    { full: 'Net Zero Economy Authority', abbrev: 'NZEA' },
+        'naif.gov.au':                       { full: 'Northern Australia Infrastructure Facility', abbrev: 'NAIF' },
+        'oni.gov.au':                        { full: 'Office of National Intelligence', abbrev: 'ONI' },
+        'opc.gov.au':                        { full: 'Office of Parliamentary Counsel', abbrev: 'OPC' },
+        'auasb.gov.au':                      { full: 'Auditing and Assurance Standards Board', abbrev: 'AUASB' },
+        'aasb.gov.au':                       { full: 'Australian Accounting Standards Board', abbrev: 'AASB' },
+        'oaic.gov.au':                       { full: 'Office of the Australian Information Commissioner', abbrev: 'OAIC' },
+        'ombudsman.gov.au':                  { full: 'Office of the Commonwealth Ombudsman', abbrev: 'OCO' },
+        'cdpp.gov.au':                       { full: 'Office of the Director of Public Prosecutions', abbrev: 'CDPP' },
+        'fairwork.gov.au':                   { full: 'Office of the Fair Work Ombudsman', abbrev: 'OFWO' },
+        'igac.gov.au':                       { full: 'Office of the Inspector-General of Aged Care', abbrev: 'IGAC' },
+        'igis.gov.au':                       { full: 'Office of the Inspector-General of Intelligence and Security', abbrev: 'IGIS' },
+        'osi.gov.au':                        { full: 'Office of the Special Investigator', abbrev: 'OSI' },
+        'moadoph.gov.au':                    { full: 'Old Parliament House', abbrev: 'MOAD' },
+        'donatelife.gov.au':                 { full: 'Organ and Tissue Authority', abbrev: 'OTA' },
+        'pbo.gov.au':                        { full: 'Parliamentary Budget Office', abbrev: 'PBO' },
+        'pwss.gov.au':                       { full: 'Parliamentary Workplace Support Service', abbrev: 'PWSS' },
+        'pc.gov.au':                         { full: 'Productivity Commission', abbrev: 'PC' },
+        'psr.gov.au':                        { full: 'Professional Services Review', abbrev: 'PSR' },
+        'ric.gov.au':                        { full: 'Regional Investment Corporation', abbrev: 'RIC' },
+        'rba.gov.au':                        { full: 'Reserve Bank of Australia', abbrev: 'RBA' },
+        'ramint.gov.au':                     { full: 'Royal Australian Mint', abbrev: 'RAM' },
+        'safeworkaustralia.gov.au':          { full: 'Safe Work Australia', abbrev: 'SWA' },
+        'screenaustralia.gov.au':            { full: 'Screen Australia', abbrev: '' },
+        'seacare.gov.au':                    { full: 'Seafarers Safety, Rehabilitation and Compensation Authority', abbrev: 'Seacare Authority' },
+        'servicesaustralia.gov.au':          { full: 'Services Australia', abbrev: '' },
+        'sportintegrity.gov.au':             { full: 'Sport Integrity Australia', abbrev: 'SIA' },
+        'harbourtrust.gov.au':               { full: 'Sydney Harbour Federation Trust', abbrev: 'SHFT' },
+        'teqsa.gov.au':                      { full: 'Tertiary Education Quality and Standards Agency', abbrev: 'TEQSA' },
+        'tsra.gov.au':                       { full: 'Torres Strait Regional Authority', abbrev: 'TSRA' },
+        'wgea.gov.au':                       { full: 'Workplace Gender Equality Agency', abbrev: 'WGEA' },
+        'wbacc.gov.au':                      { full: 'Wreck Bay Aboriginal Community Council', abbrev: 'WBACC' },
+        'aph.gov.au':                        { full: 'Australian Parliament House', abbrev: 'APH' },
+        'pm.gov.au':                         { full: 'Prime Minister of Australia', abbrev: '' },
+        'australia.gov.au':                  { full: 'Australian Government', abbrev: '' },
+        'act.policing.gov.au':               { full: 'ACT Policing', abbrev: '' },
+        'agrifutures.com.au':                { full: 'Rural Industries Research and Development Corporation', abbrev: 'AgriFutures' },
+        'airforce.gov.au':                   { full: 'Royal Australian Air Force Veterans\' Residences Trust Fund', abbrev: 'RAAFVRTF' },
+        'ani.com.au':                        { full: 'Australian Naval Infrastructure Pty Ltd', abbrev: 'ANI' },
+        'anindilyakwa.com.au':               { full: 'Anindilyakwa Land Council', abbrev: 'ALC' },
+        'armyrtf.com.au':                    { full: 'Australian Military Forces Relief Trust Fund', abbrev: 'AMFRTF' },
+        'artc.com.au':                       { full: 'Australian Rail Track Corporation Limited', abbrev: 'ARTC' },
+        'asc.com.au':                        { full: 'ASC Pty Ltd', abbrev: 'ASC' },
+        'asf.org.au':                        { full: 'Australian Sports Foundation Limited', abbrev: 'ASF' },
+        'bundanon.com.au':                   { full: 'Bundanon Trust', abbrev: '' },
+        'clc.org.au':                        { full: 'Central Land Council', abbrev: 'CLC' },
+        'coallsl.com.au':                    { full: 'Coal Mining Industry (Long Service Leave Funding) Corporation', abbrev: 'COALLSL' },
+        'crdc.com.au':                       { full: 'Cotton Research and Development Corporation', abbrev: 'CRDC' },
+        'frdc.com.au':                       { full: 'Fisheries Research and Development Corporation', abbrev: 'FRDC' },
+        'grdc.com.au':                       { full: 'Grains Research and Development Corporation', abbrev: 'GRDC' },
+        'nbnco.com.au':                      { full: 'NBN Co Limited', abbrev: 'NBN' },
+        'ncc.gov.au':                        { full: 'National Competition Council', abbrev: 'NCC' },
+        'nationalintermodal.com.au':         { full: 'National Intermodal Corporation Limited', abbrev: 'NIC' },
+        'nlc.org.au':                        { full: 'Northern Land Council', abbrev: 'NLC' },
+        'quitnow.gov.au':                    { full: 'Australian National Preventive Health Agency', abbrev: 'ANPHA' },
+        'raafholidays.com.au':               { full: 'RAAF Welfare Recreational Company', abbrev: 'RAAFWRC' },
+        'raafwelfaretrustfund.gov.au':       { full: 'Royal Australian Air Force Welfare Trust Fund', abbrev: 'RAAFWTF' },
+        'sbs.com.au':                        { full: 'Special Broadcasting Service Corporation', abbrev: 'SBS' },
+        'snowyhydro.com.au':                 { full: 'Snowy Hydro Ltd', abbrev: '' },
+        'thenavysanchorage.com.au':          { full: 'Royal Australian Navy Central Canteens Board', abbrev: 'RANC' },
+        'tourism.australia.com':             { full: 'Tourism Australia', abbrev: 'TA' },
+        'wsiairport.com.au':                 { full: 'WSA Co Limited', abbrev: 'WSA' },
+        'act.gov.au':                        { full: 'Australian Capital Territory Government', abbrev: 'ACT Gov' },
+        'accesscanberra.act.gov.au':         { full: 'Access Canberra', abbrev: '' },
+        'bsss.act.edu.au':                   { full: 'ACT Board of Senior Secondary Studies', abbrev: 'BSSS ACT' },
+        'cmtedd.act.gov.au':                 { full: 'ACT Chief Minister, Treasury and Economic Development Directorate', abbrev: 'CMTEDD' },
+        'education.act.gov.au':              { full: 'ACT Education Directorate', abbrev: 'ACT Education' },
+        'elections.act.gov.au':              { full: 'ACT Electoral Commission', abbrev: 'ACTEC' },
+        'esa.act.gov.au':                    { full: 'ACT Emergency Services Agency', abbrev: 'ESA ACT' },
+        'health.act.gov.au':                 { full: 'ACT Health Directorate', abbrev: 'ACT Health' },
+        'integritycommission.act.gov.au':    { full: 'ACT Integrity Commission', abbrev: 'ACT IC' },
+        'ombudsman.act.gov.au':              { full: 'ACT Ombudsman', abbrev: '' },
+        'revenue.act.gov.au':                { full: 'ACT Revenue Office', abbrev: 'ACT Revenue' },
+        'tccs.act.gov.au':                   { full: 'Transport Canberra and City Services', abbrev: 'TCCS' },
+        'worksafe.act.gov.au':               { full: 'WorkSafe ACT', abbrev: '' },
+        'nsw.gov.au':                        { full: 'NSW Government', abbrev: '' },
+        'dpc.nsw.gov.au':                    { full: 'NSW Department of Premier and Cabinet', abbrev: 'DPC NSW' },
+        'education.nsw.gov.au':              { full: 'NSW Department of Education', abbrev: 'DoE NSW' },
+        'elections.nsw.gov.au':              { full: 'NSW Electoral Commission', abbrev: 'NSWEC' },
+        'epa.nsw.gov.au':                    { full: 'NSW Environment Protection Authority', abbrev: 'NSW EPA' },
+        'fairtrading.nsw.gov.au':            { full: 'NSW Fair Trading', abbrev: 'Fair Trading NSW' },
+        'fire.nsw.gov.au':                   { full: 'Fire and Rescue NSW', abbrev: 'FRNSW' },
+        'health.nsw.gov.au':                 { full: 'NSW Health', abbrev: '' },
+        'icac.nsw.gov.au':                   { full: 'Independent Commission Against Corruption NSW', abbrev: 'ICAC' },
+        'ipcn.nsw.gov.au':                   { full: 'Independent Planning Commission NSW', abbrev: 'IPC NSW' },
+        'ombo.nsw.gov.au':                   { full: 'NSW Ombudsman', abbrev: '' },
+        'planning.nsw.gov.au':               { full: 'NSW Planning', abbrev: '' },
+        'police.nsw.gov.au':                 { full: 'NSW Police Force', abbrev: 'NSWPF' },
+        'revenue.nsw.gov.au':                { full: 'Revenue NSW', abbrev: '' },
+        'rfs.nsw.gov.au':                    { full: 'NSW Rural Fire Service', abbrev: 'NSW RFS' },
+        'service.nsw.gov.au':                { full: 'Service NSW', abbrev: '' },
+        'ses.nsw.gov.au':                    { full: 'NSW State Emergency Service', abbrev: 'NSW SES' },
+        'transport.nsw.gov.au':              { full: 'Transport for NSW', abbrev: '' },
+        'treasury.nsw.gov.au':               { full: 'NSW Treasury', abbrev: '' },
+        'nt.gov.au':                         { full: 'Northern Territory Government', abbrev: 'NT Gov' },
+        'consumeraffairs.nt.gov.au':         { full: 'Consumer Affairs Northern Territory', abbrev: 'CA NT' },
+        'dcm.nt.gov.au':                     { full: 'Northern Territory Department of the Chief Minister and Cabinet', abbrev: 'DCMC NT' },
+        'dipl.nt.gov.au':                    { full: 'Northern Territory Department of Infrastructure, Planning and Logistics', abbrev: 'DIPL NT' },
+        'education.nt.gov.au':               { full: 'Northern Territory Department of Education', abbrev: 'DoE NT' },
+        'health.nt.gov.au':                  { full: 'Northern Territory Department of Health', abbrev: 'DoH NT' },
+        'icac.nt.gov.au':                    { full: 'Independent Commissioner Against Corruption Northern Territory', abbrev: 'ICAC NT' },
+        'ntec.nt.gov.au':                    { full: 'Northern Territory Electoral Commission', abbrev: 'NTEC' },
+        'ombudsman.nt.gov.au':               { full: 'Ombudsman Northern Territory', abbrev: 'NT Ombudsman' },
+        'pfes.nt.gov.au':                    { full: 'Northern Territory Police, Fire and Emergency Services', abbrev: 'NTPFES' },
+        'treasury.nt.gov.au':                { full: 'Northern Territory Department of Treasury and Finance', abbrev: 'DTF NT' },
+        'worksafe.nt.gov.au':                { full: 'NT WorkSafe', abbrev: '' },
+        'qld.gov.au':                        { full: 'Queensland Government', abbrev: 'Qld Gov' },
+        'ccc.qld.gov.au':                    { full: 'Crime and Corruption Commission Queensland', abbrev: 'CCC Qld' },
+        'ecq.qld.gov.au':                    { full: 'Electoral Commission of Queensland', abbrev: 'ECQ' },
+        'education.qld.gov.au':              { full: 'Queensland Department of Education', abbrev: 'DoE Qld' },
+        'fire.qld.gov.au':                   { full: 'Queensland Fire Department', abbrev: 'QFD' },
+        'health.qld.gov.au':                 { full: 'Queensland Health', abbrev: 'Qld Health' },
+        'ombudsman.qld.gov.au':              { full: 'Queensland Ombudsman', abbrev: 'Qld Ombudsman' },
+        'police.qld.gov.au':                 { full: 'Queensland Police Service', abbrev: 'QPS' },
+        'premcab.qld.gov.au':                { full: 'Queensland Department of the Premier and Cabinet', abbrev: 'DPC Qld' },
+        'qcaa.qld.edu.au':                   { full: 'Queensland Curriculum and Assessment Authority', abbrev: 'QCAA' },
+        'qro.qld.gov.au':                    { full: 'Queensland Revenue Office', abbrev: 'QRO' },
+        'tmr.qld.gov.au':                    { full: 'Department of Transport and Main Roads Queensland', abbrev: 'TMR Qld' },
+        'treasury.qld.gov.au':               { full: 'Queensland Treasury', abbrev: 'Qld Treasury' },
+        'worksafe.qld.gov.au':               { full: 'WorkCover Queensland', abbrev: 'WorkCover Qld' },
+        'sa.gov.au':                         { full: 'South Australian Government', abbrev: 'SA Gov' },
+        'cbs.sa.gov.au':                     { full: 'Consumer and Business Services South Australia', abbrev: 'CBS SA' },
+        'cfs.sa.gov.au':                     { full: 'South Australian Country Fire Service', abbrev: 'CFS SA' },
+        'dit.sa.gov.au':                     { full: 'Department for Infrastructure and Transport South Australia', abbrev: 'DIT SA' },
+        'dpc.sa.gov.au':                     { full: 'South Australian Department of the Premier and Cabinet', abbrev: 'DPC SA' },
+        'ecsa.sa.gov.au':                    { full: 'Electoral Commission of South Australia', abbrev: 'ECSA' },
+        'education.sa.gov.au':               { full: 'Department for Education South Australia', abbrev: 'DfE SA' },
+        'icac.sa.gov.au':                    { full: 'Independent Commissioner Against Corruption South Australia', abbrev: 'ICAC SA' },
+        'mfs.sa.gov.au':                     { full: 'South Australian Metropolitan Fire Service', abbrev: 'MFS SA' },
+        'ombudsman.sa.gov.au':               { full: 'Ombudsman South Australia', abbrev: 'Ombudsman SA' },
+        'police.sa.gov.au':                  { full: 'South Australia Police', abbrev: 'SAPOL' },
+        'revenuesa.sa.gov.au':               { full: 'RevenueSA', abbrev: '' },
+        'sahealth.sa.gov.au':                { full: 'SA Health', abbrev: '' },
+        'ses.sa.gov.au':                     { full: 'South Australian State Emergency Service', abbrev: 'SA SES' },
+        'treasury.sa.gov.au':                { full: 'Department of Treasury and Finance South Australia', abbrev: 'DTF SA' },
+        'tas.gov.au':                        { full: 'Tasmanian Government', abbrev: '' },
+        'cbos.tas.gov.au':                   { full: 'Consumer, Building and Occupational Services Tasmania', abbrev: 'CBOS Tas' },
+        'decyp.tas.gov.au':                  { full: 'Tasmanian Department for Education, Children and Young People', abbrev: 'DECYP Tas' },
+        'dpac.tas.gov.au':                   { full: 'Tasmanian Department of Premier and Cabinet', abbrev: 'DPAC Tas' },
+        'fire.tas.gov.au':                   { full: 'Tasmania Fire Service', abbrev: 'TFS' },
+        'health.tas.gov.au':                 { full: 'Tasmanian Department of Health', abbrev: 'DoH Tas' },
+        'ombudsman.tas.gov.au':              { full: 'Tasmanian Ombudsman', abbrev: 'Tas Ombudsman' },
+        'police.tas.gov.au':                 { full: 'Tasmania Police', abbrev: '' },
+        'ses.tas.gov.au':                    { full: 'Tasmania State Emergency Service', abbrev: 'Tas SES' },
+        'sro.tas.gov.au':                    { full: 'State Revenue Office Tasmania', abbrev: 'SRO Tas' },
+        'stategrowth.tas.gov.au':            { full: 'Tasmanian Department of State Growth', abbrev: 'DSG Tas' },
+        'tasc.tas.gov.au':                   { full: 'Tasmanian Assessment, Standards and Certification', abbrev: 'TASC' },
+        'tec.tas.gov.au':                    { full: 'Tasmanian Electoral Commission', abbrev: 'TEC' },
+        'treasury.tas.gov.au':               { full: 'Tasmanian Department of Treasury and Finance', abbrev: 'DTF Tas' },
+        'worksafe.tas.gov.au':               { full: 'WorkSafe Tasmania', abbrev: '' },
+        'vic.gov.au':                        { full: 'Victorian Government', abbrev: 'Vic Gov' },
+        'cfa.vic.gov.au':                    { full: 'Country Fire Authority', abbrev: 'CFA' },
+        'consumer.vic.gov.au':               { full: 'Consumer Affairs Victoria', abbrev: 'CAV' },
+        'dpc.vic.gov.au':                    { full: 'Victorian Department of Premier and Cabinet', abbrev: 'DPC Vic' },
+        'dtf.vic.gov.au':                    { full: 'Victorian Department of Treasury and Finance', abbrev: 'DTF Vic' },
+        'education.vic.gov.au':              { full: 'Victorian Department of Education', abbrev: 'DoE Vic' },
+        'epa.vic.gov.au':                    { full: 'Environment Protection Authority Victoria', abbrev: 'EPA Vic' },
+        'frv.vic.gov.au':                    { full: 'Fire Rescue Victoria', abbrev: 'FRV' },
+        'ibac.vic.gov.au':                   { full: 'Independent Broad-based Anti-corruption Commission Victoria', abbrev: 'IBAC' },
+        'ombudsman.vic.gov.au':              { full: 'Victorian Ombudsman', abbrev: 'Vic Ombudsman' },
+        'police.vic.gov.au':                 { full: 'Victoria Police', abbrev: '' },
+        'service.vic.gov.au':                { full: 'Service Victoria', abbrev: '' },
+        'ses.vic.gov.au':                    { full: 'Victorian State Emergency Service', abbrev: 'VICSES' },
+        'sro.vic.gov.au':                    { full: 'State Revenue Office Victoria', abbrev: 'SRO Vic' },
+        'vcaa.vic.edu.au':                   { full: 'Victorian Curriculum and Assessment Authority', abbrev: 'VCAA' },
+        'vec.vic.gov.au':                    { full: 'Victorian Electoral Commission', abbrev: 'VEC' },
+        'worksafe.vic.gov.au':               { full: 'WorkSafe Victoria', abbrev: '' },
+        'wa.gov.au':                         { full: 'Western Australian Government', abbrev: 'WA Gov' },
+        'ccc.wa.gov.au':                     { full: 'Corruption and Crime Commission Western Australia', abbrev: 'CCC WA' },
+        'consumerprotection.wa.gov.au':      { full: 'Consumer Protection Western Australia', abbrev: 'CP WA' },
+        'dfes.wa.gov.au':                    { full: 'Department of Fire and Emergency Services Western Australia', abbrev: 'DFES WA' },
+        'dpc.wa.gov.au':                     { full: 'Western Australian Department of the Premier and Cabinet', abbrev: 'DPC WA' },
+        'education.wa.edu.au':               { full: 'Western Australian Department of Education', abbrev: 'DoE WA' },
+        'elections.wa.gov.au':               { full: 'Western Australian Electoral Commission', abbrev: 'WAEC' },
+        'ombudsman.wa.gov.au':               { full: 'Western Australian Ombudsman', abbrev: 'WA Ombudsman' },
+        'police.wa.gov.au':                  { full: 'Western Australia Police Force', abbrev: 'WAPF' },
+        'scsa.wa.edu.au':                    { full: 'School Curriculum and Standards Authority Western Australia', abbrev: 'SCSA WA' },
+        'transport.wa.gov.au':               { full: 'Western Australian Department of Transport', abbrev: 'DoT WA' },
+        'treasury.wa.gov.au':                { full: 'Western Australian Department of Treasury', abbrev: 'Treasury WA' },
+        'worksafe.wa.gov.au':                { full: 'WorkSafe Western Australia', abbrev: 'WorkSafe WA' },
+    };
+
+    /**
+     * Look up an organisation from the GOV_AU_ORGS table by URL.
+     * Strips 'www.' and matches on the full hostname or a suffix.
+     * Returns { full, abbrev } or null if not found.
+     */
+    function lookupGovAuOrg(url) {
+        try {
+            let hostname = new URL(url).hostname.toLowerCase().replace(/^www\./, '');
+            // Direct match
+            if (GOV_AU_ORGS[hostname]) return GOV_AU_ORGS[hostname];
+            // Suffix match: e.g. 'subdomain.abs.gov.au' → try 'abs.gov.au'
+            const parts = hostname.split('.');
+            for (let i = 1; i < parts.length - 1; i++) {
+                const candidate = parts.slice(i).join('.');
+                if (GOV_AU_ORGS[candidate]) return GOV_AU_ORGS[candidate];
+            }
+            return null;
+        } catch {
+            return null;
+        }
+    }
+
+    /**
+     * Map a CrossRef type string to our source type.
+     */
+    function mapCrossRefType(crType) {
+        const map = {
+            'journal-article': 'journal',
+            'book': 'book',
+            'monograph': 'book',
+            'edited-book': 'book',
+            'book-chapter': 'chapter',
+            'book-section': 'chapter',
+            'proceedings-article': 'journal',
+            'report': 'report',
+            'report-component': 'report',
+            'posted-content': 'website',
+            'peer-review': 'journal',
+        };
+        return map[crType] || 'journal';
+    }
+
+    /**
+     * Parse a pasted author string into structured {given, family} objects.
+     *
+     * Handles multiple input formats:
+     *   - "Given Family, Given Family, ..." (comma-separated, natural order — most databases)
+     *   - "Given Family & Given Family" (ampersand-separated)
+     *   - "Family, Given; Family, Given" (semicolon-separated, reversed order)
+     *   - "Given Family\nGiven Family\n..." (one name per line, e.g. from journal pages)
+     *
+     * Also strips: affiliation numbers, credential suffixes (MD, PhD, etc.),
+     * ORCID links, and other non-name noise.
+     */
+    function parseAuthorPaste(text) {
+        if (!text || !text.trim()) return [];
+
+        // Step 1: Clean noise from the text
+        let cleaned = text
+            .replace(/\r\n/g, '\n').replace(/\r/g, '\n')
+            // Remove ORCID URLs
+            .replace(/https?:\/\/orcid\.org\/[\S]+/gi, '')
+            // Remove credential suffixes (with optional leading comma/space)
+            .replace(/,?\s*\b(MD|PhD|MBBS|MPH|DrPH|DPhil|MSc|BSc|BA|FRACP|FANZCA|FRACS|FACEM|FRCSC|FRCP|MRCP|MB|BCh|BAO|ChB)\b\.?/gi, '')
+            // Remove superscript affiliation numbers (digits possibly mixed with spaces/commas)
+            .replace(/\d+/g, '')
+            // Remove stray punctuation left after stripping digits (e.g. lone commas at line start)
+            .split('\n').map(l => l.replace(/^[\s,;]+|[\s,;]+$/g, '').trim()).filter(l => l.length > 1).join('\n')
+            .trim();
+
+        if (!cleaned) return [];
+
+        // Step 2: Determine delimiter and split into name entries
+        let entries;
+
+        if (cleaned.includes('&')) {
+            // Ampersand present → treat commas AND & as name separators (natural order)
+            entries = cleaned.split(/\s*[&,\n]\s*|\s+and\s+/i)
+                .map(s => s.trim()).filter(s => s.length > 1);
+        } else if (cleaned.includes(';')) {
+            // Semicolons → "Family, Given; Family, Given" format
+            entries = cleaned.split(/\s*;\s*|\n+/).map(s => s.trim()).filter(Boolean);
+        } else if ((cleaned.match(/\n/g) || []).length >= 1) {
+            // Multiple lines → one name per line (may still have commas for "Family, Given")
+            entries = cleaned.split('\n').map(s => s.trim()).filter(s => s.length > 1);
+        } else {
+            // Comma-only text: detect if commas separate full names or "Family, Given" pairs
+            const parts = cleaned.split(',').map(s => s.trim()).filter(Boolean);
+            // If most comma segments contain a space (i.e. have first+last), treat as name separators
+            const multiWordCount = parts.filter(p => /\S+\s+\S+/.test(p)).length;
+            if (multiWordCount > parts.length / 2) {
+                // "Given Family, Given Family" format
+                entries = parts;
+            } else {
+                // "Family, Given" pairs: every two segments form one name
+                entries = [];
+                for (let i = 0; i < parts.length - 1; i += 2) {
+                    entries.push(`${parts[i]}, ${parts[i + 1]}`);
+                }
+                if (parts.length % 2 !== 0) entries.push(parts[parts.length - 1]);
+            }
+        }
+
+        // Step 3: Parse each entry into {given, family}
+        return entries.map(entry => {
+            entry = entry.replace(/\s+/g, ' ').trim();
+            if (!entry) return null;
+
+            if (entry.includes(',')) {
+                // "Family, Given" format
+                const idx = entry.indexOf(',');
+                const family = entry.slice(0, idx).trim();
+                const given = entry.slice(idx + 1).trim();
+                if (family) return { given, family };
+            }
+
+            // "Given Family" format — last token is the family name
+            const parts = entry.split(/\s+/).filter(Boolean);
+            if (parts.length === 0) return null;
+            if (parts.length === 1) return { given: '', family: parts[0] };
+            const family = parts.pop();
+            return { given: parts.join(' '), family };
+        }).filter(Boolean);
+    }
+
+    // ===== API FUNCTIONS =====
+
+    /**
+     * Fetch metadata from CrossRef using a DOI.
+     */
+    async function fetchFromCrossRef(doi) {
+        const cleaned = cleanDOI(doi);
+        const url = `https://api.crossref.org/works/${encodeURIComponent(cleaned)}`;
+
+        const response = await fetch(url, {
+            headers: { 'User-Agent': 'StyleManualCitationGenerator/1.0 (mailto:user@example.com)' }
+        });
+
+        if (!response.ok) {
+            if (response.status === 404) throw new Error('DOI not found. Please check the DOI is correct.');
+            throw new Error(`CrossRef API error (${response.status}). Please try again.`);
+        }
+
+        const data = await response.json();
+        const work = data.message;
+
+        // Extract full publication date if available
+        // Prefer published-print (journal issue year) over published-online (online-first year),
+        // as AGSM citations use the year of journal assignment, not the early-access date.
+        const dateParts = work['published-print']?.['date-parts']?.[0] ||
+                          work['published-online']?.['date-parts']?.[0] ||
+                          work.created?.['date-parts']?.[0] || [];
+        const year = dateParts[0] || 'n.d.';
+
+        // Extract editors for book chapters
+        let editors = null;
+        if (work.editor && work.editor.length > 0) {
+            editors = work.editor.map(e => ({ given: e.given || '', family: e.family || '' }));
+        }
+
+        return {
+            sourceType: mapCrossRefType(work.type),
+            authors: (work.author || []).map(a => ({ given: a.given || '', family: a.family || '' })),
+            editors: editors,
+            title: work.title ? work.title[0] : '',
+            containerTitle: work['container-title'] ? work['container-title'][0] : '',
+            year: String(year),
+            volume: work.volume || '',
+            issue: work.issue || '',
+            pages: work.page ? formatPageRange(work.page) : '',
+            publisher: work.publisher || '',
+            publishPlace: '',
+            edition: work['edition-number'] || '',
+            doi: cleaned,
+            url: '',
+        };
+    }
+
+    /**
+     * Fetch metadata from Open Library using an ISBN.
+     */
+    async function fetchFromOpenLibrary(isbn) {
+        const cleaned = cleanISBN(isbn);
+        const url = `https://openlibrary.org/api/books?bibkeys=ISBN:${cleaned}&format=json&jscmd=data`;
+
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`Open Library API error (${response.status}).`);
+
+        const data = await response.json();
+        const bookKey = `ISBN:${cleaned}`;
+
+        if (!data[bookKey]) return null; // Not found — caller will try fallback
+
+        const book = data[bookKey];
+        return {
+            sourceType: 'book',
+            authors: (book.authors || []).map(a => {
+                const parts = (a.name || '').split(' ');
+                const family = parts.pop() || '';
+                return { given: parts.join(' '), family };
+            }),
+            title: book.title || '',
+            year: book.publish_date ? (book.publish_date.match(/\d{4}/)?.[0] || 'n.d.') : 'n.d.',
+            publisher: book.publishers ? book.publishers[0].name : '',
+            publishPlace: book.publish_places ? book.publish_places[0].name : '',
+            edition: book.edition_name || '',
+            isbn: cleaned,
+        };
+    }
+
+    /**
+     * Fetch metadata from Google Books API as ISBN fallback.
+     */
+    async function fetchFromGoogleBooks(isbn) {
+        const cleaned = cleanISBN(isbn);
+        const url = `https://www.googleapis.com/books/v1/volumes?q=isbn:${cleaned}`;
+
+        const response = await fetch(url);
+        if (response.status === 429) {
+            throw new Error('Google Books rate limit reached. Please wait a moment and try again.');
+        }
+        if (!response.ok) throw new Error(`Google Books API error (${response.status}). Please try again.`);
+
+        const data = await response.json();
+        if (!data.items || data.items.length === 0) return null;
+
+        const info = data.items[0].volumeInfo;
+        return {
+            sourceType: 'book',
+            authors: (info.authors || []).map(name => {
+                const parts = name.split(' ');
+                const family = parts.pop() || '';
+                return { given: parts.join(' '), family };
+            }),
+            title: info.title || '',
+            year: info.publishedDate ? (info.publishedDate.match(/\d{4}/)?.[0] || 'n.d.') : 'n.d.',
+            publisher: info.publisher || '',
+            publishPlace: '',
+            edition: '',
+            isbn: cleaned,
+        };
+    }
+
+    /**
+     * Look up an ISBN, trying Open Library first then Google Books.
+     */
+    async function lookupISBN(isbn) {
+        let result = await fetchFromOpenLibrary(isbn);
+        if (result) return result;
+
+        result = await fetchFromGoogleBooks(isbn);
+        if (result) return result;
+
+        throw new Error('This ISBN was not found in Open Library or Google Books. It may not be indexed (common for government and specialist publications). Please use the Manual entry tab instead.');
+    }
+
+    /**
+     * Returns true if a candidate title is a bot-detection or error page rather than
+     * real content — e.g. Cloudflare challenges, generic HTTP error titles, etc.
+     */
+    function isJunkTitle(title) {
+        return /^(just a moment|attention required|access denied|checking your browser|security check|one moment|please wait|ddos protection|403|404|forbidden|page not found|service unavailable|error)\b/i.test(title.trim());
+    }
+
+    /**
+     * Fetch the page title from a URL using three strategies in order:
+     * 1. Raw HTML via allorigins proxy — checks og:title, twitter:title, h1, <title>
+     * 2. Jina AI reader (renders JavaScript) — parses "Title:" from markdown response
+     * 3. URL slug heuristic — infers a title from the URL path as a last resort
+     * Returns { title, isHint } where isHint:true means the title was inferred from
+     * the URL slug and should be flagged for manual review. Returns null if all fail.
+     */
+    async function fetchPageTitle(url) {
+        // Strategy 1: allorigins.win — check og:title, twitter:title, h1, then <title>
+        try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 8000);
+            const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
+            const response = await fetch(proxyUrl, { signal: controller.signal });
+            clearTimeout(timeoutId);
+            if (response.ok) {
+                const data = await response.json();
+                if (data.contents) {
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(data.contents, 'text/html');
+                    const og = doc.querySelector('meta[property="og:title"]');
+                    const ogVal = og?.getAttribute('content')?.trim().replace(/\s*[|–—-]\s*[^|–—-]+$/, '').trim();
+                    if (ogVal && !isJunkTitle(ogVal)) return { title: ogVal, isHint: false };
+                    const tw = doc.querySelector('meta[name="twitter:title"]');
+                    const twVal = tw?.getAttribute('content')?.trim().replace(/\s*[|–—-]\s*[^|–—-]+$/, '').trim();
+                    if (twVal && !isJunkTitle(twVal)) return { title: twVal, isHint: false };
+                    const h1 = doc.querySelector('h1');
+                    const h1Val = h1?.textContent.trim();
+                    if (h1Val && !isJunkTitle(h1Val)) return { title: h1Val, isHint: false };
+                    const titleTag = doc.querySelector('title');
+                    if (titleTag) {
+                        // Strip trailing " | Site Name" or " - Site Name" suffixes
+                        const raw = titleTag.textContent.trim();
+                        const cleaned = raw.replace(/\s*[|–—-]\s*[^|–—-]+$/, '').trim();
+                        if (cleaned && !isJunkTitle(cleaned)) return { title: cleaned, isHint: false };
+                    }
+                }
+            }
+        } catch { /* fall through to next strategy */ }
+
+        // Strategy 2: Jina AI reader — renders JavaScript and returns markdown with "Title: …"
+        try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 10000);
+            const response = await fetch(`https://r.jina.ai/${url}`, { signal: controller.signal });
+            clearTimeout(timeoutId);
+            if (response.ok) {
+                const text = await response.text();
+                const match = text.match(/^Title:\s*(.+)$/m);
+                const jinaTitle = match?.[1].trim().replace(/\s*[|–—-]\s*[^|–—-]+$/, '').trim();
+                if (jinaTitle && !isJunkTitle(jinaTitle)) return { title: jinaTitle, isHint: false };
+            }
+        } catch { /* fall through to next strategy */ }
+
+        // Strategy 3: URL slug heuristic — last resort, must be flagged for review
+        try {
+            const segments = new URL(url).pathname.split('/').filter(Boolean);
+            for (let i = segments.length - 1; i >= 0; i--) {
+                const seg = segments[i];
+                // Skip pure numbers, very short segments, and 4-digit year segments
+                if (/^\d+$/.test(seg) || seg.length < 4 || /^\d{4}$/.test(seg)) continue;
+                const title = seg.replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+                if (title.trim()) return { title: title.trim(), isHint: true };
+            }
+        } catch { /* fall through */ }
+
+        return null;
+    }
+
+    // ===== CITATION FORMATTERS =====
+
+    /**
+     * Journal article:
+     * Author A (Year) 'Title of article', Name of Journal, volume(issue):pages, doi:number.
+     */
+    function formatJournalArticle(data) {
+        const authors = data.authorDisplay;
+        const authorsInText = data.authorInText;
+        const year = data.year || 'n.d.';
+
+        let parts = [];
+        parts.push(`'${linkTitle(data.title, data)}'`);
+        if (data.journalName) parts.push(`<em>${data.journalName}</em>`);
+
+        // Volume/issue/pages as one unit
+        if (data.volume) {
+            let volPart = data.volume;
+            if (data.issue) volPart += `(${data.issue})`;
+            if (data.pages) volPart += `:${formatPageRange(data.pages)}`;
+            parts.push(volPart);
+        } else if (data.pages) {
+            parts.push(convertEnDash(data.pages));
+        }
+
+        if (data.doi) parts.push(formatDOI(data.doi));
+
+        const body = parts.join(', ');
+        const html = `${authors} (${year}) ${body}.`;
+        const plain = html.replace(/<[^>]+>/g, '');
+
+        return {
+            html, plain, year,
+            intext: buildIntextOptions(authorsInText, year),
+        };
+    }
+
+    /**
+     * Book:
+     * Author A (Year) Title of book, Xth edn, Publisher, Place.
+     * With DOI: omit place, add doi.
+     */
+    function formatBook(data) {
+        const authors = data.authorDisplay;
+        const authorsInText = data.authorInText;
+        const year = data.year || 'n.d.';
+
+        let parts = [];
+        parts.push(linkTitle(`<em>${data.title}</em>`, data));
+        if (data.edition) parts.push(formatEdition(data.edition));
+        if (data.publisher) parts.push(data.publisher);
+        if (data.doi) {
+            // Omit place when DOI is provided
+            parts.push(formatDOI(data.doi));
+        } else if (data.place) {
+            parts.push(data.place);
+        }
+
+        const body = parts.join(', ');
+        const html = `${authors} (${year}) ${body}.`;
+        const plain = html.replace(/<[^>]+>/g, '');
+
+        return {
+            html, plain, year,
+            intext: buildIntextOptions(authorsInText, year),
+        };
+    }
+
+    /**
+     * Book chapter:
+     * Author A (Year) 'Chapter title', in Editor E (eds) Book title, Publisher, Place.
+     */
+    function formatBookChapter(data) {
+        const authors = data.authorDisplay;
+        const authorsInText = data.authorInText;
+        const year = data.year || 'n.d.';
+
+        let parts = [];
+        parts.push(`'${linkTitle(data.chapterTitle || data.title, data)}'`);
+
+        // "in Editor(s) (ed/eds) Book title"
+        let bookPart = 'in ';
+        if (data.editors && data.editors.length > 0) {
+            const edList = formatAuthorList(data.editors);
+            const edLabel = data.editors.length > 1 ? 'eds' : 'ed';
+            bookPart += `${edList} (${edLabel}) `;
+        }
+        bookPart += `<em>${data.bookTitle || ''}</em>`;
+        if (data.edition) bookPart += `, ${formatEdition(data.edition)}`;
+        parts.push(bookPart);
+
+        if (data.publisher) parts.push(data.publisher);
+        if (data.doi) {
+            parts.push(formatDOI(data.doi));
+        } else if (data.place) {
+            parts.push(data.place);
+        }
+
+        const body = parts.join(', ');
+        const html = `${authors} (${year}) ${body}.`;
+        const plain = html.replace(/<[^>]+>/g, '');
+
+        return {
+            html, plain, year,
+            intext: buildIntextOptions(authorsInText, year),
+        };
+    }
+
+    /**
+     * Website/webpage:
+     * Author A (Year) Title of webpage, Name of Website website, accessed Day Month Year.
+     */
+    function formatWebsite(data) {
+        const authors = data.authorDisplay;
+        const authorsInText = data.authorInText;
+        const year = data.year || 'n.d.';
+        const accessDate = data.accessDate || getTodayFormatted();
+
+        let parts = [];
+        if (data.series) {
+            parts.push(`'${linkTitle(data.title, data)}'`);
+            parts.push(`<em>${data.series}</em>`);
+        } else {
+            parts.push(linkTitle(`<em>${data.title}</em>`, data));
+        }
+        if (data.websiteName) parts.push(formatWebsiteName(data.websiteName));
+        parts.push(`accessed ${accessDate}`);
+
+        const body = parts.join(', ');
+        const html = `${authors} (${year}) ${body}.`;
+        const plain = html.replace(/<[^>]+>/g, '');
+
+        return {
+            html, plain, year,
+            intext: buildIntextOptions(authorsInText, year),
+        };
+    }
+
+    /**
+     * Government report:
+     * Agency (Full Name) (Year) Title of report, Agency, Government Name, accessed Day Month Year.
+     */
+    function formatReport(data) {
+        const authors = data.authorDisplay;
+        const authorsInText = data.authorInText;
+        const year = data.unpublished ? 'unpublished' : (data.year || 'n.d.');
+        const accessDate = data.accessDate || getTodayFormatted();
+
+        let parts = [];
+        parts.push(linkTitle(`<em>${data.title}</em>`, data));
+
+
+        // Repeat the short agency name after the title
+        if (data.orgAbbrev) {
+            parts.push(data.orgAbbrev);
+        }
+
+        if (data.governmentName) parts.push(data.governmentName);
+        parts.push(`accessed ${accessDate}`);
+
+        const body = parts.join(', ');
+        const html = `${authors} (${year}) ${body}.`;
+        const plain = html.replace(/<[^>]+>/g, '');
+
+        return {
+            html, plain, year,
+            intext: buildIntextOptions(authorsInText, year),
+        };
+    }
+
+    /**
+     * Newspaper/magazine article:
+     * Author A (Day Month Year) 'Title of article', Name of Publication, accessed Day Month Year.
+     * In-text uses just the year.
+     */
+    function formatNewspaper(data) {
+        const authors = data.authorDisplay;
+        const authorsInText = data.authorInText;
+        const fullDate = data.fullDate || data.year || 'n.d.';
+        // Extract year for in-text citation
+        const year = (fullDate.match(/\d{4}/) || [])[0] || 'n.d.';
+        const accessDate = data.accessDate || getTodayFormatted();
+
+        let parts = [];
+        parts.push(`'${linkTitle(data.title, data)}'`);
+        if (data.publicationName) parts.push(`<em>${data.publicationName}</em>`);
+        if (data.accessDate || data.url) parts.push(`accessed ${accessDate}`);
+
+        const body = parts.join(', ');
+        const html = `${authors} (${fullDate}) ${body}.`;
+        const plain = html.replace(/<[^>]+>/g, '');
+
+        return {
+            html, plain, year,
+            intext: buildIntextOptions(authorsInText, year),
+        };
+    }
+
+    /**
+     * Data set:
+     * Author A (Year) Title of data set [data set], Name of Website website, accessed Day Month Year.
+     */
+    function formatDataset(data) {
+        const authors = data.authorDisplay;
+        const authorsInText = data.authorInText;
+        const year = data.unpublished ? 'unpublished' : (data.year || 'n.d.');
+        const accessDate = data.accessDate || getTodayFormatted();
+
+        let parts = [];
+        const linkedTitle = linkTitle(`<em>${data.title}</em>`, data);
+        parts.push(`${linkedTitle} [data set]`);
+        if (data.websiteName) parts.push(formatWebsiteName(data.websiteName));
+        parts.push(`accessed ${accessDate}`);
+
+        const body = parts.join(', ');
+        const html = `${authors} (${year}) ${body}.`;
+        const plain = html.replace(/<[^>]+>/g, '');
+
+        return {
+            html, plain, year,
+            intext: buildIntextOptions(authorsInText, year),
+        };
+    }
+
+    /**
+     * Media release:
+     * Author A (Day Month Year) Title of media release [media release], Organisation Name, accessed Day Month Year.
+     */
+    function formatMediaRelease(data) {
+        const authors = data.authorDisplay;
+        const authorsInText = data.authorInText;
+        const fullDate = data.fullDate || data.year || 'n.d.';
+        const year = (fullDate.match(/\d{4}/) || [])[0] || 'n.d.';
+        const accessDate = data.accessDate || getTodayFormatted();
+
+        let parts = [];
+        const linkedTitle = linkTitle(`<em>${data.title}</em>`, data);
+        parts.push(`${linkedTitle} [media release]`);
+        if (data.organisation) parts.push(data.organisation);
+        if (data.accessDate || data.url) parts.push(`accessed ${accessDate}`);
+
+        const body = parts.join(', ');
+        const html = `${authors} (${fullDate}) ${body}.`;
+        const plain = html.replace(/<[^>]+>/g, '');
+
+        return {
+            html, plain, year,
+            intext: buildIntextOptions(authorsInText, year),
+        };
+    }
+
+    /**
+     * Build in-text citation options: narrative form and parenthetical form.
+     */
+    function buildIntextOptions(authorStr, year) {
+        return [
+            `${authorStr} (${year})`,
+            `(${authorStr} ${year})`,
+        ];
+    }
+
+    /**
+     * Main formatter dispatch. Takes a unified data object and routes
+     * to the correct formatter based on sourceType.
+     */
+    /**
+     * Conference paper – published:
+     * Author A (Day Month Year) 'Title' [conference presentation], Conference Name, Place, accessed Day Month Year.
+     * Conference paper – unpublished:
+     * Author A (Day Month Year) 'Title' [unpublished conference presentation], Conference Name, Place.
+     */
+    function formatConferencePaper(data) {
+        const authors = data.authorDisplay;
+        const authorsInText = data.authorInText;
+        const fullDate = data.fullDate || 'n.d.';
+        const year = (fullDate.match(/\d{4}/) || [])[0] || 'n.d.';
+
+        const descriptor = data.unpublished ? '[unpublished conference presentation]' : '[conference presentation]';
+        const linkedTitle = linkTitle(data.title, data);
+
+        let parts = [];
+        parts.push(`'${linkedTitle}' ${descriptor}`);
+        if (data.conference) parts.push(data.conference);
+        if (data.place) parts.push(data.place);
+        if (!data.unpublished) {
+            const accessDate = data.accessDate || getTodayFormatted();
+            parts.push(`accessed ${accessDate}`);
+        }
+
+        const body = parts.join(', ');
+        const html = `${authors} (${fullDate}) ${body}.`;
+        const plain = html.replace(/<[^>]+>/g, '');
+
+        return {
+            html, plain, year,
+            intext: buildIntextOptions(authorsInText, year),
+        };
+    }
+
+    /**
+     * Thesis – published:
+     * Author A (Year) Title [type of thesis], University, accessed Day Month Year.
+     * Thesis – unpublished:
+     * Author A (Year) Title [unpublished type of thesis], University, accessed Day Month Year.
+     */
+    function formatThesis(data) {
+        const authors = data.authorDisplay;
+        const authorsInText = data.authorInText;
+        const year = data.year || 'n.d.';
+        const accessDate = data.accessDate || getTodayFormatted();
+
+        const thesisType = data.thesisType || 'thesis';
+        const descriptor = data.unpublished ? `[unpublished ${thesisType}]` : `[${thesisType}]`;
+        const linkedTitle = linkTitle(`<em>${data.title}</em>`, data);
+
+        let parts = [];
+        parts.push(`${linkedTitle} ${descriptor}`);
+        if (data.university) parts.push(data.university);
+        parts.push(`accessed ${accessDate}`);
+
+        const body = parts.join(', ');
+        const html = `${authors} (${year}) ${body}.`;
+        const plain = html.replace(/<[^>]+>/g, '');
+
+        return {
+            html, plain, year,
+            intext: buildIntextOptions(authorsInText, year),
+        };
+    }
+
+    /**
+     * Legislation (Acts and delegated legislation):
+     * Reference list: Title (Jurisdiction).  [roman type]
+     * In-text:        <em>Title</em> (Jurisdiction)
+     */
+    function formatLegislation(data) {
+        const title = data.title || '';
+        const jurisdiction = data.jurisdiction ? ` (${data.jurisdiction})` : '';
+
+        const linkedTitle = data.url
+            ? `<a href="${escAttr(data.url)}" target="_blank" rel="noopener">${title}</a>`
+            : title;
+        const html = `${linkedTitle}${jurisdiction}.`;
+        const plain = `${title}${jurisdiction}.`;
+
+        const intextTitle = `<em>${title}</em>${jurisdiction}`;
+        const intext = [intextTitle, `(${intextTitle})`];
+
+        const yearMatch = title.match(/\b(\d{4})\b/g);
+        const year = yearMatch ? yearMatch[yearMatch.length - 1] : '';
+
+        return { html, plain, year, intext };
+    }
+
+    function formatCitation(sourceType, rawData) {
+        // Build the author display strings from the raw data
+        const data = { ...rawData };
+
+        if (data.authorMode === 'organisation') {
+            data.authorDisplay = formatOrgAuthor(data.orgAbbrev, data.orgFull);
+            data.authorInText = formatOrgAuthorInText(data.orgAbbrev, data.orgFull);
+        } else {
+            data.authorDisplay = formatAuthorList(data.authors || []);
+            data.authorInText = formatAuthorsInText(data.authors || []);
+        }
+
+        switch (sourceType) {
+            case 'journal':      return formatJournalArticle(data);
+            case 'book':         return formatBook(data);
+            case 'chapter':      return formatBookChapter(data);
+            case 'website':      return formatWebsite(data);
+            case 'report':       return formatReport(data);
+            case 'newspaper':    return formatNewspaper(data);
+            case 'dataset':      return formatDataset(data);
+            case 'mediarelease':     return formatMediaRelease(data);
+            case 'conferencepaper':  return formatConferencePaper(data);
+            case 'thesis':           return formatThesis(data);
+            case 'legislation':      return formatLegislation(data);
+            default:                 return formatBook(data);
+        }
+    }
+
+    // ===== AUTHOR COMPONENT =====
+
+    /**
+     * Initialise an author component in the given container element.
+     */
+    function initAuthorComponent(containerId, options = {}) {
+        authorComponents[containerId] = {
+            mode: options.defaultMode || 'person',
+            persons: options.persons || [{ given: '', family: '' }],
+            orgAbbrev: options.orgAbbrev || '',
+            orgFull: options.orgFull || '',
+            label: options.label || 'Author(s)',
+            showOrgToggle: options.showOrgToggle !== false,
+        };
+        renderAuthorComponent(containerId);
+    }
+
+    /**
+     * Render the author component into its container.
+     */
+    function renderAuthorComponent(containerId) {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+        const comp = authorComponents[containerId];
+
+        let html = `<span class="component-label">${comp.label}</span>`;
+
+        if (comp.showOrgToggle) {
+            html += `<div class="author-mode-toggle">
+                <label><input type="radio" name="${containerId}-mode" value="person"
+                    ${comp.mode === 'person' ? 'checked' : ''}> Person(s)</label>
+                <label><input type="radio" name="${containerId}-mode" value="organisation"
+                    ${comp.mode === 'organisation' ? 'checked' : ''}> Organisation</label>
+            </div>`;
+        }
+
+        if (comp.mode === 'person') {
+            comp.persons.forEach((p, i) => {
+                html += `<div class="author-row">
+                    <input type="text" placeholder="Given name(s)" value="${escAttr(p.given)}"
+                        data-comp="${containerId}" data-index="${i}" data-field="given"
+                        aria-label="Author ${i+1} given name">
+                    <input type="text" placeholder="Family name" value="${escAttr(p.family)}"
+                        data-comp="${containerId}" data-index="${i}" data-field="family"
+                        aria-label="Author ${i+1} family name">
+                    ${comp.persons.length > 1
+                        ? `<button type="button" class="author-remove" data-comp="${containerId}" data-index="${i}" aria-label="Remove author ${i+1}">&times;</button>`
+                        : ''}
+                </div>`;
+            });
+            html += `<button type="button" class="author-add" data-comp="${containerId}">+ Add author</button>`;
+            html += `<details class="paste-authors">
+                <summary>Paste author list</summary>
+                <textarea data-comp="${containerId}" placeholder="Paste an author list. Supported formats:&#10;Given Family, Given Family (comma-separated)&#10;Given Family &amp; Given Family (ampersand-separated)&#10;Family, Given; Family, Given (semicolon-separated)&#10;One name per line&#10;&#10;Affiliation numbers and credentials (PhD, MD) are stripped automatically."></textarea>
+                <button type="button" class="paste-parse-btn" data-comp="${containerId}">Parse names</button>
+            </details>`;
+        } else {
+            html += `<div class="org-fields">
+                <input type="text" placeholder="Abbreviation (e.g. DFAT)" value="${escAttr(comp.orgAbbrev)}"
+                    data-comp="${containerId}" data-field="orgAbbrev"
+                    aria-label="Organisation abbreviation">
+                <input type="text" placeholder="Full name (e.g. Department of Foreign Affairs and Trade)" value="${escAttr(comp.orgFull)}"
+                    data-comp="${containerId}" data-field="orgFull"
+                    aria-label="Organisation full name">
+            </div>`;
+        }
+
+        container.innerHTML = html;
+        attachAuthorComponentEvents(containerId);
+    }
+
+    /**
+     * Attach event listeners for an author component (using direct binding).
+     */
+    function attachAuthorComponentEvents(containerId) {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+        const comp = authorComponents[containerId];
+
+        // Mode toggle
+        container.querySelectorAll(`input[name="${containerId}-mode"]`).forEach(radio => {
+            radio.addEventListener('change', () => {
+                comp.mode = radio.value;
+                renderAuthorComponent(containerId);
+            });
+        });
+
+        // Author name inputs (sync to state on input)
+        container.querySelectorAll('.author-row input').forEach(input => {
+            input.addEventListener('input', () => {
+                const idx = parseInt(input.dataset.index);
+                const field = input.dataset.field;
+                if (comp.persons[idx]) comp.persons[idx][field] = input.value;
+            });
+        });
+
+        // Remove buttons
+        container.querySelectorAll('.author-remove').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const idx = parseInt(btn.dataset.index);
+                comp.persons.splice(idx, 1);
+                renderAuthorComponent(containerId);
+            });
+        });
+
+        // Add author
+        const addBtn = container.querySelector('.author-add');
+        if (addBtn) {
+            addBtn.addEventListener('click', () => {
+                comp.persons.push({ given: '', family: '' });
+                renderAuthorComponent(containerId);
+                // Focus the new given-name input
+                setTimeout(() => {
+                    const rows = container.querySelectorAll('.author-row');
+                    const lastRow = rows[rows.length - 1];
+                    if (lastRow) lastRow.querySelector('input').focus();
+                }, 0);
+            });
+        }
+
+        // Org fields
+        container.querySelectorAll('.org-fields input').forEach(input => {
+            input.addEventListener('input', () => {
+                comp[input.dataset.field] = input.value;
+            });
+        });
+
+        // Paste & parse
+        const parseBtn = container.querySelector('.paste-parse-btn');
+        if (parseBtn) {
+            parseBtn.addEventListener('click', () => {
+                const textarea = container.querySelector('.paste-authors textarea');
+                const parsed = parseAuthorPaste(textarea.value);
+                if (parsed.length > 0) {
+                    comp.persons = parsed;
+                    renderAuthorComponent(containerId);
+                }
+            });
+        }
+    }
+
+    /**
+     * Get author data from a component in a normalised form.
+     */
+    function getAuthorData(containerId) {
+        const comp = authorComponents[containerId];
+        if (!comp) return { authorMode: 'person', authors: [], orgAbbrev: '', orgFull: '' };
+        return {
+            authorMode: comp.mode,
+            authors: comp.persons.filter(p => p.given || p.family),
+            orgAbbrev: comp.orgAbbrev,
+            orgFull: comp.orgFull,
+        };
+    }
+
+    /** Escape a string for use in an HTML attribute. */
+    function escAttr(str) {
+        if (!str) return '';
+        return str.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    // ===== UI FUNCTIONS =====
+
+    /**
+     * Show a status message.
+     */
+    function showStatus(message, type) {
+        const el = document.getElementById('status');
+        el.textContent = message;
+        el.className = `status visible ${type}`;
+    }
+
+    function hideStatus() {
+        document.getElementById('status').className = 'status';
+    }
+
+    /**
+     * Show the URL detection notice inside the manual panel (between type grid and form).
+     */
+    function showUrlNotice(message) {
+        const el = document.getElementById('url-notice');
+        if (!el) return;
+        el.textContent = message;
+        el.className = 'status visible success';
+    }
+
+    function hideUrlNotice() {
+        const el = document.getElementById('url-notice');
+        if (el) el.className = 'status';
+    }
+
+    /**
+     * Build and render the manual form for the given source type.
+     */
+    function buildForm(sourceType, prefillData) {
+        const container = document.getElementById('manual-form');
+        const fields = SOURCE_FIELDS[sourceType];
+        if (!fields) return;
+
+        let html = '';
+
+        // Author component placeholder (not shown for legislation — no author)
+        if (sourceType !== 'legislation') {
+            html += `<div class="author-component" id="ac-author"></div>`;
+        }
+
+        let halfBuffer = [];
+
+        for (const field of fields) {
+            // Special: editors component for book chapters
+            if (field.id === '_editors') {
+                // Flush any half-row buffer
+                if (halfBuffer.length > 0) {
+                    html += wrapHalfRow(halfBuffer);
+                    halfBuffer = [];
+                }
+                html += `<div class="author-component" id="ac-editor"></div>`;
+                continue;
+            }
+
+            const fieldHtml = buildFieldHtml(field, sourceType, prefillData);
+
+            if (field.half) {
+                halfBuffer.push(fieldHtml);
+                if (halfBuffer.length === 2) {
+                    html += wrapHalfRow(halfBuffer);
+                    halfBuffer = [];
+                }
+            } else {
+                // Flush half buffer first
+                if (halfBuffer.length > 0) {
+                    html += wrapHalfRow(halfBuffer);
+                    halfBuffer = [];
+                }
+                html += `<div class="form-field">${fieldHtml}</div>`;
+            }
+        }
+        // Flush remaining
+        if (halfBuffer.length > 0) {
+            html += wrapHalfRow(halfBuffer);
+        }
+
+        container.innerHTML = html;
+
+        // Initialise author component
+        // Govt reports default to Organisation mode (most common use case)
+        const defaultAuthorMode = prefillData?.authorMode || (['report', 'dataset'].includes(sourceType) ? 'organisation' : 'person');
+        const authorOpts = {
+            label: sourceType === 'chapter' ? 'Chapter author(s)' : 'Author(s)',
+            showOrgToggle: ['website', 'report', 'dataset', 'mediarelease'].includes(sourceType),
+            defaultMode: defaultAuthorMode,
+            persons: prefillData?.authors?.length ? prefillData.authors : [{ given: '', family: '' }],
+            orgAbbrev: prefillData?.orgAbbrev || '',
+            orgFull: prefillData?.orgFull || '',
+        };
+        if (sourceType !== 'legislation') {
+            initAuthorComponent('ac-author', authorOpts);
+        }
+
+        // Initialise editor component for chapters
+        if (sourceType === 'chapter') {
+            initAuthorComponent('ac-editor', {
+                label: 'Editor(s)',
+                showOrgToggle: false,
+                persons: prefillData?.editors?.length ? prefillData.editors : [{ given: '', family: '' }],
+            });
+        }
+    }
+
+    function buildFieldHtml(field, sourceType, prefillData) {
+        if (field.type === 'checkbox') {
+            const checked = prefillData?.[field.id] ? ' checked' : '';
+            return `<div class="checkbox-field">
+                <input type="checkbox" id="field-${sourceType}-${field.id}"${checked}>
+                <label for="field-${sourceType}-${field.id}">${field.label}</label>
+            </div>`;
+        }
+
+        let value = prefillData ? (prefillData[field.id] || '') : '';
+        // Auto-fill access date with today if empty
+        if (field.id === 'accessDate' && !value) {
+            value = getTodayFormatted();
+        }
+        // Apply defaultValue for fields that have one (e.g. governmentName)
+        if (!value && field.defaultValue) {
+            value = field.defaultValue;
+        }
+        const placeholder = field.placeholder || '';
+        const req = field.required ? ' *' : '';
+        const scBtn = field.sentenceCase
+            ? ` <button type="button" class="sentence-case-btn" data-target="field-${sourceType}-${field.id}" title="Convert to sentence case">Convert to sentence case</button>`
+            : '';
+        const helpTextHtml = field.helpText
+            ? `<p class="help-text">${field.helpText}</p>`
+            : '';
+
+        return `<label for="field-${sourceType}-${field.id}">${field.label}${req}</label>${scBtn}
+            <input type="text" id="field-${sourceType}-${field.id}" value="${escAttr(value)}" placeholder="${escAttr(placeholder)}">${helpTextHtml}`;
+    }
+
+    function wrapHalfRow(items) {
+        if (items.length === 1) {
+            return `<div class="form-row"><div class="form-field">${items[0]}</div><div></div></div>`;
+        }
+        return `<div class="form-row"><div class="form-field">${items[0]}</div><div class="form-field">${items[1]}</div></div>`;
+    }
+
+    /**
+     * Collect all form data for citation generation.
+     */
+    function collectFormData() {
+        const st = state.sourceType;
+        const fields = SOURCE_FIELDS[st];
+        const data = {};
+
+        // Author data (legislation has no author component)
+        const authorData = document.getElementById('ac-author')
+            ? getAuthorData('ac-author')
+            : { authorMode: 'person', authors: [], orgAbbrev: '', orgFull: '' };
+        Object.assign(data, authorData);
+
+        // Editor data for chapters
+        if (st === 'chapter') {
+            const editorData = getAuthorData('ac-editor');
+            data.editors = editorData.authors;
+        }
+
+        // Field values
+        for (const field of fields) {
+            if (field.id.startsWith('_')) continue; // Skip markers
+            const el = document.getElementById(`field-${st}-${field.id}`);
+            if (el) data[field.id] = el.type === 'checkbox' ? el.checked : el.value.trim();
+        }
+
+        // Normalise: default year to n.d. if blank
+        if ('year' in data && !data.year) data.year = 'n.d.';
+
+        // For journal articles, map journalName to the expected field
+        if (st === 'journal') data.journalName = data.journalName || '';
+
+        return data;
+    }
+
+    /**
+     * Display a citation result in the result area.
+     */
+    function displayResult(result) {
+        state.lastResult = result;
+
+        const area = document.getElementById('result-area');
+        const citationEl = document.getElementById('result-citation');
+        const intextEl = document.getElementById('intext-options');
+
+        citationEl.innerHTML = result.html;
+
+        intextEl.innerHTML = result.intext.map(opt => {
+            const plain = opt.replace(/<[^>]+>/g, '');
+            return `<button type="button" class="intext-option" data-text="${escAttr(plain)}" data-html="${escAttr(opt)}">${opt}</button>`;
+        }).join('');
+
+        // Attach in-text copy handlers
+        intextEl.querySelectorAll('.intext-option').forEach(btn => {
+            btn.addEventListener('click', () => {
+                navigator.clipboard.writeText(btn.dataset.text).then(() => {
+                    btn.classList.add('copied');
+                    btn.textContent = 'Copied!';
+                    setTimeout(() => {
+                        btn.classList.remove('copied');
+                        btn.innerHTML = btn.dataset.html;
+                    }, 1500);
+                });
+            });
+        });
+
+        area.classList.add('visible');
+        area.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    /**
+     * Copy plain text citation to clipboard.
+     */
+    function copyPlainText() {
+        if (!state.lastResult) return;
+        const btn = document.getElementById('copy-plain');
+        navigator.clipboard.writeText(state.lastResult.plain).then(() => {
+            btn.classList.add('copied');
+            btn.textContent = 'Copied!';
+            setTimeout(() => {
+                btn.classList.remove('copied');
+                btn.textContent = 'Copy plain text';
+            }, 2000);
+        });
+    }
+
+    /**
+     * Copy rich text citation (with italics) to clipboard using ClipboardItem API.
+     */
+    function copyRichText() {
+        if (!state.lastResult) return;
+        const btn = document.getElementById('copy-rich');
+
+        const htmlContent = state.lastResult.html;
+        const plainContent = state.lastResult.plain;
+
+        // Try the ClipboardItem API (supports rich text)
+        if (typeof ClipboardItem !== 'undefined') {
+            const htmlBlob = new Blob([htmlContent], { type: 'text/html' });
+            const textBlob = new Blob([plainContent], { type: 'text/plain' });
+            navigator.clipboard.write([
+                new ClipboardItem({ 'text/html': htmlBlob, 'text/plain': textBlob })
+            ]).then(() => {
+                btn.classList.add('copied');
+                btn.textContent = 'Copied!';
+                setTimeout(() => {
+                    btn.classList.remove('copied');
+                    btn.textContent = 'Copy with formatting';
+                }, 2000);
+            }).catch(() => {
+                // Fallback to plain text
+                navigator.clipboard.writeText(plainContent);
+                btn.textContent = 'Copied (plain)';
+                setTimeout(() => { btn.textContent = 'Copy with formatting'; }, 2000);
+            });
+        } else {
+            // Fallback for browsers without ClipboardItem
+            navigator.clipboard.writeText(plainContent);
+            btn.textContent = 'Copied (plain)';
+            setTimeout(() => { btn.textContent = 'Copy with formatting'; }, 2000);
+        }
+    }
+
+    /**
+     * Handle the "Edit details" button — populate the manual form with
+     * data from the last lookup, switch to the correct source type, and scroll.
+     */
+    function handleEditDetails() {
+        if (!state.lookupData) return;
+        const data = state.lookupData;
+        const st = data.sourceType || 'journal';
+
+        // Switch source type and tab
+        selectSourceType(st);
+        switchTab('manual');
+
+        // Build form with prefill data
+        const prefill = mapLookupToFormData(data);
+        buildForm(st, prefill);
+
+        // Scroll to the form
+        document.getElementById('manual-form').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    /**
+     * Map API lookup data to the field IDs used in the form.
+     */
+    function mapLookupToFormData(data) {
+        const st = data.sourceType || 'journal';
+        const mapped = {
+            authors: data.authors || [],
+            editors: data.editors || [],
+            authorMode: 'person',
+        };
+
+        switch (st) {
+            case 'journal':
+                mapped.title = data.title || '';
+                mapped.journalName = data.containerTitle || '';
+                mapped.year = data.year || '';
+                mapped.volume = data.volume || '';
+                mapped.issue = data.issue || '';
+                mapped.pages = data.pages || '';
+                mapped.doi = data.doi || '';
+                break;
+            case 'book':
+                mapped.title = data.title || '';
+                mapped.year = data.year || '';
+                mapped.edition = data.edition || '';
+                mapped.publisher = data.publisher || '';
+                mapped.place = data.publishPlace || '';
+                mapped.doi = data.doi || '';
+                break;
+            case 'chapter':
+                mapped.chapterTitle = data.title || '';
+                mapped.year = data.year || '';
+                mapped.bookTitle = data.containerTitle || '';
+                mapped.publisher = data.publisher || '';
+                mapped.place = data.publishPlace || '';
+                mapped.doi = data.doi || '';
+                break;
+            case 'website':
+                mapped.title = data.title || '';
+                mapped.websiteName = data.websiteName || '';
+                mapped.year = data.year || '';
+                mapped.accessDate = data.accessDate || getTodayFormatted();
+                mapped.url = data.url || '';
+                break;
+            case 'report':
+                mapped.title = data.title || '';
+                mapped.year = data.year || '';
+                mapped.governmentName = data.governmentName || '';
+                mapped.accessDate = data.accessDate || getTodayFormatted();
+                mapped.url = data.url || '';
+                break;
+            case 'newspaper':
+                mapped.title = data.title || '';
+                mapped.publicationName = data.containerTitle || data.publicationName || '';
+                mapped.fullDate = data.fullDate || data.year || '';
+                mapped.accessDate = data.accessDate || '';
+                mapped.url = data.url || '';
+                break;
+        }
+
+        return mapped;
+    }
+
+    /**
+     * Save all current form field values and author state for the given source type.
+     * Called before switching to a different source type so values persist.
+     */
+    function saveFormState(type) {
+        if (!type || !SOURCE_FIELDS[type]) return;
+        const saved = {};
+
+        // Save author component state (legislation has no author component)
+        if (document.getElementById('ac-author')) {
+            const authorData = getAuthorData('ac-author');
+            saved.authorMode = authorData.authorMode;
+            saved.authors = authorData.authors;
+            saved.orgAbbrev = authorData.orgAbbrev;
+            saved.orgFull = authorData.orgFull;
+        }
+
+        // Save editor state for chapters
+        if (type === 'chapter') {
+            const editorData = getAuthorData('ac-editor');
+            saved.editors = editorData.authors;
+        }
+
+        // Save all visible field values
+        for (const field of SOURCE_FIELDS[type]) {
+            if (field.id.startsWith('_')) continue;
+            const el = document.getElementById(`field-${type}-${field.id}`);
+            if (el) saved[field.id] = el.type === 'checkbox' ? el.checked : el.value;
+        }
+
+        formState[type] = saved;
+    }
+
+    /**
+     * When switching to a type for the first time, seed its formState from the
+     * previous type's state — copying author data and any field values whose id
+     * exists in both types. Only runs when formState[toType] is undefined.
+     */
+    function seedFormState(fromType, toType) {
+        if (formState[toType] || !formState[fromType] || !SOURCE_FIELDS[toType]) return;
+
+        const from = formState[fromType];
+        const seed = {};
+
+        // Copy author component state
+        if (from.authorMode !== undefined) seed.authorMode = from.authorMode;
+        if (from.authors)                  seed.authors    = from.authors;
+        if (from.orgAbbrev !== undefined)  seed.orgAbbrev  = from.orgAbbrev;
+        if (from.orgFull !== undefined)    seed.orgFull    = from.orgFull;
+
+        // Copy field values whose id exists in the target type
+        const toFieldIds = new Set(
+            SOURCE_FIELDS[toType].map(f => f.id).filter(id => !id.startsWith('_'))
+        );
+        for (const id of toFieldIds) {
+            if (from[id] !== undefined && from[id] !== '') seed[id] = from[id];
+        }
+
+        formState[toType] = seed;
+    }
+
+    /**
+     * Select a source type button and update state.
+     */
+    function selectSourceType(type) {
+        state.sourceType = type;
+        document.querySelectorAll('.source-type-btn').forEach(btn => {
+            const isActive = btn.dataset.type === type;
+            btn.classList.toggle('active', isActive);
+            btn.setAttribute('aria-checked', isActive ? 'true' : 'false');
+        });
+    }
+
+    // ===== SMART PASTE HANDLER =====
+
+    async function handleSmartPaste() {
+        const input = document.getElementById('smart-input').value.trim();
+        if (!input) {
+            showStatus('Please paste a DOI, ISBN, or URL.', 'error');
+            return;
+        }
+
+        const inputType = detectInputType(input);
+        const lookupBtn = document.getElementById('lookup-btn');
+        lookupBtn.disabled = true;
+
+        try {
+            if (inputType === 'doi') {
+                showStatus('Looking up DOI...', 'loading');
+                const data = await fetchFromCrossRef(input);
+                state.lookupData = data;
+
+                // Auto-select source type
+                selectSourceType(data.sourceType);
+                buildForm(data.sourceType, mapLookupToFormData(data));
+
+                // Format and display
+                const formData = collectFormData();
+                const result = formatCitation(data.sourceType, formData);
+                displayResult(result);
+                showStatus('Citation generated from DOI. Review the details below and edit if needed.', 'success');
+
+            } else if (inputType === 'isbn') {
+                showStatus('Looking up ISBN...', 'loading');
+                const data = await lookupISBN(input);
+                state.lookupData = data;
+
+                selectSourceType('book');
+                buildForm('book', mapLookupToFormData(data));
+
+                const formData = collectFormData();
+                const result = formatCitation('book', formData);
+                displayResult(result);
+                showStatus('Citation generated from ISBN. Review the details below and edit if needed.', 'success');
+
+            } else if (inputType === 'url') {
+                // Pre-fill URL and access date, suggest source type
+                const suggestedType = suggestTypeFromURL(input);
+                selectSourceType(suggestedType);
+
+                // Look up organisation from domain table
+                const orgMatch = lookupGovAuOrg(input);
+
+                const prefill = {
+                    url: input,
+                    accessDate: getTodayFormatted(),
+                    authors: [{ given: '', family: '' }],
+                    ...(orgMatch ? {
+                        authorMode: 'organisation',
+                        orgFull: orgMatch.full,
+                        orgAbbrev: orgMatch.abbrev,
+                        websiteName: orgMatch.abbrev || orgMatch.full,
+                    } : {}),
+                };
+
+                // Style Manual pages: override websiteName and pre-fill series
+                try {
+                    const smUrl = new URL(input);
+                    const smHostname = smUrl.hostname.toLowerCase().replace(/^www\./, '');
+                    if (smHostname === 'stylemanual.gov.au' && smUrl.pathname !== '/' && smUrl.pathname !== '') {
+                        prefill.websiteName = 'stylemanual.gov.au';
+                        prefill.series = 'Australian Government style manual';
+                    }
+                } catch {}
+
+                buildForm(suggestedType, prefill);
+                switchTab('manual');
+
+                // Scroll to form
+                document.getElementById('manual-form').scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+                const displayType = TYPE_DISPLAY_NAMES[suggestedType] || suggestedType;
+                const orgNotice = orgMatch ? ` Organisation identified as \u2018${orgMatch.abbrev || orgMatch.full}\u2019.` : '';
+
+                // Set loading placeholder on the title field while fetching
+                const titleField = document.getElementById(`field-${suggestedType}-title`);
+                if (titleField && !titleField.value) {
+                    titleField.placeholder = 'Trying to fetch page title\u2026';
+                }
+
+                showUrlNotice(
+                    `URL detected.${orgNotice} We\u2019ve suggested \u2018${displayType}\u2019 as the source type and pre-filled the URL and access date. Trying to fetch page title\u2026`
+                );
+
+                // Try to fetch the page title (best effort, fails gracefully)
+                fetchPageTitle(input).then(result => {
+                    if (!titleField) return;
+                    if (result) {
+                        titleField.value = result.title;
+                        titleField.placeholder = '';
+                        if (result.isHint) {
+                            const parent = titleField.closest('.form-field');
+                            if (parent) {
+                                let helpEl = parent.querySelector('.help-text');
+                                if (!helpEl) {
+                                    helpEl = document.createElement('p');
+                                    helpEl.className = 'help-text';
+                                    parent.appendChild(helpEl);
+                                }
+                                helpEl.innerHTML = 'Title inferred from URL \u2013 please verify. <a href="help.html#url-title" target="_blank">Why didn\u2019t it fetch the real title?</a>';
+                            }
+                            showUrlNotice(
+                                `URL detected.${orgNotice} We\u2019ve suggested \u2018${displayType}\u2019 as the source type and pre-filled the URL and access date. A title has been inferred from the URL \u2013 please check and correct it if needed.`
+                            );
+                        } else {
+                            showUrlNotice(
+                                `URL detected.${orgNotice} We\u2019ve suggested \u2018${displayType}\u2019 as the source type and pre-filled the URL, access date, and page title. Check if this is the appropriate type and review the pre-filled fields.`
+                            );
+                        }
+                    } else {
+                        titleField.placeholder = '';
+                        const parent = titleField.closest('.form-field');
+                        if (parent) {
+                            let helpEl = parent.querySelector('.help-text');
+                            if (!helpEl) {
+                                helpEl = document.createElement('p');
+                                helpEl.className = 'help-text';
+                                parent.appendChild(helpEl);
+                            }
+                            helpEl.innerHTML = 'Page title couldn\u2019t be retrieved automatically \u2013 <a href="help.html#url-title" target="_blank">why not?</a> Copy the title from the page and paste it in.';
+                        }
+                        showUrlNotice(
+                            `URL detected.${orgNotice} We\u2019ve suggested \u2018${displayType}\u2019 as the source type and pre-filled the URL and access date. Check if this is the appropriate type and complete the remaining fields.`
+                        );
+                    }
+                });
+
+            } else {
+                showStatus(
+                    'Could not identify the input as a DOI, ISBN, or URL. Please check the format or use the manual entry form below.',
+                    'error'
+                );
+            }
+        } catch (err) {
+            showStatus(err.message, 'error');
+        } finally {
+            lookupBtn.disabled = false;
+        }
+    }
+
+    // ===== LINK TITLES =====
+
+    function escHtmlText(str) {
+        return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    function escRegex(str) {
+        return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+
+    /**
+     * Clean Word HTML paste: normalise italic markup, strip noise, return <p>-wrapped blocks.
+     */
+    function cleanWordHtml(html) {
+        // Parse italic class names from the Word <style> block BEFORE extracting fragment.
+        // Word applies italics via class (e.g. .MsoItalic) not always inline style.
+        const italicClasses = new Set();
+        const styleBlock = html.match(/<style[^>]*>([\s\S]*?)<\/style>/i);
+        if (styleBlock) {
+            const ruleRe = /([^{}]+)\{[^}]*font-style\s*:\s*italic[^}]*\}/gi;
+            let m;
+            while ((m = ruleRe.exec(styleBlock[1])) !== null) {
+                m[1].split(',').forEach(sel => {
+                    (sel.trim().match(/\.([\w-]+)/g) || []).forEach(c => italicClasses.add(c.slice(1)));
+                });
+            }
+        }
+
+        // Extract just the fragment content
+        const start = html.indexOf('<!--StartFragment-->');
+        const end = html.indexOf('<!--EndFragment-->');
+        if (start !== -1 && end !== -1) html = html.slice(start + 20, end);
+
+        const div = document.createElement('div');
+        div.innerHTML = html;
+
+        // Remove Word noise elements
+        div.querySelectorAll('o\\:p, xml, head, style, script, meta').forEach(el => el.remove());
+
+        // Convert class-based italic elements (e.g. class="MsoItalic") → <em>
+        if (italicClasses.size > 0) {
+            div.querySelectorAll('[class]').forEach(el => {
+                const cls = (el.getAttribute('class') || '').split(/\s+/);
+                if (cls.some(c => italicClasses.has(c))) {
+                    const em = document.createElement('em');
+                    em.innerHTML = el.innerHTML;
+                    el.replaceWith(em);
+                }
+            });
+        }
+
+        // Convert <span style="font-style:italic"> → <em>
+        div.querySelectorAll('span[style]').forEach(span => {
+            if (/font-style\s*:\s*italic/i.test(span.getAttribute('style') || '')) {
+                const em = document.createElement('em');
+                em.innerHTML = span.innerHTML;
+                span.replaceWith(em);
+            }
+        });
+
+        // Convert <i> → <em>
+        div.querySelectorAll('i').forEach(el => {
+            const em = document.createElement('em');
+            em.innerHTML = el.innerHTML;
+            el.replaceWith(em);
+        });
+
+        // Clean <a> elements: keep only href, remove internal/comment links
+        div.querySelectorAll('a').forEach(a => {
+            const href = a.getAttribute('href') || '';
+            [...a.attributes].forEach(attr => { if (attr.name !== 'href') a.removeAttribute(attr.name); });
+            if (!href || href.startsWith('mailto:') || href.includes('file:') || href.startsWith('#')) {
+                a.replaceWith(document.createTextNode(a.textContent));
+            }
+        });
+
+        // Strip remaining spans (keep content)
+        div.querySelectorAll('span').forEach(span => span.replaceWith(...Array.from(span.childNodes)));
+
+        // Strip other formatting tags except em/strong/a, keeping their content
+        div.querySelectorAll('b, strong').forEach(el => {
+            const s = document.createElement('strong');
+            s.innerHTML = el.innerHTML;
+            el.replaceWith(s);
+        });
+        ['u', 'sub', 'sup', 'font', 'div'].forEach(tag => {
+            div.querySelectorAll(tag).forEach(el => el.replaceWith(...Array.from(el.childNodes)));
+        });
+
+        // Collect <p> and <li> blocks
+        const blocks = [...div.querySelectorAll('p, li')]
+            .map(el => el.innerHTML.trim().replace(/&nbsp;/g, ' ').replace(/\s+/g, ' '))
+            .filter(html => html.replace(/<[^>]+>/g, '').trim());
+
+        if (blocks.length > 0) return blocks.map(b => `<p>${b}</p>`).join('');
+
+        // Fallback: return div content as-is
+        return div.innerHTML;
+    }
+
+    /** Split the contenteditable div's HTML into per-reference HTML strings. */
+    function splitHtmlBlocks(containerHtml) {
+        const div = document.createElement('div');
+        div.innerHTML = containerHtml;
+        const paras = [...div.querySelectorAll('p')];
+        if (paras.length > 0) {
+            return paras
+                .map(p => p.innerHTML.trim().replace(/&nbsp;/g, ' ').replace(/\s+/g, ' '))
+                .filter(h => h.replace(/<[^>]+>/g, '').trim());
+        }
+        // Fallback: split on <br> or line breaks
+        return containerHtml
+            .split(/<br\s*\/?>/i)
+            .map(s => s.replace(/<[^>]+>/g, '').trim())
+            .filter(Boolean);
+    }
+
+    /**
+     * Extract a trailing non-DOI URL from plain text.
+     * Returns { url: string|null }.
+     */
+    function extractTrailingUrl(textContent) {
+        const allUrls = [...textContent.matchAll(/https?:\/\/[^\s<>,"]+/gi)];
+        if (allUrls.length === 0) return { url: null };
+
+        const lastMatch = allUrls[allUrls.length - 1];
+        const rawUrl = lastMatch[0].replace(/[.,;)\]>]+$/, '');
+
+        // Treat doi.org links as DOIs — leave unchanged
+        if (/^https?:\/\/(dx\.)?doi\.org\//i.test(rawUrl)) return { url: null };
+
+        return { url: rawUrl };
+    }
+
+    /**
+     * Find the title span in plain text (used for quoted-title fallback).
+     * Returns { titleText, isQuoted } or null.
+     */
+    function findTitleSpan(refText) {
+        // Primary: (2023) or (2023a)
+        let yearMatch = refText.match(/\(\d{4}[a-z]?\)/);
+        let afterYear;
+        if (yearMatch) {
+            afterYear = yearMatch.index + yearMatch[0].length;
+        } else {
+            // Secondary: (unpublished) or (n.d.) used as year-equivalents in AGSM
+            const specialMatch = refText.match(/\((unpublished|n\.d\.)\)/i);
+            if (specialMatch) {
+                afterYear = specialMatch.index + specialMatch[0].length;
+            } else {
+                // Fallback: bare year inside a parenthetical like (19 October 2023)
+                yearMatch = refText.match(/\b\d{4}\b/);
+                if (!yearMatch) return null;
+                afterYear = yearMatch.index + yearMatch[0].length;
+                // Skip to end of the enclosing parenthetical
+                const parenClose = refText.indexOf(')', yearMatch.index);
+                if (parenClose !== -1) afterYear = parenClose + 1;
+            }
+        }
+
+        // Skip whitespace/punctuation after year
+        let pos = afterYear;
+        while (pos < refText.length && /[\s,.]/.test(refText[pos])) pos++;
+        if (pos >= refText.length) return null;
+
+        const ch = refText[pos];
+        const isOpenQuote = ch === "'" || ch === '‘' || ch === '’';
+
+        if (isOpenQuote) {
+            const titleStart = pos;
+            pos++;
+            while (pos < refText.length) {
+                const c = refText[pos];
+                if (c === "'" || c === '‘' || c === '’') {
+                    const next = refText[pos + 1];
+                    if (!next || next === ',' || next === '.' || next === ' ') {
+                        return {
+                            titleText: refText.slice(titleStart, pos + 1),
+                            isQuoted: true
+                        };
+                    }
+                }
+                pos++;
+            }
+            return null;
+        } else {
+            const titleStart = pos;
+            // Stop at first comma or '[' (handles "[media release]" etc.)
+            const endMatch = refText.slice(titleStart).search(/[,\[]/);
+            const titleEnd = endMatch === -1 ? refText.length : titleStart + endMatch;
+            if (titleEnd <= titleStart) return null;
+            return { titleText: refText.slice(titleStart, titleEnd).trimEnd(), isQuoted: false };
+        }
+    }
+
+    /** Remove the trailing URL from a DOM block (handles <a> element or plain text). */
+    function removeUrlFromBlock(div, url) {
+        const escapedUrl = escRegex(url);
+
+        // Case 1: URL exists as an <a> element (Word auto-links URLs)
+        for (const a of [...div.querySelectorAll('a')].reverse()) {
+            const href = (a.getAttribute('href') || '').replace(/[.,;)]+$/, '');
+            const text = a.textContent.trim().replace(/^[<\s]+|[>.\s]+$/g, '');
+            if (href === url || text === url || href.replace(/[.,;)]+$/, '') === url) {
+                // Remove preceding ', ' and any angle-bracket in text node before it
+                const prev = a.previousSibling;
+                if (prev && prev.nodeType === Node.TEXT_NODE) {
+                    prev.nodeValue = prev.nodeValue.replace(/[,\s]*[<]?\s*$/, '');
+                }
+                const next = a.nextSibling;
+                if (next && next.nodeType === Node.TEXT_NODE) {
+                    next.nodeValue = next.nodeValue.replace(/^[>).,\s]*/, '');
+                }
+                a.remove();
+                ensureTrailingPeriod(div);
+                return;
+            }
+        }
+
+        // Case 2: URL is plain text
+        const walker = document.createTreeWalker(div, NodeFilter.SHOW_TEXT);
+        const nodes = [];
+        let n; while (n = walker.nextNode()) nodes.push(n);
+        for (let i = nodes.length - 1; i >= 0; i--) {
+            const tn = nodes[i];
+            const t = tn.nodeValue;
+            if (t.includes(url) || /<https?:\/\//.test(t) || /https?:\/\//.test(t)) {
+                tn.nodeValue = t
+                    .replace(/,?\s*<https?:\/\/[^>]+>\s*\.?$/, '')
+                    .replace(new RegExp(',?\\s*' + escapedUrl + '[.,;)]*\\s*\\.?$'), '')
+                    .replace(/,?\s*https?:\/\/\S+\s*\.?$/, '')
+                    .trimEnd();
+                ensureTrailingPeriod(div);
+                return;
+            }
+        }
+    }
+
+    function ensureTrailingPeriod(div) {
+        const walker = document.createTreeWalker(div, NodeFilter.SHOW_TEXT);
+        let last = null, n;
+        while (n = walker.nextNode()) { if (n.nodeValue.trim()) last = n; }
+        if (last) {
+            last.nodeValue = last.nodeValue.trimEnd();
+            if (!last.nodeValue.endsWith('.')) last.nodeValue += '.';
+        }
+    }
+
+    /** Add a hyperlink to the title within a DOM block. */
+    function hyperlinkTitleInBlock(div, url) {
+        const span = findTitleSpan(div.textContent);
+
+        if (span && span.isQuoted) {
+            // Quoted title ('Article title'): link only the inner text, keep quotes outside
+            const inner = span.titleText.slice(1, -1);
+            const walker = document.createTreeWalker(div, NodeFilter.SHOW_TEXT);
+            let node;
+            while (node = walker.nextNode()) {
+                const idx = node.nodeValue.indexOf(span.titleText);
+                if (idx === -1) continue;
+                const before = node.nodeValue.slice(0, idx + 1); // keep opening quote
+                const after  = node.nodeValue.slice(idx + span.titleText.length - 1); // keep closing quote
+                const a = document.createElement('a');
+                a.href = url; a.target = '_blank'; a.rel = 'noopener';
+                a.appendChild(document.createTextNode(inner));
+                const parent = node.parentNode;
+                if (before) parent.insertBefore(document.createTextNode(before), node);
+                parent.insertBefore(a, node);
+                if (after) parent.insertBefore(document.createTextNode(after), node);
+                parent.removeChild(node);
+                return true;
+            }
+        }
+
+        // Unquoted title: first <em>/<i> not already inside an <a> (report/book/webpage)
+        const emEls = [...div.querySelectorAll('em, i')].filter(el => !el.closest('a'));
+        if (emEls.length > 0) {
+            const a = document.createElement('a');
+            a.href = url; a.target = '_blank'; a.rel = 'noopener';
+            emEls[0].parentNode.insertBefore(a, emEls[0]);
+            a.appendChild(emEls[0]);
+            return true;
+        }
+
+        // Last resort: unquoted plain-text title (e.g. media release with no italics)
+        // Wrap in <em> per AGSM: unquoted titles are italic.
+        if (span) {
+            const walker = document.createTreeWalker(div, NodeFilter.SHOW_TEXT);
+            let node;
+            while (node = walker.nextNode()) {
+                const idx = node.nodeValue.indexOf(span.titleText);
+                if (idx === -1) continue;
+                const before = node.nodeValue.slice(0, idx);
+                const after  = node.nodeValue.slice(idx + span.titleText.length);
+                const em = document.createElement('em');
+                em.textContent = span.titleText;
+                const a = document.createElement('a');
+                a.href = url; a.target = '_blank'; a.rel = 'noopener';
+                a.appendChild(em);
+                const parent = node.parentNode;
+                if (before) parent.insertBefore(document.createTextNode(before), node);
+                parent.insertBefore(a, node);
+                if (after) parent.insertBefore(document.createTextNode(after), node);
+                parent.removeChild(node);
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Shared helper: find targetText in div's text nodes (skipping existing <em>/<i>)
+     * and wrap it in a new <em>. Returns true if wrapped.
+     */
+    function wrapPlainTextInEm(div, targetText, skipExistingItalic = true) {
+        if (!targetText || targetText.length < 2) return false;
+        const walker = document.createTreeWalker(div, NodeFilter.SHOW_TEXT);
+        let node;
+        while (node = walker.nextNode()) {
+            if (skipExistingItalic && node.parentElement && node.parentElement.closest('em, i')) continue;
+            const idx = node.nodeValue.indexOf(targetText);
+            if (idx === -1) continue;
+            const before = node.nodeValue.slice(0, idx);
+            const after  = node.nodeValue.slice(idx + targetText.length);
+            const em = document.createElement('em');
+            em.textContent = targetText;
+            const parent = node.parentNode;
+            if (before) parent.insertBefore(document.createTextNode(before), node);
+            parent.insertBefore(em, node);
+            if (after) parent.insertBefore(document.createTextNode(after), node);
+            parent.removeChild(node);
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * For journal/newspaper articles (quoted title): ensure the name immediately
+     * after the closing quote + ', ' is italic. Skips book chapters ('in …').
+     */
+    function ensureJournalNameItalic(div) {
+        const text = div.textContent;
+        const span = findTitleSpan(text);
+        if (!span || !span.isQuoted) return false;
+
+        const titleIdx = text.indexOf(span.titleText);
+        if (titleIdx === -1) return false;
+        let pos = titleIdx + span.titleText.length;
+
+        // Skip ', '
+        if (pos < text.length && text[pos] === ',') pos++;
+        while (pos < text.length && text[pos] === ' ') pos++;
+
+        // Book chapters handled separately
+        if (/^in\s/i.test(text.slice(pos))) return false;
+
+        const nextComma = text.indexOf(',', pos);
+        if (nextComma === -1) return false;
+        const journalName = text.slice(pos, nextComma).trim();
+        return wrapPlainTextInEm(div, journalName);
+    }
+
+    /**
+     * For book chapters (quoted chapter title): ensure the book title is italic.
+     * AGSM pattern: 'Chapter title', in [Editor (ed.),] Book Title, Publisher.
+     * If a segment containing '(ed' appears after 'in ', that's the editor — skip
+     * it and take the next segment as the book title.
+     */
+    function ensureBookTitleItalic(div) {
+        const text = div.textContent;
+        const span = findTitleSpan(text);
+        if (!span || !span.isQuoted) return false;
+
+        const titleIdx = text.indexOf(span.titleText);
+        if (titleIdx === -1) return false;
+        let pos = titleIdx + span.titleText.length;
+
+        // Must be followed by ', in '
+        const afterTitle = text.slice(pos);
+        const inMatch = afterTitle.match(/^,\s*in\s+/i);
+        if (!inMatch) return false;
+        pos += inMatch[0].length;
+
+        // First segment after 'in '
+        const c1 = text.indexOf(',', pos);
+        if (c1 === -1) return false;
+        const seg1 = text.slice(pos, c1).trim();
+
+        // If segment contains editor marker like (ed.) or (eds), skip to next segment
+        if (/\(eds?\.?\)/i.test(seg1)) {
+            const c2 = text.indexOf(',', c1 + 1);
+            if (c2 === -1) return false;
+            let bookStart = c1 + 1;
+            while (bookStart < text.length && text[bookStart] === ' ') bookStart++;
+            const bookTitle = text.slice(bookStart, c2).trim();
+            return wrapPlainTextInEm(div, bookTitle);
+        }
+
+        // No editor — seg1 is the book title
+        return wrapPlainTextInEm(div, seg1);
+    }
+
+    /**
+     * For unquoted-title references (reports, books, datasets) where the block
+     * has NO italic elements at all: find the title span and wrap it in <em>.
+     */
+    function ensureUnquotedTitleItalic(div) {
+        if (div.querySelector('em, i')) return false;
+        const text = div.textContent;
+        const span = findTitleSpan(text);
+        if (!span || span.isQuoted) return false;
+        return wrapPlainTextInEm(div, span.titleText.trim(), false);
+    }
+
+    /** Process a single HTML reference block. */
+    function processReferenceHtml(blockHtml) {
+        const div = document.createElement('div');
+        div.innerHTML = blockHtml;
+
+        // Always normalise italics per AGSM rules (runs even for refs with no URL)
+        ensureJournalNameItalic(div);
+        ensureBookTitleItalic(div);
+        ensureUnquotedTitleItalic(div);
+
+        const { url } = extractTrailingUrl(div.textContent);
+        if (!url) return { html: div.innerHTML, changed: false, skipped: false };
+
+        removeUrlFromBlock(div, url);
+        const linked = hyperlinkTitleInBlock(div, url);
+
+        return {
+            html: div.innerHTML,
+            changed: true,
+            skipped: !linked,
+            skipReason: linked ? '' : 'URL removed but title could not be located – please add hyperlink manually.'
+        };
+    }
+
+    /** Process the full contenteditable content. */
+    function processReferenceList(containerHtml) {
+        return splitHtmlBlocks(containerHtml).map(processReferenceHtml);
+    }
+
+    /** Render processed results into the DOM. */
+    function renderFixResults(results) {
+        fixResults = results;
+        const changedCount = results.filter(r => r.changed).length;
+        const skippedCount = results.filter(r => r.skipped).length;
+        const total = results.length;
+
+        let summaryHtml;
+        if (total === 0) {
+            summaryHtml = 'No references found. Make sure references are separated by blank lines.';
+        } else if (changedCount === 0 && skippedCount === 0) {
+            summaryHtml = 'No references with trailing URLs were found.';
+        } else {
+            summaryHtml = `<strong>${changedCount} of ${total}</strong> reference${changedCount !== 1 ? 's' : ''} updated.`;
+            if (skippedCount > 0) {
+                summaryHtml += ` ${skippedCount} had URLs removed but title could not be auto-linked (shown with amber border).`;
+            }
+        }
+        document.getElementById('fix-summary').innerHTML = summaryHtml;
+
+        document.getElementById('fix-ref-list').innerHTML = results.map(r => {
+            const cls = r.changed ? (r.skipped ? 'skipped' : 'changed') : '';
+            const note = r.skipped ? ` <span class="fix-skip-reason"> — ${escHtmlText(r.skipReason)}</span>` : '';
+            return `<div class="fix-ref-item${cls ? ' ' + cls : ''}">${r.html}${note}</div>`;
+        }).join('');
+
+        const area = document.getElementById('fix-result-area');
+        area.classList.add('visible');
+        area.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    /** Copy all processed references as rich HTML so hyperlinks survive paste into Word. */
+    function fixCopyAll() {
+        if (!fixResults.length) return;
+        const body = fixResults.map(r => `<p>${r.html}</p>`).join('\n');
+        const htmlPayload = `<html><body>${body}</body></html>`;
+        const plainPayload = fixResults.map(r => {
+            const d = document.createElement('div'); d.innerHTML = r.html; return d.textContent;
+        }).join('\n\n');
+        const btn = document.getElementById('fix-copy-all');
+        if (typeof ClipboardItem !== 'undefined') {
+            navigator.clipboard.write([new ClipboardItem({
+                'text/html':  new Blob([htmlPayload],  { type: 'text/html' }),
+                'text/plain': new Blob([plainPayload], { type: 'text/plain' })
+            })]).then(() => {
+                btn.textContent = 'Copied!'; btn.classList.add('copied');
+                setTimeout(() => { btn.textContent = 'Copy all with formatting'; btn.classList.remove('copied'); }, 2000);
+            }).catch(() => {
+                navigator.clipboard.writeText(plainPayload);
+                btn.textContent = 'Copied (plain)';
+                setTimeout(() => { btn.textContent = 'Copy all with formatting'; }, 2000);
+            });
+        } else {
+            navigator.clipboard.writeText(plainPayload);
+            btn.textContent = 'Copied (plain)';
+            setTimeout(() => { btn.textContent = 'Copy all with formatting'; }, 2000);
+        }
+    }
+
+    // ===== EVENT HANDLERS =====
+
+    /** Switch to a tab by name ('lookup' or 'manual'). */
+    function switchTab(tabName) {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+        const tabBtn = document.querySelector(`.tab[data-tab="${tabName}"]`);
+        if (tabBtn) tabBtn.classList.add('active');
+        const panel = document.getElementById(`${tabName}-panel`);
+        if (panel) panel.classList.add('active');
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        // Tab switching
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                switchTab(tab.dataset.tab);
+            });
+        });
+
+        // Smart paste: Look up button
+        document.getElementById('lookup-btn').addEventListener('click', handleSmartPaste);
+
+        // Smart paste: Enter key
+        document.getElementById('smart-input').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                handleSmartPaste();
+            }
+        });
+
+        // Source type buttons
+        document.querySelectorAll('.source-type-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const previousType = state.sourceType;
+                saveFormState(previousType);              // Persist current values
+                selectSourceType(btn.dataset.type);
+                seedFormState(previousType, state.sourceType);  // Seed on first visit
+                buildForm(state.sourceType, formState[state.sourceType]);  // Restore saved values
+                hideStatus();
+                hideUrlNotice();
+                document.getElementById('result-area').classList.remove('visible');
+            });
+        });
+
+        // Unpublished checkbox — disable year field when ticked (report and dataset only)
+        document.getElementById('manual-form').addEventListener('change', (e) => {
+            if (e.target.type === 'checkbox' && e.target.id.endsWith('-unpublished')) {
+                if (['report', 'dataset'].includes(state.sourceType)) {
+                    const yearField = document.getElementById(`field-${state.sourceType}-year`);
+                    if (yearField) yearField.disabled = e.target.checked;
+                }
+            }
+        });
+
+        // Generate citation button
+        document.getElementById('generate-btn').addEventListener('click', () => {
+            const data = collectFormData();
+
+            // Validate: need at least an author (not applicable to legislation)
+            if (state.sourceType !== 'legislation') {
+                if (data.authorMode === 'person' && (!data.authors || data.authors.length === 0)) {
+                    showStatus('Please enter at least one author.', 'error');
+                    return;
+                }
+                if (data.authorMode === 'organisation' && !data.orgFull && !data.orgAbbrev) {
+                    showStatus('Please enter the organisation name.', 'error');
+                    return;
+                }
+            }
+
+            hideStatus();
+            const result = formatCitation(state.sourceType, data);
+            displayResult(result);
+        });
+
+        // Copy buttons
+        document.getElementById('copy-plain').addEventListener('click', copyPlainText);
+        document.getElementById('copy-rich').addEventListener('click', copyRichText);
+
+        // Edit details button
+        document.getElementById('edit-details-btn').addEventListener('click', handleEditDetails);
+
+        // New citation button
+        document.getElementById('new-citation-btn').addEventListener('click', resetAll);
+
+        // Sentence case buttons (delegated)
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('sentence-case-btn')) {
+                const targetId = e.target.dataset.target;
+                const input = document.getElementById(targetId);
+                if (input) {
+                    input.value = toSentenceCase(input.value);
+                }
+            }
+        });
+
+        // Date auto-formatting: reformat on blur for fullDate and accessDate fields
+        document.getElementById('manual-form').addEventListener('blur', (e) => {
+            const id = e.target.id || '';
+            if (e.target.tagName === 'INPUT' && (id.endsWith('-fullDate') || id.endsWith('-accessDate'))) {
+                const formatted = autoFormatDate(e.target.value);
+                if (formatted !== e.target.value) {
+                    e.target.value = formatted;
+                }
+            }
+        }, true); // Capture phase so blur events bubble up
+
+
+        // === INITIALISATION ===
+        buildForm('journal');
+    });
+    </script>
+<script type="module">
+import { aiParseCitation, AI_ENABLED } from './src/ai.js';
+
+if (AI_ENABLED) {
+    document.getElementById('aiparse-tab').hidden = false;
+
+    const btn = document.getElementById('aiparse-btn');
+    const busy = document.getElementById('aiparse-busy');
+    const errEl = document.getElementById('aiparse-error');
+
+    function toPrefill(res) {
+        const f = res.fields || {};
+        const prefill = {};
+        for (const key of ['title','chapterTitle','bookTitle','journalName','year',
+            'volume','issue','pages','doi','url','edition','publisher','place',
+            'websiteName','series','governmentName','publicationName','fullDate',
+            'organisation','conference','university','thesisType','jurisdiction',
+            'accessDate']) {
+            if (f[key]) prefill[key] = String(f[key]);
+        }
+        const authors = Array.isArray(f.authors) ? f.authors : [];
+        if (authors.length && authors[0].org) {
+            prefill.authorMode = 'organisation';
+            prefill.orgFull = authors[0].org || '';
+            prefill.orgAbbrev = authors[0].abbrev || '';
+        } else if (authors.length) {
+            prefill.authorMode = 'person';
+            prefill.authors = authors.map(a => ({
+                given: a.given || '', family: a.family || '' }));
+        }
+        if (Array.isArray(f.editors) && f.editors.length) {
+            prefill.editors = f.editors.map(a => ({
+                given: a.given || '', family: a.family || '' }));
+        }
+        return prefill;
+    }
+
+    btn.addEventListener('click', async () => {
+        const reference = document.getElementById('aiparse-input').value.trim();
+        errEl.hidden = true;
+        if (!reference) {
+            errEl.textContent = 'Paste a reference first.';
+            errEl.hidden = false;
+            return;
+        }
+        btn.disabled = true;
+        busy.hidden = false;
+        try {
+            const res = await aiParseCitation({ reference });
+            const type = res.sourceType in SOURCE_FIELDS ? res.sourceType : 'website';
+            selectSourceType(type);
+            buildForm(type, toPrefill(res));
+            switchTab('manual');
+            document.getElementById('manual-form').scrollIntoView({ block: 'start' });
+            const label = TYPE_DISPLAY_NAMES[type] || type;
+            showUrlNotice('✦ AI read this as a ' + label +
+                (res.confidence === 'low' ? ' (low confidence - check the source type buttons above)' : '') +
+                ' and filled in the form. Check every field, then select Generate citation - the citation itself is built by the deterministic formatter, not the AI.');
+        } catch (err) {
+            errEl.textContent = err.message;
+            errEl.hidden = false;
+        } finally {
+            btn.disabled = false;
+            busy.hidden = true;
+        }
+    });
+}
+</script>
+</body>
+</html>
