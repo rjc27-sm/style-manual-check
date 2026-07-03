@@ -35,6 +35,9 @@ body{font-family:'Open Sans',Arial,sans-serif;background:var(--bg);color:var(--c
 .msg-bot ul{margin:0 0 10px 22px;padding:0}
 .msg-bot li{margin-bottom:4px}
 .msg-bot strong{color:var(--b1)}
+.msg-check{display:block;margin-top:8px;padding-top:7px;border-top:1px solid var(--line);
+  font-size:12px;font-weight:600;color:#27854e}
+.msg-check-warn{color:#7a3d18}
 .msg-label{font-size:11.5px;font-weight:700;opacity:.75;display:block;margin-bottom:3px;
   text-transform:uppercase;letter-spacing:.04em}
 
@@ -81,6 +84,7 @@ body{font-family:'Open Sans',Arial,sans-serif;background:var(--bg);color:var(--c
 <nav class="gov-nav" aria-label="Tools">
   <div class="gov-nav-inner">
     <a href="index.html" aria-describedby="tip-check">Check a document<span class="gov-tip" id="tip-check" aria-hidden="true">Upload a Word document and get it back with a review comment on every style issue – formatting untouched.</span></a>
+    <a href="plain.html" aria-describedby="tip-plain">Make it plain<span class="gov-tip" id="tip-plain" aria-hidden="true">Paste a hard-to-read passage and get a plain English rewrite that follows Style Manual conventions.</span></a>
     <a href="lists.html" aria-describedby="tip-lists">Format a list<span class="gov-tip" id="tip-lists" aria-hidden="true">Turn rough bullet points into a correctly punctuated sentence, fragment or stand-alone list.</span></a>
     <a href="citations.html" aria-describedby="tip-cite">Create a citation<span class="gov-tip" id="tip-cite" aria-hidden="true">Build an author–date reference from a DOI, a form or a messy pasted reference.</span></a>
     <a href="ask.html" aria-current="page" aria-describedby="tip-ask">Ask the Style Manual<span class="gov-tip" id="tip-ask" aria-hidden="true">Ask a question and get an answer from Style Manual content with a link to the relevant page.</span></a>
@@ -142,9 +146,35 @@ body{font-family:'Open Sans',Arial,sans-serif;background:var(--bg);color:var(--c
 
 <script type="module">
 import { aiAsk, AI_ENABLED } from './src/ai.js';
+import { verifyText, RULE_COUNT } from './src/verify.js';
 
 const $ = id => document.getElementById(id);
 const history = [];
+
+/**
+ * The homework-marking step: run the deterministic rule engine over the AI
+ * answer, apply its mechanical fixes automatically, and report what happened.
+ * URLs are masked first - they're addresses, not prose.
+ */
+function autoCorrect(text) {
+    const mask = s => s.replace(/https:\/\/[^\s]+/g, m => 'x'.repeat(m.length));
+    let fixes = 0;
+    for (let pass = 0; pass < 3; pass++) {
+        const { issues } = verifyText(mask(text));
+        const fixable = issues.filter(i => i.autoFix && i.autoFix !== i.found);
+        if (fixable.length === 0) break;
+        fixable.sort((a, b) => b.position - a.position);
+        for (const i of fixable) {
+            if (text.slice(i.position, i.position + i.found.length) === i.found) {
+                text = text.slice(0, i.position) + i.autoFix +
+                    text.slice(i.position + i.found.length);
+                fixes++;
+            }
+        }
+    }
+    const remaining = verifyText(mask(text)).issues.length;
+    return { text, fixes, remaining };
+}
 
 function escapeHtml(s) {
     return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;')
@@ -156,7 +186,20 @@ function escapeHtml(s) {
  * the small markdown subset the bot is told to use (bold, '- ' lists,
  * paragraphs) and turn bare stylemanual.gov.au URLs into links.
  */
-function renderAnswer(text) {
+/** Link text per Style Manual convention: 'Page title | Style Manual'. */
+function styleManualLink(u, sources) {
+    let title = sources && sources[u];
+    if (!title) {
+        const slug = u.replace(/\/+$/, '').split('/').pop().replace(/-/g, ' ');
+        title = slug && slug !== 'www.stylemanual.gov.au'
+            ? slug.charAt(0).toUpperCase() + slug.slice(1)
+            : 'Home';
+    }
+    return '<a href="' + u + '" target="_blank" rel="noopener">' +
+        escapeHtml(title) + ' | Style Manual</a>';
+}
+
+function renderAnswer(text, sources) {
     let s = escapeHtml(text);
     s = s.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
     const out = [];
@@ -175,15 +218,26 @@ function renderAnswer(text) {
     if (inList) out.push('</ul>');
     return out.join('').replace(
         /https:\/\/www\.stylemanual\.gov\.au[\w\-\/]*/g,
-        u => '<a href="' + u + '" target="_blank" rel="noopener">' + u + '</a>');
+        u => styleManualLink(u, sources));
 }
 
-function addMsg(role, text) {
+function addMsg(role, text, sources, check) {
     const div = document.createElement('div');
     div.className = 'msg ' + (role === 'user' ? 'msg-user' : 'msg-bot');
+    let checkLine = '';
+    if (check) {
+        const parts = ['✔ Checked against ' + RULE_COUNT + ' Style Manual rules'];
+        if (check.fixes) parts.push(check.fixes + ' automatic ' +
+            (check.fixes === 1 ? 'correction' : 'corrections') + ' applied');
+        const cls = check.remaining ? 'msg-check msg-check-warn' : 'msg-check';
+        if (check.remaining) parts.push(check.remaining + ' possible ' +
+            (check.remaining === 1 ? 'issue' : 'issues') + ' flagged - check the wording');
+        checkLine = '<span class="' + cls + '">' + escapeHtml(parts.join(' · ')) + '</span>';
+    }
     div.innerHTML = '<span class="msg-label">' +
         (role === 'user' ? 'You' : 'Proof Positive') + '</span>' +
-        (role === 'user' ? escapeHtml(text) : renderAnswer(text));
+        (role === 'user' ? escapeHtml(text) : renderAnswer(text, sources)) +
+        checkLine;
     $('chat').appendChild(div);
     div.scrollIntoView({ block: 'nearest' });
 }
@@ -197,11 +251,12 @@ async function ask(question) {
     $('ask-btn').disabled = true;
     $('ask-busy').hidden = false;
     try {
-        const { answer } = await aiAsk({ question, history });
+        const { answer, sources } = await aiAsk({ question, history });
+        const check = autoCorrect(answer);
         history.push({ role: 'user', content: question });
-        history.push({ role: 'assistant', content: answer });
+        history.push({ role: 'assistant', content: check.text });
         if (history.length > 12) history.splice(0, history.length - 12);
-        addMsg('assistant', answer);
+        addMsg('assistant', check.text, sources, check);
     } catch (err) {
         $('ask-error').textContent = err.message;
         $('ask-error').hidden = false;

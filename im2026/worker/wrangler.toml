@@ -14,9 +14,10 @@ binding = "RATE_KV"
 id = "3cace9b99cdd430ba1a873add185c670"
 
 [vars]
-# Lock this down to your GitHub Pages origin once you know it, for example:
-# ALLOWED_ORIGINS = "https://rjc27-sm.github.io"
-ALLOWED_ORIGINS = ""
+# Locked to the GitHub Pages origin (3 July 2026). Browser calls from any
+# other website are refused. To allow local testing temporarily, set this
+# back to "" and redeploy - but re-lock it afterwards.
+ALLOWED_ORIGINS = "https://rjc27-sm.github.io"
 MODEL = "claude-haiku-4-5"
 # Ask answers from scraped Style Manual pages and uses a stronger model.
 ASK_MODEL = "claude-sonnet-5"

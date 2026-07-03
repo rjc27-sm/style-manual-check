@@ -332,13 +332,16 @@ function categoryLabel(c) {
     const labels = {
         'spelling': 'Spelling',
         'punctuation': 'Punctuation',
-        'dates': 'Dates and time',
+        'dates-and-time': 'Dates and time',
         'headings': 'Headings',
         'abbreviations': 'Abbreviations',
-        'government': 'Government terms',
+        'government-terms': 'Government terms',
         'readability': 'Readability',
-        'numbers': 'Numbers and measurements',
-        'lists': 'Lists'
+        'numbers-and-measurements': 'Numbers and measurements',
+        'lists': 'Lists',
+        'inclusive-language': 'Inclusive language',
+        'accessibility': 'Accessibility',
+        'links': 'Links'
     };
     return labels[c] || c.charAt(0).toUpperCase() + c.slice(1);
 }

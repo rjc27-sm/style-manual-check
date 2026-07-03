@@ -194,6 +194,25 @@ set confidence to low.`,
         }
     },
 
+    plain: {
+        system: `You rewrite dense, bureaucratic or complex text into plain English
+for 'Proof Positive', an Australian Government Style Manual tool.
+${AU_STYLE_CORE}
+Rules:
+- Keep every fact, obligation and nuance. Simplify the language, not the
+  meaning. Never add information that is not in the original.
+- Short sentences of 25 words or fewer. Active voice. Everyday words.
+- One idea per paragraph. Front-load the key information.
+- Replace jargon with plain terms, or briefly explain a technical term the
+  first time if it must stay.
+- Use a '- ' dash list only where a list genuinely helps the reader.
+- Your output will be re-checked by a deterministic rule engine.
+- Reply with the rewritten text only. No preamble, no explanation.`,
+        build(body) { return body.passage; },
+        maxChars: 6000,
+        shape: r => ({ rewrite: r.trim() })
+    },
+
     ask: {
         // The extracts are appended to this system prompt per request - see
         // the ask-specific handling in fetch() below.
@@ -322,9 +341,12 @@ export default {
         // ---- retrieval (Ask endpoint): ground the answer in scraped pages ----
         let system = spec.system;
         let model = env.MODEL || DEFAULTS.MODEL;
+        let sources = null;
         if (spec.retrieval) {
             model = env.ASK_MODEL || DEFAULTS.ASK_MODEL;
             const pages = retrievePages(userMsg, 3);
+            sources = {};
+            for (const p of pages) sources[p.u] = p.t;
             const texts = await Promise.all(pages.map(p => fetchPageText(env, p.s)));
             const extracts = texts.filter(Boolean);
             if (extracts.length > 0) {
@@ -372,7 +394,9 @@ export default {
         if (!text) return json({ error: 'The AI returned an empty answer. Try again.' }, 502, cors);
 
         try {
-            return json(spec.shape(text), 200, cors);
+            const result = spec.shape(text);
+            if (sources) result.sources = sources;
+            return json(result, 200, cors);
         } catch {
             return json({ error: 'The AI answer could not be processed. Try again.' }, 502, cors);
         }

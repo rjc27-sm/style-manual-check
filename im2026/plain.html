@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Make it plain – Proof Positive (IM2026)</title>
+<meta name="description" content="Proof Positive, an IM2026 Bureaucrat Bot: paste a hard-to-read passage and get a plain English rewrite that follows Australian Government Style Manual conventions, verified by a deterministic rule engine.">
+<link rel="icon" type="image/png" sizes="32x32" href="assets/style-check-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="assets/style-check-16x16.png">
+<link rel="stylesheet" href="assets/site.css?v=3">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700;800&display=swap');
+:root{
+  --blue:#2d7e98;--b1:#192f38;--b2:#295665;--b4:#61a9be;--b5:#b7d6df;
+  --teal:#27854e;
+  --c1:#2b2d2d;--c2:#4f5152;--c3:#707678;--c4:#9c9fa0;--c5:#cfd1d1;
+  --bg:#f6f7f7;--line:#e3e6e6;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{font-family:'Open Sans',Arial,sans-serif;background:var(--bg);color:var(--c1);
+  font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased}
+[hidden]{display:none !important}
+.wrap{max-width:960px;margin:0 auto;padding:36px 28px 56px}
+.hero h1{font-size:28px;font-weight:800;color:var(--b1);letter-spacing:-.01em;line-height:1.15;margin:0}
+.lede{font-size:15.5px;color:var(--c2);margin:10px 0 0;max-width:680px;line-height:1.65}
+.hero{margin-bottom:26px}
+
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.step-h{display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+.num{width:26px;height:26px;border-radius:999px;background:var(--blue);color:#fff;
+  font:700 13px 'Open Sans',sans-serif;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.step-h h2{font-size:16px;font-weight:700;color:var(--b1);margin:0}
+.step-hint{font-size:12.5px;color:var(--c3)}
+
+.card{background:#fff;border:1px solid var(--line);border-radius:10px;overflow:hidden;
+  box-shadow:0 1px 2px rgba(25,47,56,.04);display:flex;flex-direction:column}
+textarea#plain-input{width:100%;flex:1;min-height:260px;padding:16px 18px;border:0;resize:vertical;
+  font:15px/1.65 'Open Sans',Arial,sans-serif;color:var(--c1)}
+textarea#plain-input::placeholder{color:var(--c4)}
+textarea#plain-input:focus{outline:none;box-shadow:inset 0 0 0 2px var(--b5)}
+.card-foot{border-top:1px solid var(--line);padding:11px 16px;display:flex;gap:10px;
+  align-items:center;flex-wrap:wrap}
+
+#plain-output{flex:1;min-height:260px;padding:16px 18px;font-size:15px;line-height:1.7;
+  color:var(--c1);white-space:pre-wrap}
+#plain-output.empty{color:var(--c4)}
+.copy-btn{font:600 13.5px 'Open Sans',sans-serif;color:var(--b2);background:#fff;
+  border:1px solid var(--c5);border-radius:999px;padding:8px 15px;cursor:pointer}
+.copy-btn:hover{border-color:var(--b4);background:#eef5f7}
+
+#plain-check{margin:14px 0 0;font-size:13px;font-weight:700;color:var(--teal)}
+#plain-check.warn{color:#7a3d18}
+.not-configured{background:#fff8e8;border:1px solid #ecd9a0;border-radius:10px;
+  padding:16px 20px;font-size:14.5px;color:#574410;line-height:1.6;margin-bottom:20px}
+
+@media (max-width:760px){
+  .wrap{padding:26px 18px 44px}
+  .hero h1{font-size:24px}
+  .grid{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<a class="gov-skip" href="#main">Skip to main content</a>
+
+<header class="gov-header">
+  <div class="gov-header-inner">
+    <div class="gov-masthead">
+      <img class="gov-mark" src="assets/style-check-96x96.png" alt="" width="42" height="42">
+      <div>
+        <p class="gov-sitename">Proof Positive <span class="gov-im">IM2026</span></p>
+        <p class="gov-tagline">A Bureaucrat Bot for Innovation Month 2026</p>
+      </div>
+    </div>
+  </div>
+</header>
+<nav class="gov-nav" aria-label="Tools">
+  <div class="gov-nav-inner">
+    <a href="index.html" aria-describedby="tip-check">Check a document<span class="gov-tip" id="tip-check" aria-hidden="true">Upload a Word document and get it back with a review comment on every style issue – formatting untouched.</span></a>
+    <a href="plain.html" aria-current="page" aria-describedby="tip-plain">Make it plain<span class="gov-tip" id="tip-plain" aria-hidden="true">Paste a hard-to-read passage and get a plain English rewrite that follows Style Manual conventions.</span></a>
+    <a href="lists.html" aria-describedby="tip-lists">Format a list<span class="gov-tip" id="tip-lists" aria-hidden="true">Turn rough bullet points into a correctly punctuated sentence, fragment or stand-alone list.</span></a>
+    <a href="citations.html" aria-describedby="tip-cite">Create a citation<span class="gov-tip" id="tip-cite" aria-hidden="true">Build an author–date reference from a DOI, a form or a messy pasted reference.</span></a>
+    <a href="ask.html" aria-describedby="tip-ask">Ask the Style Manual<span class="gov-tip" id="tip-ask" aria-hidden="true">Ask a question and get an answer from Style Manual content with a link to the relevant page.</span></a>
+  </div>
+</nav>
+
+<main class="wrap" id="main">
+  <header class="hero">
+    <h1>Make it plain ✦</h1>
+    <p class="lede">Paste a passage that's hard to read – dense, jargon-heavy
+      or tangled – and get a plain English rewrite that keeps the meaning and
+      follows Style Manual conventions. The rewrite is AI-drafted, then checked
+      against the deterministic rule engine before you see it. Review it before
+      use, and don't paste sensitive or personal information.</p>
+  </header>
+
+  <div class="not-configured" id="not-configured" hidden>
+    AI features are not switched on for this copy of the tool, so this page is
+    unavailable. The <a href="index.html">document checker</a>,
+    <a href="lists.html">list formatter</a> and
+    <a href="citations.html">citation generator</a> all work without AI.
+  </div>
+
+  <div class="grid">
+    <section>
+      <div class="step-h"><span class="num">1</span><h2>Your text</h2>
+        <span class="step-hint">up to about 900 words</span></div>
+      <div class="card">
+        <label for="plain-input" style="position:absolute;left:-9999px">Text to rewrite</label>
+        <textarea id="plain-input" maxlength="5800"
+          placeholder="Paste the passage here. Example: 'Pursuant to the aforementioned provisions, lodgement of the requisite documentation must be effected prior to the expiration of the nominated timeframe.'"></textarea>
+        <div class="card-foot">
+          <button class="ai-btn" id="plain-btn" type="button"><span class="ai-star" aria-hidden="true">✦</span>Make it plain</button>
+          <span class="ai-busy" id="plain-busy" hidden role="status">✦ Rewriting…</span>
+        </div>
+      </div>
+    </section>
+    <section>
+      <div class="step-h"><span class="num">2</span><h2>Plain English version</h2>
+        <span class="step-hint">checked by the rule engine</span></div>
+      <div class="card">
+        <div id="plain-output" class="empty" aria-live="polite">The rewrite will appear here.</div>
+        <div class="card-foot">
+          <button class="copy-btn" id="plain-copy" type="button" hidden>Copy rewrite</button>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <p id="plain-check" hidden role="status"></p>
+  <p class="ai-error" id="plain-error" hidden role="alert"></p>
+  <p class="ai-disclaimer" style="max-width:680px">The rewrite is generated by
+    the Claude API from the text you paste; it is not used to train models.
+    AI can misread nuance – always compare the rewrite with your original
+    before using it. Mechanical style breaches are corrected automatically by
+    the rule engine and noted below the result.</p>
+</main>
+
+<footer class="gov-footer">
+  <div class="gov-footer-inner">
+    <h2>About this bot</h2>
+    <p>Proof Positive (IM2026) is an entry in the APS Innovation Month 2026
+      ‘Build a Bureaucrat Bot’ challenge. It is a personal project, not an
+      official government service, and it does not replace editorial judgement
+      or the <a href="https://www.stylemanual.gov.au" rel="noopener">Australian
+      Government Style Manual</a>.</p>
+    <h2>Your data</h2>
+    <p>Text on this page is sent to the Claude API (Anthropic) to generate the
+      rewrite. Don't enter classified, sensitive or personal information.</p>
+  </div>
+</footer>
+
+<script type="module">
+import { aiPlain, AI_ENABLED } from './src/ai.js';
+import { verifyText, RULE_COUNT } from './src/verify.js';
+
+const $ = id => document.getElementById(id);
+
+function autoCorrect(text) {
+    let fixes = 0;
+    for (let pass = 0; pass < 3; pass++) {
+        const { issues } = verifyText(text);
+        const fixable = issues.filter(i => i.autoFix && i.autoFix !== i.found);
+        if (fixable.length === 0) break;
+        fixable.sort((a, b) => b.position - a.position);
+        for (const i of fixable) {
+            if (text.slice(i.position, i.position + i.found.length) === i.found) {
+                text = text.slice(0, i.position) + i.autoFix +
+                    text.slice(i.position + i.found.length);
+                fixes++;
+            }
+        }
+    }
+    const remaining = verifyText(text).issues;
+    return { text, fixes, remaining };
+}
+
+if (!AI_ENABLED) {
+    $('not-configured').hidden = false;
+    $('plain-input').disabled = true;
+    $('plain-btn').disabled = true;
+}
+
+$('plain-btn').addEventListener('click', async () => {
+    const passage = $('plain-input').value.trim();
+    $('plain-error').hidden = true;
+    $('plain-check').hidden = true;
+    if (passage.length < 40) {
+        $('plain-error').textContent = 'Paste a longer passage - a sentence or two at least.';
+        $('plain-error').hidden = false;
+        return;
+    }
+    $('plain-btn').disabled = true;
+    $('plain-busy').hidden = false;
+    try {
+        const { rewrite } = await aiPlain({ passage });
+        const check = autoCorrect(rewrite);
+        const out = $('plain-output');
+        out.textContent = check.text;
+        out.classList.remove('empty');
+        $('plain-copy').hidden = false;
+        const bits = ['✔ Checked against ' + RULE_COUNT + ' Style Manual rules'];
+        if (check.fixes) bits.push(check.fixes + ' automatic ' +
+            (check.fixes === 1 ? 'correction' : 'corrections') + ' applied');
+        const el = $('plain-check');
+        if (check.remaining.length) {
+            bits.push(check.remaining.length + ' possible ' +
+                (check.remaining.length === 1 ? 'issue' : 'issues') +
+                ' flagged: ' + [...new Set(check.remaining.slice(0, 3).map(i => i.rule.name))].join(', '));
+            el.className = 'warn';
+        } else {
+            el.className = '';
+        }
+        el.textContent = bits.join(' · ');
+        el.hidden = false;
+    } catch (err) {
+        $('plain-error').textContent = err.message;
+        $('plain-error').hidden = false;
+    } finally {
+        $('plain-btn').disabled = false;
+        $('plain-busy').hidden = true;
+    }
+});
+
+$('plain-copy').addEventListener('click', async () => {
+    await navigator.clipboard.writeText($('plain-output').textContent);
+    $('plain-copy').textContent = 'Copied';
+    setTimeout(() => { $('plain-copy').textContent = 'Copy rewrite'; }, 1600);
+});
+</script>
+</body>
+</html>

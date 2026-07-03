@@ -77,8 +77,16 @@ export function aiParseCitation({ reference }) {
 /**
  * Ask a question about the Style Manual.
  * history: [{ role: 'user'|'assistant', content: string }]
- * Returns { answer: string }
+ * Returns { answer: string, sources: { url: pageTitle, ... } }
  */
 export function aiAsk({ question, history }) {
     return callWorker('/api/ask', { question, history: history || [] });
+}
+
+/**
+ * Rewrite a passage into Style Manual plain English.
+ * Returns { rewrite: string }
+ */
+export function aiPlain({ passage }) {
+    return callWorker('/api/plain', { passage });
 }
