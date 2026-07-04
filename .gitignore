@@ -32,3 +32,6 @@ style_manual_urls.*
 # and must stay at the end of this file.
 !im2026/
 !im2026/**
+
+# Local test scratch that the mount will not let us unlink; never publish.
+im2026/_e2e_tmp.mjs

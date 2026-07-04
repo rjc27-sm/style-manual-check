@@ -205,9 +205,18 @@ Rules:
 - One idea per paragraph. Front-load the key information.
 - Replace jargon with plain terms, or briefly explain a technical term the
   first time if it must stay.
-- Use a '- ' dash list only where a list genuinely helps the reader.
+- Keep the structure the input already has. If the input has headings, keep
+  them as '## heading text'. If it has bullet points, keep them as '- item'
+  lines. Preserve any bold ('**text**'), italics ('*text*') and links
+  ('[text](https://...)') that the input contains.
+- Do not invent structure that was not there: do not add headings, bullets,
+  bold, italics or links to plain prose that had none. Prose stays as
+  paragraphs.
+- Use a '- ' dash list only where the input already used a list, or where a
+  list genuinely helps the reader.
 - Your output will be re-checked by a deterministic rule engine.
-- Reply with the rewritten text only. No preamble, no explanation.`,
+- Reply with the rewritten text only, in this markdown. No preamble, no
+  explanation.`,
         build(body) { return body.passage; },
         maxChars: 6000,
         shape: r => ({ rewrite: r.trim() })
