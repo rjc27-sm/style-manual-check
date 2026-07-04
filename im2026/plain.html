@@ -35,10 +35,19 @@ body{font-family:'Open Sans',Arial,sans-serif;background:var(--bg);color:var(--c
 
 .card{background:#fff;border:1px solid var(--line);border-radius:10px;overflow:hidden;
   box-shadow:0 1px 2px rgba(25,47,56,.04);display:flex;flex-direction:column}
-textarea#plain-input{width:100%;flex:1;min-height:260px;padding:16px 18px;border:0;resize:vertical;
+#plain-input{width:100%;flex:1;min-height:260px;padding:16px 18px;border:0;overflow-y:auto;
   font:15px/1.65 'Open Sans',Arial,sans-serif;color:var(--c1)}
-textarea#plain-input::placeholder{color:var(--c4)}
-textarea#plain-input:focus{outline:none;box-shadow:inset 0 0 0 2px var(--b5)}
+#plain-input:focus{outline:none;box-shadow:inset 0 0 0 2px var(--b5)}
+#plain-input:empty::before{content:attr(data-placeholder);color:var(--c4)}
+#plain-input[aria-disabled="true"]{background:#f0f1f1;color:var(--c4)}
+#plain-input p{margin:0 0 12px}
+#plain-input h2,#plain-input h3{color:var(--b1);line-height:1.3;margin:14px 0 8px;font-weight:700}
+#plain-input h2{font-size:17px}
+#plain-input h3{font-size:15px}
+#plain-input :first-child{margin-top:0}
+#plain-input ul{margin:0 0 12px;padding-left:22px}
+#plain-input li{margin:0 0 5px}
+#plain-input strong{font-weight:700}
 .card-foot{border-top:1px solid var(--line);padding:11px 16px;display:flex;gap:10px;
   align-items:center;flex-wrap:wrap}
 
@@ -120,9 +129,9 @@ textarea#plain-input:focus{outline:none;box-shadow:inset 0 0 0 2px var(--b5)}
       <div class="step-h"><span class="num">1</span><h2>Your text</h2>
         <span class="step-hint">up to about 900 words</span></div>
       <div class="card">
-        <label for="plain-input" style="position:absolute;left:-9999px">Text to rewrite</label>
-        <textarea id="plain-input" maxlength="5800"
-          placeholder="Paste the passage here. Example: 'Pursuant to the aforementioned provisions, lodgement of the requisite documentation must be effected prior to the expiration of the nominated timeframe.'"></textarea>
+        <div id="plain-input" contenteditable="true" role="textbox" aria-multiline="true"
+          aria-label="Text to rewrite"
+          data-placeholder="Paste the passage here. Example: 'Pursuant to the aforementioned provisions, lodgement of the requisite documentation must be effected prior to the expiration of the nominated timeframe.'"></div>
         <div class="card-foot">
           <button class="ai-btn" id="plain-btn" type="button"><span class="ai-star" aria-hidden="true">✦</span>Make it plain</button>
           <span class="ai-busy" id="plain-busy" hidden role="status"><span class="ai-busy-star" aria-hidden="true">✦</span> Rewriting…</span>
@@ -298,16 +307,22 @@ let lastMarkdown = '';
 
 if (!AI_ENABLED) {
     $('not-configured').hidden = false;
-    $('plain-input').disabled = true;
+    $('plain-input').contentEditable = 'false';
+    $('plain-input').setAttribute('aria-disabled', 'true');
     $('plain-btn').disabled = true;
 }
 
 $('plain-btn').addEventListener('click', async () => {
-    const passage = $('plain-input').value.trim();
+    const passage = domToMarkdown($('plain-input')).trim();
     $('plain-error').hidden = true;
     $('plain-check').hidden = true;
     if (passage.length < 40) {
         $('plain-error').textContent = 'Paste a longer passage - a sentence or two at least.';
+        $('plain-error').hidden = false;
+        return;
+    }
+    if (passage.length > 5800) {
+        $('plain-error').textContent = 'That passage is a bit long - trim it to about 900 words and try again.';
         $('plain-error').hidden = false;
         return;
     }
@@ -367,6 +382,111 @@ $('plain-copy-word').addEventListener('click', () => {
 $('plain-copy-text').addEventListener('click', async () => {
     await navigator.clipboard.writeText(mdToPlain(lastMarkdown));
     flashCopy('plain-copy-text', 'Copy as text');
+});
+
+/**
+ * Convert an element's inline content to markdown: '**bold**', '*italics*'
+ * and '[text](url)' links (http(s) only). Unknown wrappers (spans, fonts,
+ * underlines) are unwrapped to their text.
+ */
+function inlineMd(node) {
+    let s = '';
+    node.childNodes.forEach(n => {
+        if (n.nodeType === 3) { s += n.nodeValue.replace(/\s+/g, ' '); return; }
+        if (n.nodeType !== 1) return;
+        const t = n.tagName.toLowerCase();
+        const inner = inlineMd(n);
+        const trimmed = inner.trim();
+        if (t === 'strong' || t === 'b') s += trimmed ? '**' + trimmed + '**' : '';
+        else if (t === 'em' || t === 'i') s += trimmed ? '*' + trimmed + '*' : '';
+        else if (t === 'a') {
+            const href = n.getAttribute('href') || '';
+            s += (/^https?:\/\//.test(href) && trimmed) ? '[' + trimmed + '](' + href + ')' : inner;
+        }
+        else if (t === 'br') s += '\n';
+        else s += inner;
+    });
+    return s;
+}
+
+/**
+ * Convert the input pane's DOM to the markdown subset the Worker expects -
+ * the inverse of renderPlain. Real ul/ol lists and Word's faux-list
+ * paragraphs (mso-list styles, or a paragraph led by a bullet glyph) both
+ * become '- ' items; consecutive items are grouped into one list. Headings
+ * map to '## ' (h1-h3) or '### ' (h4+) so a paste round-trips stably.
+ */
+function domToMarkdown(root) {
+    const out = [];                                   // {li:boolean, s:string}
+    const push = (li, s) => { s = (s || '').trim(); if (s) out.push({ li, s }); };
+    const anyMarker = /^\s*(?:[•·▪●–o]|\d+[.)]|[a-z][.)])[\s ]+/i;
+    const glyphMarker = /^\s*[•·▪●][\s ]+/;
+    const isWordList = (el) => /mso-list/i.test(el.getAttribute('style') || '') ||
+        /MsoList/i.test(el.className || '');
+    const walk = (parent) => {
+        parent.childNodes.forEach(n => {
+            if (n.nodeType === 3) { push(false, n.nodeValue.replace(/\s+/g, ' ')); return; }
+            if (n.nodeType !== 1) return;
+            const t = n.tagName.toLowerCase();
+            if (/^h[1-6]$/.test(t)) {
+                push(false, (+t[1] <= 3 ? '## ' : '### ') + inlineMd(n).trim());
+            } else if (t === 'ul' || t === 'ol') {
+                n.querySelectorAll(':scope > li').forEach(li => push(true, inlineMd(li)));
+            } else if (t === 'li') {
+                push(true, inlineMd(n));
+            } else if (t === 'p') {
+                const md = inlineMd(n).trim();
+                if (isWordList(n)) push(true, md.replace(anyMarker, ''));
+                else if (glyphMarker.test(md)) push(true, md.replace(glyphMarker, ''));
+                else push(false, md);
+            } else if (t === 'div' || t === 'section' || t === 'article' || t === 'blockquote') {
+                if (n.querySelector('p,div,ul,ol,li,h1,h2,h3,h4,h5,h6')) walk(n);
+                else push(false, inlineMd(n));
+            } else if (t === 'br') {
+                /* stray break between blocks - ignore */
+            } else {
+                push(false, inlineMd(n));
+            }
+        });
+    };
+    walk(root);
+    const blocks = [];
+    let i = 0;
+    while (i < out.length) {
+        if (out[i].li) {
+            const items = [];
+            while (i < out.length && out[i].li) { items.push('- ' + out[i].s); i++; }
+            blocks.push(items.join('\n'));
+        } else { blocks.push(out[i].s); i++; }
+    }
+    return blocks.join('\n\n');
+}
+
+/**
+ * On paste, normalise whatever the clipboard holds (including Word HTML) into
+ * the clean markdown subset, then re-render it as safe HTML in the pane. Raw
+ * Word HTML with its mso styles never lives in the editor.
+ */
+$('plain-input').addEventListener('paste', (e) => {
+    e.preventDefault();
+    const cb = e.clipboardData || window.clipboardData;
+    const html = cb && cb.getData('text/html');
+    let md;
+    if (html) {
+        const doc = new DOMParser().parseFromString(html, 'text/html');
+        md = domToMarkdown(doc.body);
+    } else {
+        const text = (cb && cb.getData('text/plain')) || '';
+        md = text.split(/\n{2,}/).map(p => p.replace(/\s*\n\s*/g, ' ').trim())
+            .filter(Boolean).join('\n\n');
+    }
+    if (!md) return;
+    const clean = renderPlain(md);
+    if (document.queryCommandSupported && document.queryCommandSupported('insertHTML')) {
+        document.execCommand('insertHTML', false, clean);
+    } else {
+        document.execCommand('insertText', false, mdToPlain(md));
+    }
 });
 </script>
 </body>
