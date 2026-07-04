@@ -7,7 +7,7 @@
 <meta name="description" content="Proof Positive, an IM2026 Bureaucrat Bot: paste a hard-to-read passage and get a plain English rewrite that follows Australian Government Style Manual conventions, verified by a deterministic rule engine.">
 <link rel="icon" type="image/png" sizes="32x32" href="assets/style-check-32x32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="assets/style-check-16x16.png">
-<link rel="stylesheet" href="assets/site.css?v=3">
+<link rel="stylesheet" href="assets/site.css?v=4">
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700;800&display=swap');
 :root{
@@ -78,7 +78,7 @@ textarea#plain-input:focus{outline:none;box-shadow:inset 0 0 0 2px var(--b5)}
 </header>
 <nav class="gov-nav" aria-label="Tools">
   <div class="gov-nav-inner">
-    <a href="index.html" aria-describedby="tip-check">Check a document<span class="gov-tip" id="tip-check" aria-hidden="true">Upload a Word document and get it back with a review comment on every style issue – formatting untouched.</span></a>
+    <a href="index.html" aria-describedby="tip-check">Check a document<span class="gov-tip" id="tip-check" aria-hidden="true">Upload a Word document and get it back with a review comment on every style issue. Your document’s formatting is not changed.</span></a>
     <a href="plain.html" aria-current="page" aria-describedby="tip-plain">Make it plain<span class="gov-tip" id="tip-plain" aria-hidden="true">Paste a hard-to-read passage and get a plain English rewrite that follows Style Manual conventions.</span></a>
     <a href="lists.html" aria-describedby="tip-lists">Format a list<span class="gov-tip" id="tip-lists" aria-hidden="true">Turn rough bullet points into a correctly punctuated sentence, fragment or stand-alone list.</span></a>
     <a href="citations.html" aria-describedby="tip-cite">Create a citation<span class="gov-tip" id="tip-cite" aria-hidden="true">Build an author–date reference from a DOI, a form or a messy pasted reference.</span></a>
@@ -93,7 +93,7 @@ textarea#plain-input:focus{outline:none;box-shadow:inset 0 0 0 2px var(--b5)}
       or tangled – and get a plain English rewrite that keeps the meaning and
       follows Style Manual conventions. The rewrite is AI-drafted, then checked
       against the deterministic rule engine before you see it. Review it before
-      use, and don't paste sensitive or personal information.</p>
+      use, and don't enter classified, sensitive or personal information.</p>
   </header>
 
   <div class="not-configured" id="not-configured" hidden>
@@ -113,7 +113,7 @@ textarea#plain-input:focus{outline:none;box-shadow:inset 0 0 0 2px var(--b5)}
           placeholder="Paste the passage here. Example: 'Pursuant to the aforementioned provisions, lodgement of the requisite documentation must be effected prior to the expiration of the nominated timeframe.'"></textarea>
         <div class="card-foot">
           <button class="ai-btn" id="plain-btn" type="button"><span class="ai-star" aria-hidden="true">✦</span>Make it plain</button>
-          <span class="ai-busy" id="plain-busy" hidden role="status">✦ Rewriting…</span>
+          <span class="ai-busy" id="plain-busy" hidden role="status"><span class="ai-busy-star" aria-hidden="true">✦</span> Rewriting…</span>
         </div>
       </div>
     </section>
@@ -135,7 +135,8 @@ textarea#plain-input:focus{outline:none;box-shadow:inset 0 0 0 2px var(--b5)}
     the Claude API from the text you paste; it is not used to train models.
     AI can misread nuance – always compare the rewrite with your original
     before using it. Mechanical style breaches are corrected automatically by
-    the rule engine and noted below the result.</p>
+    the rule engine – a note below the result shows how many corrections were
+    made.</p>
 </main>
 
 <footer class="gov-footer">
@@ -158,10 +159,27 @@ import { verifyText, RULE_COUNT } from './src/verify.js';
 
 const $ = id => document.getElementById(id);
 
+/**
+ * Mask spans the rule engine must not touch: URLs (addresses, not prose) and
+ * quoted examples. Quoted examples are mentions of style, not uses of it -
+ * the Manual's exceptions live inside them, so 'correcting' them is wrong.
+ * Masking preserves length, so issue positions still line up with the text.
+ */
+function maskProtected(s) {
+    const x = m => 'x'.repeat(m.length);
+    return s
+        .replace(/https:\/\/[^\s]+/g, x)
+        .replace(/\u201c[^\u201d\n]{1,160}\u201d/g, x)
+        .replace(/"[^"\n]{1,160}"/g, x)
+        .replace(/\u2018(?:[^\u2018\u2019\n]|\u2019(?=[a-z])){1,160}\u2019(?=[\s.,;:!?)\]]|$)/g, x)
+        .replace(/(^|[\s(])'(?:[^'\n]|'(?=[a-z])){1,160}'(?=[\s.,;:!?)\]]|$)/gm,
+            (m, p) => p + x(m.slice(p.length)));
+}
+
 function autoCorrect(text) {
     let fixes = 0;
     for (let pass = 0; pass < 3; pass++) {
-        const { issues } = verifyText(text);
+        const { issues } = verifyText(maskProtected(text));
         const fixable = issues.filter(i => i.autoFix && i.autoFix !== i.found);
         if (fixable.length === 0) break;
         fixable.sort((a, b) => b.position - a.position);
@@ -173,7 +191,7 @@ function autoCorrect(text) {
             }
         }
     }
-    const remaining = verifyText(text).issues;
+    const remaining = verifyText(maskProtected(text)).issues;
     return { text, fixes, remaining };
 }
 

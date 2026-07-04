@@ -276,7 +276,7 @@ async function handleAiFix(idx, extraGuidance) {
     const btn = document.querySelector('[data-ai-fix="' + idx + '"]');
     if (!issue || !slot) return;
     if (btn) btn.disabled = true;
-    slot.innerHTML = '<p class="ai-busy" role="status">✦ Asking Claude for a rewrite…</p>';
+    slot.innerHTML = '<p class="ai-busy" role="status"><span class="ai-busy-star" aria-hidden="true">✦</span> Asking Claude for a rewrite…</p>';
     try {
         const { rewrite } = await aiFix({
             passage: passageFor(issue),

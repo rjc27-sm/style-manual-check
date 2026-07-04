@@ -2122,6 +2122,10 @@ const RULES = [
                 if (charAfter === ',' && /^\d/.test(text.charAt(pos + 2) || '')) continue;
                 if (charBefore === ',' && /\d$/.test(text.charAt(pos - 2) || '')) continue;
 
+                // Skip times and ratios (1:00 pm, 3:1)
+                if (charAfter === ':' && /\d/.test(text.charAt(pos + 2) || '')) continue;
+                if (charBefore === ':' && /\d/.test(text.charAt(pos - 2) || '')) continue;
+
                 // Get surrounding context for additional checks
                 const before = text.substring(Math.max(0, pos - 30), pos);
                 const after = text.substring(pos + 1, Math.min(text.length, pos + 30));
@@ -2146,7 +2150,10 @@ const RULES = [
                 if (/[–\-]$/.test(before) || /^[–\-]/.test(after)) continue;
 
                 // Skip if preceded by stage/phase/section/chapter etc.
-                if (/(?:stage|phase|section|chapter|step|part|level|tier|grade|version|volume|appendix|annex|figure|table|item|option|priority|round|wave|track|point|number|no\.?|#)\s*$/i.test(before)) continue;
+                if (/(?:stage|phase|section|chapter|step|part|level|tier|grade|year|version|volume|appendix|annex|figure|table|item|option|priority|round|wave|track|point|number|no\.?|#)\s*$/i.test(before)) continue;
+
+                // Skip mathematical relationships (8 + 1 = 9, 1 < 2)
+                if (/[+=\u00d7\u00f7<>\u2212]\s*$/.test(before) || /^\s*[+=\u00d7\u00f7<>\u2212]/.test(after)) continue;
 
                 // Skip times - digit followed by am/pm
                 if (/^\s*(?:am|pm)\b/i.test(after)) continue;

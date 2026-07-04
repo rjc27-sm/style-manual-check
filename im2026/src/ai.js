@@ -14,7 +14,7 @@ export const AI_ENABLED = WORKER_URL !== '';
 
 export const AI_NOTICE =
     'AI features send the text you choose (and nothing else) to the Claude ' +
-    'API for processing. Do not use sensitive or personal information. ' +
+    'API for processing. Do not enter classified, sensitive or personal information. ' +
     'AI suggestions can be wrong. Review them before use.';
 
 class AiError extends Error {

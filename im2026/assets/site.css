@@ -174,6 +174,8 @@
   border-radius: 8px; padding: 10px 14px; margin-top: 10px; line-height: 1.55;
 }
 .ai-busy { font-size: 13.5px; font-weight: 600; color: var(--gov-ai); margin-top: 10px; }
+.ai-busy-star { display: inline-block; animation: pp-spin 1.8s linear infinite; }
+@keyframes pp-spin { to { transform: rotate(360deg); } }
 
 /* ---------- focus + motion ---------- */
 .gov-header a:focus-visible, .gov-nav a:focus-visible,

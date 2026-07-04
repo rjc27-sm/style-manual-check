@@ -7,7 +7,7 @@
 <meta name="description" content="Proof Positive, an IM2026 Bureaucrat Bot: ask questions about the Australian Government Style Manual in plain words and get answers drawn from the actual guidance.">
 <link rel="icon" type="image/png" sizes="32x32" href="assets/style-check-32x32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="assets/style-check-16x16.png">
-<link rel="stylesheet" href="assets/site.css?v=3">
+<link rel="stylesheet" href="assets/site.css?v=4">
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700;800&display=swap');
 :root{
@@ -83,7 +83,7 @@ body{font-family:'Open Sans',Arial,sans-serif;background:var(--bg);color:var(--c
 </header>
 <nav class="gov-nav" aria-label="Tools">
   <div class="gov-nav-inner">
-    <a href="index.html" aria-describedby="tip-check">Check a document<span class="gov-tip" id="tip-check" aria-hidden="true">Upload a Word document and get it back with a review comment on every style issue – formatting untouched.</span></a>
+    <a href="index.html" aria-describedby="tip-check">Check a document<span class="gov-tip" id="tip-check" aria-hidden="true">Upload a Word document and get it back with a review comment on every style issue. Your document’s formatting is not changed.</span></a>
     <a href="plain.html" aria-describedby="tip-plain">Make it plain<span class="gov-tip" id="tip-plain" aria-hidden="true">Paste a hard-to-read passage and get a plain English rewrite that follows Style Manual conventions.</span></a>
     <a href="lists.html" aria-describedby="tip-lists">Format a list<span class="gov-tip" id="tip-lists" aria-hidden="true">Turn rough bullet points into a correctly punctuated sentence, fragment or stand-alone list.</span></a>
     <a href="citations.html" aria-describedby="tip-cite">Create a citation<span class="gov-tip" id="tip-cite" aria-hidden="true">Build an author–date reference from a DOI, a form or a messy pasted reference.</span></a>
@@ -93,11 +93,10 @@ body{font-family:'Open Sans',Arial,sans-serif;background:var(--bg);color:var(--c
 <main class="wrap" id="main">
   <header class="hero">
     <h1>Ask the Style Manual ✦</h1>
-    <p class="lede">Ask a question – ‘is it 5 pm or 5pm?’,
-      ‘when do I write numbers as words?’ – and get a short answer with a link
+    <p class="lede">Ask a question and get a short answer with a link
       to the relevant Style Manual page. Answers are AI-generated: check the
-      linked guidance before relying on them. Don't include sensitive or
-      personal information in your questions.</p>
+      linked guidance before relying on them. Don't enter classified,
+      sensitive or personal information.</p>
   </header>
 
   <div class="not-configured" id="not-configured" hidden>
@@ -122,7 +121,7 @@ body{font-family:'Open Sans',Arial,sans-serif;background:var(--bg);color:var(--c
     <textarea id="ask-input" placeholder="Type your style question…" maxlength="1000"></textarea>
     <button class="btn" id="ask-btn" type="button">Ask</button>
   </div>
-  <p id="ask-busy" hidden role="status">✦ Thinking…</p>
+  <p id="ask-busy" hidden role="status"><span class="ai-busy-star" aria-hidden="true">✦</span> Thinking…</p>
   <p id="ask-error" class="ai-error" hidden role="alert"></p>
 </main>
 
@@ -152,12 +151,28 @@ const $ = id => document.getElementById(id);
 const history = [];
 
 /**
+ * Mask spans the rule engine must not touch: URLs (addresses, not prose) and
+ * quoted examples. Quoted examples are mentions of style, not uses of it -
+ * the Manual's exceptions live inside them, so 'correcting' them is wrong.
+ * Masking preserves length, so issue positions still line up with the text.
+ */
+function maskProtected(s) {
+    const x = m => 'x'.repeat(m.length);
+    return s
+        .replace(/https:\/\/[^\s]+/g, x)
+        .replace(/\u201c[^\u201d\n]{1,160}\u201d/g, x)
+        .replace(/"[^"\n]{1,160}"/g, x)
+        .replace(/\u2018(?:[^\u2018\u2019\n]|\u2019(?=[a-z])){1,160}\u2019(?=[\s.,;:!?)\]]|$)/g, x)
+        .replace(/(^|[\s(])'(?:[^'\n]|'(?=[a-z])){1,160}'(?=[\s.,;:!?)\]]|$)/gm,
+            (m, p) => p + x(m.slice(p.length)));
+}
+
+/**
  * The homework-marking step: run the deterministic rule engine over the AI
  * answer, apply its mechanical fixes automatically, and report what happened.
- * URLs are masked first - they're addresses, not prose.
  */
 function autoCorrect(text) {
-    const mask = s => s.replace(/https:\/\/[^\s]+/g, m => 'x'.repeat(m.length));
+    const mask = maskProtected;
     let fixes = 0;
     for (let pass = 0; pass < 3; pass++) {
         const { issues } = verifyText(mask(text));
@@ -229,10 +244,7 @@ function addMsg(role, text, sources, check) {
         const parts = ['✔ Checked against ' + RULE_COUNT + ' Style Manual rules'];
         if (check.fixes) parts.push(check.fixes + ' automatic ' +
             (check.fixes === 1 ? 'correction' : 'corrections') + ' applied');
-        const cls = check.remaining ? 'msg-check msg-check-warn' : 'msg-check';
-        if (check.remaining) parts.push(check.remaining + ' possible ' +
-            (check.remaining === 1 ? 'issue' : 'issues') + ' flagged - check the wording');
-        checkLine = '<span class="' + cls + '">' + escapeHtml(parts.join(' · ')) + '</span>';
+        checkLine = '<span class="msg-check">' + escapeHtml(parts.join(' · ')) + '</span>';
     }
     div.innerHTML = '<span class="msg-label">' +
         (role === 'user' ? 'You' : 'Proof Positive') + '</span>' +

@@ -7,7 +7,7 @@
 <meta name="description" content="Proof Positive, an IM2026 Bureaucrat Bot: build Australian Government Style Manual author–date citations from a DOI, a form, or an AI-parsed messy reference.">
 <link rel="icon" type="image/png" sizes="32x32" href="assets/style-check-32x32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="assets/style-check-16x16.png">
-<link rel="stylesheet" href="assets/site.css?v=3">
+<link rel="stylesheet" href="assets/site.css?v=4">
     <link rel="icon" href="favicon.ico" sizes="48x48">
     <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
@@ -317,7 +317,7 @@
 </header>
 <nav class="gov-nav" aria-label="Tools">
   <div class="gov-nav-inner">
-    <a href="index.html" aria-describedby="tip-check">Check a document<span class="gov-tip" id="tip-check" aria-hidden="true">Upload a Word document and get it back with a review comment on every style issue – formatting untouched.</span></a>
+    <a href="index.html" aria-describedby="tip-check">Check a document<span class="gov-tip" id="tip-check" aria-hidden="true">Upload a Word document and get it back with a review comment on every style issue. Your document’s formatting is not changed.</span></a>
     <a href="plain.html" aria-describedby="tip-plain">Make it plain<span class="gov-tip" id="tip-plain" aria-hidden="true">Paste a hard-to-read passage and get a plain English rewrite that follows Style Manual conventions.</span></a>
     <a href="lists.html" aria-describedby="tip-lists">Format a list<span class="gov-tip" id="tip-lists" aria-hidden="true">Turn rough bullet points into a correctly punctuated sentence, fragment or stand-alone list.</span></a>
     <a href="citations.html" aria-current="page" aria-describedby="tip-cite">Create a citation<span class="gov-tip" id="tip-cite" aria-hidden="true">Build an author–date reference from a DOI, a form or a messy pasted reference.</span></a>
@@ -329,7 +329,7 @@
             <div class="header-inner">
                 <div>
                     <h1>Create a citation</h1>
-                    <p>Generate citations in the Australian Government Style Manual author&ndash;date format, using either the quick look up tab or the manual entry tab.</p>
+                    <p>Generate citations in the Australian Government Style Manual author&ndash;date format.</p>
                 </div>
             </div>
         </header>
@@ -358,14 +358,14 @@
 
             <!-- Tab: AI messy reference -->
             <div id="aiparse-panel" class="tab-panel">
-                <label for="aiparse-input">Paste a reference in any state – incomplete, badly formatted or copied from anywhere</label>
+                <label for="aiparse-input" style="display:block;margin-bottom:12px">Paste a reference in any state – incomplete, badly formatted or copied from anywhere.</label>
                 <textarea id="aiparse-input" rows="4" style="width:100%;padding:12px 14px;border:1.5px solid #cfd1d1;border-radius:8px;font:inherit;resize:vertical" placeholder="e.g. smith j &amp; lee p, closing the gap report 2023, AIHW canberra, viewed june 2024"></textarea>
                 <div style="margin-top:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
                     <button class="ai-btn" id="aiparse-btn" type="button"><span class="ai-star" aria-hidden="true">✦</span>Read it with AI</button>
-                    <span class="ai-busy" id="aiparse-busy" hidden role="status">✦ Reading the reference…</span>
+                    <span class="ai-busy" id="aiparse-busy" hidden role="status"><span class="ai-busy-star" aria-hidden="true">✦</span> Reading the reference…</span>
                 </div>
                 <p class="ai-error" id="aiparse-error" hidden role="alert"></p>
-                <p class="ai-disclaimer">AI fills in the manual entry form for you – it never writes the citation itself. The deterministic formatter builds the citation from the fields you confirm. Check every field: AI extraction can be wrong, and it is told to never invent a DOI or URL. Your reference is sent to the Claude API; don't use sensitive or personal information.</p>
+                <p class="ai-disclaimer">AI fills in the manual entry form for you – it never writes the citation itself. The deterministic formatter builds the citation from the fields you confirm. Check every field: AI extraction can be wrong, and it is told to never invent a DOI or URL. Your reference is sent to the Claude API; don't enter classified, sensitive or personal information.</p>
             </div>
 
             <!-- Tab 2: Manual entry -->

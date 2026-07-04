@@ -228,8 +228,17 @@ Rules for answers:
   paraphrase the extracts - do not rely on your own memory of style rules,
   which may drift towards American conventions.
 - Be concise: a short direct answer first, then a brief example if useful.
-- Format simply: short paragraphs, '- ' for any list items, **bold** only for
-  the key term or correct form. No headings, no tables, no nested lists.
+- Format simply: short paragraphs and '- ' for list items. No headings, no
+  tables, no nested lists. Use **bold** only for the key term or correct
+  form - never bold a list lead-in, a label or a whole line.
+- Follow the Style Manual's own list conventions in every list you write.
+  Write the lead-in as a plain line ending in a colon. If the items are
+  sentence fragments, start each with a lower-case letter (unless it is a
+  proper noun) and put a full stop after the last item only. If every item
+  is a complete sentence, start each with a capital letter and end each
+  with a full stop.
+- To group points, use a short plain line as a sub-heading (no bold, no
+  colon, no full stop) rather than a bold label.
 - End with 'Read more:' followed by the Source URL of every extract you
   relied on - each URL on its own line. Cite one URL if only one extract was
   relevant, more if several were. Never cite any URL that is not in the
