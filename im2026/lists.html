@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Format a list – Proof Positive (IM2026)</title>
-<meta name="description" content="Proof Positive, an IM2026 Bureaucrat Bot: format lists to Australian Government Style Manual rules, with AI help to make items parallel.">
+<meta name="description" content="Proof Positive, an IM2026 Bureaucrat Bot: rewrite rough list items into a parallel, correctly formatted Australian Government Style Manual list using AI, checked by a deterministic rule engine.">
 <link rel="stylesheet" href="assets/site.css?v=4">
 <link rel="icon" type="image/png" sizes="32x32" href="assets/style-check-32x32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="assets/style-check-16x16.png">
@@ -159,7 +159,7 @@ pre#output{flex:1;min-height:194px;padding:18px 20px;margin:0;white-space:pre-wr
 <main class="wrap" id="main">
   <header class="head">
     <h1>Format a list</h1>
-    <p class="lede">Paste in a list and the tool formats it according to Australian Government Style Manual rules. It only formats lists that have a heading or lead-in, and whose items share the same structure (that is, are <a href="https://www.stylemanual.gov.au/style-manual-resources/government-writing-handbook/editors-tips/parallel-structure-lists" target="_blank" rel="noopener noreferrer">parallel</a>). The tool fixes punctuation, capitals and bullet markers. It does not rewrite your items.</p>
+    <p class="lede">Paste in a rough list and Proof Positive rewrites the items so they read as one consistent list – <a href="https://www.stylemanual.gov.au/style-manual-resources/government-writing-handbook/editors-tips/parallel-structure-lists" target="_blank" rel="noopener noreferrer">parallel</a> in structure – then formats them to Australian Government Style Manual rules. It works out whether you need a sentence, fragment or stand-alone list, fixes the wording, punctuation, capitals and bullet markers, and flags items that don't belong together. The AI drafts the rewrite; the rule engine then formats and re-checks it. Review the wording before you use it – AI can change meaning.</p>
     <div class="examples">
       <span class="ex-lab">Try an example</span>
       <button type="button" class="chip" onclick="loadExample('grant')">Grant eligibility</button>
@@ -174,7 +174,8 @@ pre#output{flex:1;min-height:194px;padding:18px 20px;margin:0;white-space:pre-wr
       <div class="card">
         <textarea id="input" aria-label="Your content" placeholder="Enter your lead-in on the first line, then your list items below. For a second level, indent the sub-items or mark them with a dash."></textarea>
         <div class="card-foot card-foot--start">
-          <button class="btn btn-primary" type="button" onclick="analyseList()">Format list</button>
+          <button class="btn btn-primary" type="button" id="formatBtn" onclick="formatWithAI()"><span class="ai-star" aria-hidden="true">✦</span>Format with AI</button>
+          <span class="ai-busy hidden" id="formatBusy" role="status"><span class="ai-busy-star" aria-hidden="true">✦</span> Formatting…</span>
           <button class="btn btn-ghost" type="button" onclick="reset()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v6h6"/><path d="M3 13a9 9 0 1 0 3-7.7L3 8"/></svg>Reset</button>
         </div>
       </div>
@@ -196,12 +197,14 @@ pre#output{flex:1;min-height:194px;padding:18px 20px;margin:0;white-space:pre-wr
     <div>
       <h3 id="errorHeading">This list can’t be formatted yet</h3>
       <p id="errorText"></p>
-      <div id="aiRescue" class="hidden" style="margin-top:14px">
-        <button type="button" id="aiRescueBtn" class="ai-btn"><span class="ai-star" aria-hidden="true">✦</span>Rewrite the items in parallel form with AI</button>
-        <p id="aiRescueStatus" class="ai-busy hidden" role="status"><span class="ai-busy-star" aria-hidden="true">✦</span> Asking Claude to rewrite the items…</p>
-        <p id="aiRescueError" class="ai-error hidden" role="alert"></p>
-        <p class="ai-disclaimer" style="max-width:560px">AI rewrites are drafts: the deterministic formatter re-checks and formats the result, but review the wording – AI can change meaning. Text is sent to the Claude API; don’t enter classified, sensitive or personal information.</p>
-      </div>
+    </div>
+  </div>
+
+  <div id="coherenceNotice" class="error-panel hidden" role="status">
+    <div class="error-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="13"/><line x1="12" y1="16.5" x2="12" y2="16.5"/></svg></div>
+    <div>
+      <h3>Check whether these items belong together</h3>
+      <p id="coherenceText"></p>
     </div>
   </div>
 
@@ -258,10 +261,10 @@ pre#output{flex:1;min-height:194px;padding:18px 20px;margin:0;white-space:pre-wr
       or the <a href="https://www.stylemanual.gov.au" rel="noopener">Australian
       Government Style Manual</a>.</p>
     <h2>Your data</h2>
-    <p>List formatting runs entirely in your browser – nothing is uploaded.
-      The ✦ AI rewrite sends your list to the Claude API (Anthropic); it is
-      not used to train models. Don’t enter classified, sensitive or personal
-      information.</p>
+    <p>This page sends your list to the Claude API (Anthropic) to rewrite and
+      format it; the text is not used to train models. Don’t enter classified,
+      sensitive or personal information. The rule engine then formats and
+      re-checks the result in your browser.</p>
   </div>
 </footer>
 
@@ -1070,6 +1073,7 @@ function collectFixes(cleaned) {
     document.getElementById('errorHeading').textContent = heading;
     document.getElementById('errorText').textContent = text;
     document.getElementById('errorPanel').classList.remove('hidden');
+    document.getElementById('coherenceNotice').classList.add('hidden');
     document.getElementById('explanation').classList.add('hidden');
     document.getElementById('copyBtn').classList.add('hidden');
     document.getElementById('copyWordBtn').classList.add('hidden');
@@ -1077,8 +1081,6 @@ function collectFixes(cleaned) {
   }
 
   function analyseList() {
-    document.getElementById('aiRescue').classList.add('hidden');
-    document.getElementById('aiRescueError').classList.add('hidden');
     const input = document.getElementById('input').value;
     const raw = document.querySelector('input[name="listType"]:checked')?.value || 'auto';
     const forceNumbered = raw === 'numbered';
@@ -1098,7 +1100,6 @@ function collectFixes(cleaned) {
       const parts = result.message.split('\n\n');
       const heading = parts[0].replace(/\u2019/g, '\u2019');
       showError('This list can\u2019t be formatted yet', parts.slice(1).join('\n\n'));
-      if (window.__aiListReady) document.getElementById('aiRescue').classList.remove('hidden');
       return;
     }
 
@@ -1272,7 +1273,7 @@ function collectFixes(cleaned) {
 
   function reset() {
     lastResult = null;
-    document.getElementById('aiRescue').classList.add('hidden');
+    document.getElementById('coherenceNotice').classList.add('hidden');
     window.__aiListNote = false;
     document.getElementById('input').value = '';
     document.getElementById('output').textContent = 'Your formatted list will appear here';
@@ -1520,6 +1521,135 @@ function collectFixes(cleaned) {
     if (e.key === 'Escape' && !document.getElementById('reportModal').classList.contains('hidden')) closeReport();
   });
 
+  // ---- AI-first formatting ----
+  // The AI decides the list type and rewrites the items into parallel form; the
+  // deterministic formatters below then impose the Style Manual markers, capitals
+  // and punctuation. This is the rule engine 'marking the AI's homework': the
+  // punctuation and formatting are never trusted from the AI, only recomputed.
+
+  const AI_TYPE_WORD = { sentence: 'sentence list', fragment: 'fragment list', standAlone: 'stand-alone list' };
+
+  // Like formatFragment, but trusts the AI's first-letter case. The AI has
+  // already lowercased fragment items and kept genuine proper nouns capitalised,
+  // so we must NOT run the narrow proper-noun heuristic over them again – that
+  // heuristic is exactly what wrongly lowercased names in the old tool.
+  function formatFragmentAI(rawLeadIn, cleaned, numbered) {
+    let out = buildLeadIn(rawLeadIn, true) + '\n';
+    cleaned.forEach((c, i) => {
+      const stop = i === cleaned.length - 1 ? '.' : '';
+      out += `${marker(numbered, i)} ${c.text}${stop}\n`;
+    });
+    return out.trim();
+  }
+
+  function setFormatBusy(on) {
+    const btn = document.getElementById('formatBtn');
+    const busy = document.getElementById('formatBusy');
+    if (btn) btn.disabled = on;
+    if (busy) busy.classList.toggle('hidden', !on);
+  }
+
+  // Work out the correct lead-in punctuation for the AI's chosen type. A
+  // fragment list always needs a colon (its items complete the lead-in); a
+  // stand-alone list uses a bare heading; a sentence list keeps the writer's
+  // colon or full stop, but a plain heading above a sentence list stays bare
+  // (headings never take end punctuation).
+  function aiLeadIn(type, leadIn) {
+    const raw = (leadIn || '').trim();
+    if (type === 'standAlone') return raw.replace(/[.!?:]+\s*$/, '');
+    if (type === 'fragment') return raw;               // formatFragmentAI adds the colon
+    if (classifyLeadIn(raw) === 'heading') return raw.replace(/[.!?:]+\s*$/, '');
+    if (/[.!?]\s*$/.test(raw)) return raw;             // sentence lead-in ending in a full stop
+    return buildLeadIn(raw, true);                     // sentence/phrase lead-in with a colon
+  }
+
+  function renderAiResult(res, numbered) {
+    const cleaned = res.items.map(t => cleanItem(t));
+    let formatted;
+    if (res.type === 'standAlone') formatted = formatStandAlone(aiLeadIn('standAlone', res.leadIn), cleaned, numbered);
+    else if (res.type === 'sentence') formatted = formatSentence(aiLeadIn('sentence', res.leadIn), cleaned, numbered, true);
+    else formatted = formatFragmentAI(res.leadIn, cleaned, numbered);
+
+    lastResult = { formatted, listType: res.type };
+    document.getElementById('errorPanel').classList.add('hidden');
+
+    const outputEl = document.getElementById('output');
+    if (res.type === 'standAlone') {
+      const lines = formatted.split('\n');
+      const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      outputEl.innerHTML = '<strong>' + esc(lines[0]) + '</strong>' +
+        (lines.length > 1 ? '\n' + lines.slice(1).map(esc).join('\n') : '');
+    } else {
+      outputEl.textContent = formatted;
+    }
+    document.getElementById('copyBtn').classList.remove('hidden');
+    document.getElementById('copyWordBtn').classList.remove('hidden');
+
+    const changeText = (res.changes && res.changes.length)
+      ? res.changes.join(' · ')
+      : 'Your items already followed a consistent pattern, so the wording is unchanged.';
+    document.getElementById('explanationText').textContent =
+      'AI set this up as a ' + (AI_TYPE_WORD[res.type] || 'list') + '. ' + changeText +
+      ' The rule engine then applied the Style Manual markers, capitals and full stops and re-checked the result. Review the wording – AI can change meaning.';
+    document.getElementById('explanation').classList.remove('hidden');
+
+    const notice = document.getElementById('coherenceNotice');
+    if (!res.coherent) {
+      document.getElementById('coherenceText').textContent = res.note ||
+        'These items may not read as a single grammatical list. Check whether they belong together.';
+      notice.classList.remove('hidden');
+    } else {
+      notice.classList.add('hidden');
+    }
+  }
+
+  async function formatWithAI() {
+    document.getElementById('coherenceNotice').classList.add('hidden');
+    document.getElementById('explanation').classList.add('hidden');
+    document.getElementById('errorPanel').classList.add('hidden');
+
+    const lines = document.getElementById('input').value.split('\n');
+    const firstIdx = lines.findIndex(l => l.trim());
+    if (firstIdx === -1) {
+      showError('Nothing to format yet', 'Enter a lead-in on the first line, then your list items below.');
+      return;
+    }
+    const leadIn = lines[firstIdx].trim();
+    const rawItemLines = lines.slice(firstIdx + 1).filter(l => l.trim());
+    if (rawItemLines.length < 2) {
+      showError('This list needs a small change', 'Add a lead-in on the first line and at least 2 list items below it.');
+      return;
+    }
+
+    // Multilevel lists and the offline case stay on the deterministic engine.
+    if (!window.AI_ENABLED || parseHierarchy(rawItemLines).multilevel) {
+      analyseList();
+      return;
+    }
+
+    const numbered = rawItemLines.filter(l => /^\s*\d+[.)]/.test(l)).length >= Math.ceil(rawItemLines.length / 2);
+    const items = rawItemLines
+      .map(l => stripMarker(l).replace(/[.!?;,]+\s*$/, '').trim())
+      .filter(Boolean);
+
+    setFormatBusy(true);
+    try {
+      const res = await window.aiListFormat({ leadIn, items, forcedType: getForcedType() });
+      renderAiResult(res, numbered);
+    } catch (err) {
+      // AI unavailable (offline, rate limit, error) – fall back to the rule engine.
+      analyseList();
+      const notice = document.getElementById('coherenceNotice');
+      document.getElementById('coherenceText').textContent =
+        (err && err.message ? err.message + ' ' : '') +
+        'Showed the rule-engine result instead – it formats your list but does not rewrite the wording.';
+      notice.classList.remove('hidden');
+    } finally {
+      setFormatBusy(false);
+    }
+  }
+  window.formatWithAI = formatWithAI;
+
   </script>
   <script>
   // Built-in sample lists for the 'Try an example' chips. Inputs are deliberately rough
@@ -1535,44 +1665,16 @@ function collectFixes(cleaned) {
     var auto = document.querySelector('input[name="listType"][value="auto"]');
     if (auto) auto.checked = true;
     document.getElementById('input').value = text;
-    analyseList();
+    formatWithAI();
     document.getElementById('input').scrollTop = 0;
   }
   </script>
 <script type="module">
-import { aiParallelList, AI_ENABLED } from './src/ai.js';
-
-if (AI_ENABLED) {
-    window.__aiListReady = true;
-    const btn = document.getElementById('aiRescueBtn');
-    const status = document.getElementById('aiRescueStatus');
-    const errEl = document.getElementById('aiRescueError');
-    btn.addEventListener('click', async () => {
-        const raw = document.getElementById('input').value.trim();
-        const lines = raw.split('\n');
-        const leadIn = lines[0] || '';
-        const items = lines.slice(1).map(l => l.trim()).filter(Boolean);
-        if (items.length < 2) return;
-        btn.disabled = true;
-        errEl.classList.add('hidden');
-        status.classList.remove('hidden');
-        try {
-            const res = await aiParallelList({ leadIn, items, listType: '' });
-            if (!res.items || res.items.length !== items.length) {
-                throw new Error('The AI changed the number of items – try again, or reword the odd item out yourself.');
-            }
-            document.getElementById('input').value = leadIn + '\n' + res.items.join('\n');
-            window.__aiListNote = true;
-            window.analyseList();
-        } catch (err) {
-            errEl.textContent = err.message;
-            errEl.classList.remove('hidden');
-        } finally {
-            btn.disabled = false;
-            status.classList.add('hidden');
-        }
-    });
-}
+import { aiListFormat, AI_ENABLED } from './src/ai.js';
+// Bridge the ES-module AI client across to the classic formatting script above,
+// which owns the deterministic formatters and all the DOM wiring.
+window.aiListFormat = aiListFormat;
+window.AI_ENABLED = AI_ENABLED;
 </script>
 </body>
 </html>

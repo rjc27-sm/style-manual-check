@@ -90,3 +90,13 @@ export function aiAsk({ question, history }) {
 export function aiPlain({ passage }) {
     return callWorker('/api/plain', { passage });
 }
+
+/**
+ * Decide a list's type, rewrite its items into parallel form and report the
+ * changes. A deterministic formatter then applies markers and punctuation.
+ * Returns { type: 'sentence'|'fragment'|'standAlone', leadIn, items: string[],
+ *           changes: string[], coherent: boolean, note: string }
+ */
+export function aiListFormat({ leadIn, items, forcedType }) {
+    return callWorker('/api/list-format', { leadIn, items, forcedType });
+}

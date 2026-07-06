@@ -22,6 +22,10 @@ import { PAGE_INDEX } from './pages-index.js';
 
 const DEFAULTS = {
     MODEL: 'claude-haiku-4-5',
+    // Stronger model for endpoints that need real language judgement (Ask, and
+    // the list formatter's type/parallel/coherence calls). ASK_MODEL is kept as
+    // a backward-compatible alias.
+    STRONG_MODEL: 'claude-sonnet-5',
     ASK_MODEL: 'claude-sonnet-5',
     PAGES_BASE_URL: 'https://rjc27-sm.github.io/style-manual-check/im2026/pages/',
     IP_DAILY_LIMIT: 40,
@@ -153,6 +157,88 @@ Rules:
         })
     },
 
+    'list-format': {
+        system: `You prepare list items for 'Proof Positive', an Australian Government
+Style Manual tool. The user gives a lead-in (or heading) and some rough list
+items. You decide the list type, rewrite the items so they read well and are
+parallel, and report what you changed. A deterministic formatter then applies
+the markers, capitals and full stops - so you must NOT add bullets, numbers or
+end punctuation yourself.
+${AU_STYLE_CORE}
+
+DECIDE THE TYPE - look at the ITEMS first, then the lead-in:
+- If each item is (or should be) a complete sentence with its own subject and
+  verb, the type is "sentence" - whether the first line is a sentence lead-in, a
+  phrase lead-in or just a plain heading. Complete sentences are always a
+  sentence list.
+- If the items are fragments (phrases that are not complete sentences):
+  - If there is a lead-in they complete, apply the fragment test: attach each
+    item to the lead-in; if the result is a complete, grammatical sentence of
+    25 words or fewer, the type is "fragment".
+  - If there is only a heading and nothing for the fragments to complete, the
+    type is "standAlone".
+- Use "standAlone" ONLY for a heading followed by words or short phrases. Never
+  use it for items that are complete sentences.
+- If the user gives a "Requested type", honour it and rewrite the items to suit.
+
+REWRITE THE ITEMS:
+- Make every item follow the same grammatical pattern: the same word type to
+  start, the same tense, the same kind of phrase or sentence. Prefer the form
+  most items already use, and change as little as possible.
+- Keep the author's meaning and terminology. Never invent facts, names or
+  detail that are not in the items.
+- If the same word or words start every item, move them into the lead-in
+  instead, so long as the lead-in still reads naturally.
+- Capitalisation is your judgement call. For a "fragment" list, start each item
+  with a lower-case letter UNLESS it begins with a proper noun (a name, place,
+  organisation, program or title), which keeps its capital. For "sentence" and
+  "standAlone" lists the formatter will capitalise the first letter, so case
+  does not matter there.
+- Do not add a full stop, semicolon, comma, bullet or number to any item.
+
+COHERENCE:
+- If the items do not belong together as one list, are nonsense, or cannot be
+  made parallel without inventing content, set "coherent" to false and explain
+  plainly in "note" what the problem is. Still return your best-effort items.
+- Otherwise set "coherent" to true and "note" to "".
+
+Reply with ONE JSON object and nothing else:
+{"type":"sentence|fragment|standAlone","leadIn":"the cleaned lead-in or heading",
+"items":["rewritten item","..."],"changes":["short plain-English note of each
+change you made"],"coherent":true,"note":""}
+Keep "changes" short and user-facing (for example "Made every item start with a
+verb" or "Moved 'the committee will' into the lead-in"). Use an empty array if
+you changed nothing.`,
+        build(body) {
+            const items = (body.items || []).map(s => String(s)).filter(s => s.trim());
+            return (body.forcedType ? `Requested type: ${body.forcedType}\n` : '') +
+                `Lead-in or heading: ${body.leadIn || '(none given)'}\n` +
+                `Items:\n${items.join('\n')}`;
+        },
+        maxChars: 4000,
+        maxTokens: 1500,
+        strong: true,
+        shape(r) {
+            const match = r.match(/\{[\s\S]*\}/);
+            if (!match) throw new Error('no-json');
+            const p = JSON.parse(match[0]);
+            const items = Array.isArray(p.items)
+                ? p.items.map(s => String(s).trim()).filter(Boolean) : [];
+            if (!items.length) throw new Error('no-items');
+            const type = ['sentence', 'fragment', 'standAlone'].includes(p.type)
+                ? p.type : 'sentence';
+            return {
+                type,
+                leadIn: String(p.leadIn || ''),
+                items,
+                changes: Array.isArray(p.changes)
+                    ? p.changes.map(s => String(s).trim()).filter(Boolean) : [],
+                coherent: p.coherent !== false,
+                note: String(p.note || '')
+            };
+        }
+    },
+
     'citation-parse': {
         system: `You extract structured citation data for 'Proof Positive', an
 Australian Government Style Manual citation tool. The user pastes a messy or
@@ -259,6 +345,7 @@ Rules for answers:
         maxChars: 1200,
         history: true,
         retrieval: true,
+        strong: true,
         shape: r => ({ answer: r.trim() })
     }
 };
@@ -332,7 +419,8 @@ export default {
         try { body = await request.json(); } catch {
             return json({ error: 'Invalid request.' }, 400, cors);
         }
-        if (endpoint === 'list-parallel' && !Array.isArray(body.items)) {
+        if ((endpoint === 'list-parallel' || endpoint === 'list-format') &&
+            !Array.isArray(body.items)) {
             return json({ error: 'Invalid request.' }, 400, cors);
         }
         let userMsg;
@@ -358,10 +446,13 @@ export default {
 
         // ---- retrieval (Ask endpoint): ground the answer in scraped pages ----
         let system = spec.system;
-        let model = env.MODEL || DEFAULTS.MODEL;
+        // Judgement-heavy endpoints (spec.strong) use the stronger model; the
+        // rest use the cheaper default.
+        let model = spec.strong
+            ? (env.STRONG_MODEL || env.ASK_MODEL || DEFAULTS.STRONG_MODEL)
+            : (env.MODEL || DEFAULTS.MODEL);
         let sources = null;
         if (spec.retrieval) {
-            model = env.ASK_MODEL || DEFAULTS.ASK_MODEL;
             const pages = retrievePages(userMsg, 3);
             sources = {};
             for (const p of pages) sources[p.u] = p.t;
@@ -390,7 +481,7 @@ export default {
                 },
                 body: JSON.stringify({
                     model,
-                    max_tokens: DEFAULTS.MAX_TOKENS,
+                    max_tokens: spec.maxTokens || DEFAULTS.MAX_TOKENS,
                     system,
                     messages
                 })

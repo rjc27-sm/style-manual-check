@@ -19,7 +19,9 @@ id = "3cace9b99cdd430ba1a873add185c670"
 # back to "" and redeploy - but re-lock it afterwards.
 ALLOWED_ORIGINS = "https://rjc27-sm.github.io"
 MODEL = "claude-haiku-4-5"
-# Ask answers from scraped Style Manual pages and uses a stronger model.
+# Judgement-heavy endpoints (Ask, and the list formatter) use a stronger model.
+STRONG_MODEL = "claude-sonnet-5"
+# Backward-compatible alias, still read if STRONG_MODEL is unset.
 ASK_MODEL = "claude-sonnet-5"
 # Where the scraped page extracts are hosted (the im2026/pages/ folder).
 PAGES_BASE_URL = "https://rjc27-sm.github.io/style-manual-check/im2026/pages/"
