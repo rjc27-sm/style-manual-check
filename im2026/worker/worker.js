@@ -330,10 +330,14 @@ Rules for answers:
   Write the lead-in as a plain line ending in a colon. If the items are
   sentence fragments, start each with a lower-case letter (unless it is a
   proper noun) and put a full stop after the last item only. If every item
-  is a complete sentence, start each with a capital letter and end each
-  with a full stop.
-- To group points, use a short plain line as a sub-heading (no bold, no
-  colon, no full stop) rather than a bold label.
+  is a complete sentence - including an instruction or a rule, such as
+  'Capitalise proper nouns.' - start each with a capital letter and end
+  EVERY item with a full stop.
+- Prefer one simple list with a colon lead-in. Do not split an answer into
+  several sub-headed groups of bullets; if grouping is unavoidable, each
+  group is a complete list in its own right - punctuate its items by the
+  same rules above (a group of instructions or rules is a sentence list, so
+  every item ends with a full stop).
 - End with 'Read more:' followed by the Source URL of every extract you
   relied on - each URL on its own line. Cite one URL if only one extract was
   relevant, more if several were. Never cite any URL that is not in the

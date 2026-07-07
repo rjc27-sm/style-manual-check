@@ -61,6 +61,42 @@ function classifyItem(cleanText) {
     return 'phrase';
 }
 
+// Imperative verbs common in style guidance that head a complete-sentence item
+// but are kept out of the noun-safe base-verb list above. Used ONLY to spot
+// sentence items under a heading - never to reclassify an individual item.
+const IMPERATIVE_EXTRA = new Set(['capitalise', 'capitalize', 'avoid', 'follow',
+    'spell', 'format', 'prefer', 'replace', 'insert', 'treat']);
+
+const RELATIVE_PRONOUNS = ['that', 'which', 'who', 'whom', 'whose', 'where', 'when'];
+
+const cleanWord = w => w.toLowerCase().replace(/[^a-z'’-]/g, '');
+
+// Does the item read as a complete sentence - a command, or a statement with a
+// finite verb? Stand-alone list items are short noun phrases and fail this;
+// instructions and rules pass it. Deliberately conservative to avoid promoting
+// genuine stand-alone lists.
+function looksLikeSentence(text) {
+    const words = text.split(/\s+/);
+    if (words.length < 4) return false;             // stand-alone items are short
+    const fw = firstWord(text);
+    if (fw === 'please' || isBaseVerb(fw) || IMPERATIVE_EXTRA.has(fw)) return true;
+    // Imperative with a fronted adverbial: 'In legal material, use initial ...'
+    for (let i = 0; i < words.length - 1 && i < 6; i++) {
+        if (/,$/.test(words[i])) {
+            const next = cleanWord(words[i + 1]);
+            if (isBaseVerb(next) || IMPERATIVE_EXTRA.has(next)) return true;
+            break;                                  // only the first comma clause
+        }
+    }
+    // Statement with a finite verb (ignore verbs inside a relative clause).
+    return words.some((w, i) => {
+        const c = cleanWord(w);
+        const prev = i > 0 ? cleanWord(words[i - 1]) : '';
+        if (RELATIVE_PRONOUNS.includes(prev)) return false;
+        return FINITE_VERBS.includes(c) || /n['’]t$/.test(c);
+    });
+}
+
 // Classify the lead-in: 'sentence', 'phrase' or 'heading'.
 function classifyLeadIn(rawLeadIn) {
     const trimmed = (rawLeadIn || '').trim();
@@ -171,9 +207,16 @@ function analyseList(list) {
     const allEndWithStop = list.items.every(it =>
         /^[A-Z]/.test(it.stripped) && /[.!?]\s*$/.test(it.stripped));
 
+    // A stand-alone list is short noun phrases under a heading. If most items
+    // are complete sentences (instructions or rules), it is really a sentence
+    // list and each item needs a full stop - not a stand-alone list.
+    const sentenceCount = texts.filter(looksLikeSentence).length;
+    const mostlySentences = texts.length > 0 &&
+        sentenceCount >= Math.ceil(texts.length * 0.6);
+
     let listType;
     if (leadInType === 'heading') {
-        listType = allClause ? 'sentence' : 'standAlone';
+        listType = (allClause || mostlySentences) ? 'sentence' : 'standAlone';
     } else if (allClause) {
         listType = 'sentence';
     } else if (allPhrase) {
