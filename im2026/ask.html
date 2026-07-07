@@ -175,17 +175,38 @@ function autoCorrect(text) {
     const mask = maskProtected;
     let fixes = 0;
     for (let pass = 0; pass < 3; pass++) {
-        const { issues } = verifyText(mask(text));
+        const masked = mask(text);
+        const { issues } = verifyText(masked);
         const fixable = issues.filter(i => i.autoFix && i.autoFix !== i.found);
         if (fixable.length === 0) break;
         fixable.sort((a, b) => b.position - a.position);
+        let changed = false;
         for (const i of fixable) {
-            if (text.slice(i.position, i.position + i.found.length) === i.found) {
-                text = text.slice(0, i.position) + i.autoFix +
-                    text.slice(i.position + i.found.length);
-                fixes++;
-            }
+            const pos = i.position, found = i.found, fix = i.autoFix;
+            const end = pos + found.length;
+            // Detection ran on the MASKED copy, so `found`/`fix` may contain mask
+            // characters where they overlap a quote or URL. Confirm the position
+            // still lines up in the masked domain first.
+            if (masked.slice(pos, end) !== found) continue;
+            // Translate the edit onto the real text: the common prefix/suffix are
+            // unchanged, only the middle differs. Comparing against `found` (not
+            // `fix`) keeps the mask characters aligned by length.
+            let p = 0;
+            while (p < found.length && p < fix.length && found[p] === fix[p]) p++;
+            let s = 0;
+            while (s < found.length - p && s < fix.length - p &&
+                   found[found.length - 1 - s] === fix[fix.length - 1 - s]) s++;
+            // The part being replaced must fall OUTSIDE any masked span - i.e. the
+            // masked and real characters there must be identical. If they differ,
+            // the fix would touch a protected quote/URL, so skip it (never rewrite
+            // example content or link addresses).
+            if (found.slice(p, found.length - s) !== text.slice(pos + p, end - s)) continue;
+            text = text.slice(0, pos + p) + fix.slice(p, fix.length - s) +
+                text.slice(end - s);
+            fixes++;
+            changed = true;
         }
+        if (!changed) break;
     }
     const remaining = verifyText(mask(text)).issues.length;
     return { text, fixes, remaining };
