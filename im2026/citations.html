@@ -43,12 +43,12 @@
         .keyline { height: 4px; background: linear-gradient(90deg, var(--b2), var(--blue) 55%, var(--b4)); margin: 0 -20px; }
 
         /* ===== LAYOUT ===== */
-        .container { max-width: 860px; margin: 0 auto; }
+        .container { max-width: 960px; margin: 0 auto; padding-left: 28px; padding-right: 28px; }
 
         header {
             background: transparent;
             color: inherit;
-            padding: 32px 4px 20px;
+            padding: 32px 0 20px;
             border-radius: 0;
         }
 
@@ -281,7 +281,8 @@
         @media (max-width: 600px) {
             body { padding: 0 14px 36px; }
             .keyline { margin: 0 -14px; }
-            header { padding: 24px 2px 16px; }
+            .container { padding-left: 18px; padding-right: 18px; }
+            header { padding: 24px 0 16px; }
             header h1 { font-size: 23px; }
             main { padding: 20px; }
             .source-type-grid { grid-template-columns: repeat(2, 1fr); }
