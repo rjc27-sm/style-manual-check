@@ -65,7 +65,7 @@ function classifyItem(cleanText) {
 // but are kept out of the noun-safe base-verb list above. Used ONLY to spot
 // sentence items under a heading - never to reclassify an individual item.
 const IMPERATIVE_EXTRA = new Set(['capitalise', 'capitalize', 'avoid', 'follow',
-    'spell', 'format', 'prefer', 'replace', 'insert', 'treat']);
+    'spell', 'format', 'prefer', 'replace', 'insert', 'treat', 'start']);
 
 const RELATIVE_PRONOUNS = ['that', 'which', 'who', 'whom', 'whose', 'where', 'when'];
 
@@ -207,18 +207,23 @@ function analyseList(list) {
     const allEndWithStop = list.items.every(it =>
         /^[A-Z]/.test(it.stripped) && /[.!?]\s*$/.test(it.stripped));
 
-    // A stand-alone list is short noun phrases under a heading. If most items
-    // are complete sentences (instructions or rules), it is really a sentence
-    // list and each item needs a full stop - not a stand-alone list.
+    // Are the items really complete sentences (instructions or rules)? The
+    // shallow item classifier tags a sentence with a fronted adverbial - 'In a
+    // fragment list ..., use a lower-case letter' - as a 'phrase', so a list of
+    // them looks stand-alone or fragment when it is a sentence list. Only trust
+    // this when the lead-in is NOT a dangling stem ('phrase'): after a stem like
+    // 'you will need to:' the items legitimately complete it as a fragment list.
     const sentenceCount = texts.filter(looksLikeSentence).length;
     const mostlySentences = texts.length > 0 &&
         sentenceCount >= Math.ceil(texts.length * 0.6);
 
     let listType;
-    if (leadInType === 'heading') {
-        listType = (allClause || mostlySentences) ? 'sentence' : 'standAlone';
-    } else if (allClause) {
+    if (allClause) {
         listType = 'sentence';
+    } else if (mostlySentences && leadInType !== 'phrase') {
+        listType = 'sentence';
+    } else if (leadInType === 'heading') {
+        listType = 'standAlone';
     } else if (allPhrase) {
         listType = 'fragment';
     } else {
