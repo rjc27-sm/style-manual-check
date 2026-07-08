@@ -300,7 +300,9 @@ async function ask(question) {
     } finally {
         $('ask-btn').disabled = false;
         $('ask-busy').hidden = true;
-        $('ask-input').focus();
+        // preventScroll: focusing the input otherwise scrolls it into view and
+        // clobbers addMsg's scroll to the top of the answer.
+        $('ask-input').focus({ preventScroll: true });
     }
 }
 
