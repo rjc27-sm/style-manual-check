@@ -2661,14 +2661,43 @@ const RULES = [
                 'Aboriginal', 'Indigenous',
                 'English', 'French', 'German', 'Spanish', 'Chinese', 'Japanese',
                 'Christmas', 'Easter',
-                'Parliament', 'Commonwealth', 'Government'
+                'Parliament', 'Commonwealth', 'Government',
+                // Australian states/territories (single-word; multi-word names like
+                // 'New South Wales' are handled by the multi-word skip below) and
+                // capital cities - common single-occurrence proper nouns in
+                // government writing that a mid-sentence check cannot catch.
+                'Queensland', 'Victoria', 'Tasmania',
+                'Sydney', 'Melbourne', 'Brisbane', 'Perth', 'Adelaide',
+                'Hobart', 'Darwin', 'Canberra'
             ]);
+            // A proper noun keeps its capital everywhere; a common word is
+            // capitalised only at the start of a sentence. So if this word ALSO
+            // appears capitalised somewhere that is not sentence-initial, it is a
+            // proper noun - leave it alone. Needs no maintained list and catches
+            // repeated names (Medicare, Centrelink, a surname) automatically.
+            const appearsMidSentence = (w) => {
+                const re = new RegExp('\\b' + w + '\\b', 'g');
+                let m2;
+                while ((m2 = re.exec(text)) !== null) {
+                    let j = m2.index - 1;
+                    while (j >= 0 && (text[j] === ' ' || text[j] === '\t')) j--;
+                    if (j < 0) continue;                              // start of text
+                    // Sentence-initial contexts: after . ! ? : a line break, or an
+                    // opening quote/bracket. Anything else means mid-sentence.
+                    if (/[.!?:\r\n"'(‘“]/.test(text[j])) continue;
+                    return true;
+                }
+                return false;
+            };
             let match;
             while ((match = regex.exec(text)) !== null) {
                 const word = match[1];
 
                 // Skip proper nouns
                 if (properNouns.has(word)) continue;
+
+                // Skip words that read as proper nouns elsewhere in the text
+                if (appearsMidSentence(word)) continue;
 
                 // Skip if the match bridges a line break (\r or \n) — safety net for any
                 // line endings that slip through the [ \t]+ regex guard above
