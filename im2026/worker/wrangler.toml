@@ -25,7 +25,7 @@ STRONG_MODEL = "claude-sonnet-5"
 ASK_MODEL = "claude-sonnet-5"
 # Where the scraped page extracts are hosted (the im2026/pages/ folder).
 PAGES_BASE_URL = "https://rjc27-sm.github.io/style-manual-check/im2026/pages/"
-IP_DAILY_LIMIT = "40"
+IP_DAILY_LIMIT = "150"
 GLOBAL_DAILY_LIMIT = "500"
 
 # The API key is a SECRET, never a var. Set it with:
