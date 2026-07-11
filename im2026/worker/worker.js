@@ -411,11 +411,13 @@ export default {
         const ipLimit = parseInt(env.IP_DAILY_LIMIT || DEFAULTS.IP_DAILY_LIMIT, 10);
         const globalLimit = parseInt(env.GLOBAL_DAILY_LIMIT || DEFAULTS.GLOBAL_DAILY_LIMIT, 10);
 
-        if (!(await bumpCounter(env, `g:${day}`, globalLimit))) {
-            return json({ error: 'The daily AI usage limit for this tool has been reached. The rule-based features still work - try AI again tomorrow.' }, 429, cors);
-        }
+        // Check the per-IP cap FIRST: a caller who is over their own limit
+        // must not keep draining the shared global budget with refused requests.
         if (!(await bumpCounter(env, `ip:${ip}:${day}`, ipLimit))) {
             return json({ error: 'You have reached today’s AI usage limit (' + ipLimit + ' requests). The rule-based features still work - try AI again tomorrow.' }, 429, cors);
+        }
+        if (!(await bumpCounter(env, `g:${day}`, globalLimit))) {
+            return json({ error: 'The daily AI usage limit for this tool has been reached. The rule-based features still work - try AI again tomorrow.' }, 429, cors);
         }
 
         // ---- input validation ----
@@ -457,7 +459,7 @@ export default {
             : (env.MODEL || DEFAULTS.MODEL);
         let sources = null;
         if (spec.retrieval) {
-            const pages = retrievePages(userMsg, 3);
+            const pages = retrievePages(userMsg, 4);
             sources = {};
             for (const p of pages) sources[p.u] = p.t;
             const texts = await Promise.all(pages.map(p => fetchPageText(env, p.s)));

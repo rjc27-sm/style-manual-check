@@ -26,7 +26,9 @@ ASK_MODEL = "claude-sonnet-5"
 # Where the scraped page extracts are hosted (the im2026/pages/ folder).
 PAGES_BASE_URL = "https://rjc27-sm.github.io/style-manual-check/im2026/pages/"
 IP_DAILY_LIMIT = "150"
-GLOBAL_DAILY_LIMIT = "500"
+# Raised from 500 for the IM2026 judging window (Jul 2026) so a judge can
+# never hit "daily limit reached" mid-demo. Consider dropping back after.
+GLOBAL_DAILY_LIMIT = "1000"
 
 # The API key is a SECRET, never a var. Set it with:
 #   npx wrangler secret put ANTHROPIC_API_KEY

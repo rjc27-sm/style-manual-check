@@ -104,6 +104,7 @@ body{font-family:'Open Sans',Arial,sans-serif;background:var(--bg);color:var(--c
     <a href="lists.html" aria-describedby="tip-lists">Format a list<span class="gov-tip" id="tip-lists" aria-hidden="true">Turn rough bullet points into a correctly punctuated sentence, fragment or stand-alone list.</span></a>
     <a href="citations.html" aria-describedby="tip-cite">Create a citation<span class="gov-tip" id="tip-cite" aria-hidden="true">Build an author–date reference from a DOI, a form or a messy pasted reference.</span></a>
     <a href="ask.html" aria-describedby="tip-ask">Ask the Style Manual<span class="gov-tip" id="tip-ask" aria-hidden="true">Ask a question and get an answer from Style Manual content with a link to the relevant page.</span></a>
+    <a href="about.html" aria-describedby="tip-about">About<span class="gov-tip" id="tip-about" aria-hidden="true">How the bot works, what it can and can’t do, and the full bot card.</span></a>
   </div>
 </nav>
 
@@ -177,51 +178,9 @@ body{font-family:'Open Sans',Arial,sans-serif;background:var(--bg);color:var(--c
 
 <script type="module">
 import { aiPlain, AI_ENABLED } from './src/ai.js';
-import { verifyText, RULE_COUNT } from './src/verify.js';
+import { autoCorrect, RULE_COUNT } from './src/verify.js';
 
 const $ = id => document.getElementById(id);
-
-/**
- * Mask spans the rule engine must not touch: URLs (addresses, not prose) and
- * quoted examples. Quoted examples are mentions of style, not uses of it -
- * the Manual's exceptions live inside them, so 'correcting' them is wrong.
- * Masking preserves length, so issue positions still line up with the text.
- */
-function maskProtected(s) {
-    const x = m => 'x'.repeat(m.length);
-    return s
-        // Markdown link targets '](url)' and heading markers are syntax, not
-        // prose - mask them so the engine never 'corrects' them. Length is
-        // preserved, so autoCorrect positions still line up with the text.
-        // (Link text inside '[...]' stays visible and is still checked.)
-        .replace(/\]\([^)\n]{1,400}\)/g, x)
-        .replace(/^#{1,4}[ \t]/gm, x)
-        .replace(/https:\/\/[^\s]+/g, x)
-        .replace(/\u201c[^\u201d\n]{1,160}\u201d/g, x)
-        .replace(/"[^"\n]{1,160}"/g, x)
-        .replace(/\u2018(?:[^\u2018\u2019\n]|\u2019(?=[a-z])){1,160}\u2019(?=[\s.,;:!?)\]]|$)/g, x)
-        .replace(/(^|[\s(])'(?:[^'\n]|'(?=[a-z])){1,160}'(?=[\s.,;:!?)\]]|$)/gm,
-            (m, p) => p + x(m.slice(p.length)));
-}
-
-function autoCorrect(text) {
-    let fixes = 0;
-    for (let pass = 0; pass < 3; pass++) {
-        const { issues } = verifyText(maskProtected(text));
-        const fixable = issues.filter(i => i.autoFix && i.autoFix !== i.found);
-        if (fixable.length === 0) break;
-        fixable.sort((a, b) => b.position - a.position);
-        for (const i of fixable) {
-            if (text.slice(i.position, i.position + i.found.length) === i.found) {
-                text = text.slice(0, i.position) + i.autoFix +
-                    text.slice(i.position + i.found.length);
-                fixes++;
-            }
-        }
-    }
-    const remaining = verifyText(maskProtected(text)).issues;
-    return { text, fixes, remaining };
-}
 
 function escapeHtml(s) {
     return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;')

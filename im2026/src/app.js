@@ -91,14 +91,19 @@ async function handleFile(file) {
         showError('Please choose a Word document (.docx). Older .doc files are not supported - save as .docx first.');
         return;
     }
+    await checkBuffer(file.name, () => file.arrayBuffer());
+}
+
+/** Shared document pipeline: uploaded file and fetched sample both land here. */
+async function checkBuffer(name, getBuffer) {
     showError('');
-    $('file-name').textContent = file.name;
+    $('file-name').textContent = name;
     $('results-section').hidden = true;
     $('download-section').hidden = true;
     setBusy(true, 'Reading document…');
     try {
-        state.fileBuffer = await file.arrayBuffer();
-        state.fileName = file.name;
+        state.fileBuffer = await getBuffer();
+        state.fileName = name;
         state.loaded = await loadDocx(state.fileBuffer.slice(0));
         state.issues = runRules(state.loaded.fullText, state.loaded);
         renderResults();
@@ -109,6 +114,15 @@ async function handleFile(file) {
     } finally {
         setBusy(false);
     }
+}
+
+/** The bundled sample: a fictional briefing seeded with style issues. */
+function checkSample() {
+    checkBuffer('sample-briefing.docx', async () => {
+        const res = await fetch('assets/sample-briefing.docx');
+        if (!res.ok) throw new Error('The sample could not be fetched (' + res.status + ').');
+        return res.arrayBuffer();
+    });
 }
 
 async function downloadAnnotated() {
@@ -145,6 +159,23 @@ async function downloadAnnotated() {
 }
 
 // ---------------- Text mode ----------------
+
+// Example passage for the paste tab (same fictional department as the
+// sample document, trimmed to a handful of planted issues).
+// Paragraphs stay on single lines: the plain-text heuristics treat each
+// line as a paragraph, so a hard-wrapped line would read as a heading.
+const EXAMPLE_TEXT =
+    'Unicorn crossing upgrade – progress note\n\n' +
+    'The Department of Unicorn Management will modernize signage at fifteen crossings, e.g. new rainbow palettes, following the review released January 15, 2026.  Approx. 45 percent of sites failed the glitter-visibility test.\n\n' +
+    'Key dates\n' +
+    '- Round 1 opens: 15 January;\n' +
+    '- round 2 opens: 1 July, and\n' +
+    '- final report due: 30 June etc.';
+
+function loadExampleText() {
+    $('text-input').value = EXAMPLE_TEXT;
+    checkPastedText();
+}
 
 function checkPastedText() {
     const text = $('text-input').value;
@@ -363,21 +394,35 @@ function setBusy(busy, label) {
 
 // ---------------- Wiring ----------------
 
-function switchMode(mode) {
+function switchMode(mode, focusTab) {
     state.mode = mode;
-    $('tab-document').setAttribute('aria-selected', mode === 'document');
-    $('tab-text').setAttribute('aria-selected', mode === 'text');
+    const tabs = { document: $('tab-document'), text: $('tab-text') };
+    for (const [m, tab] of Object.entries(tabs)) {
+        tab.setAttribute('aria-selected', m === mode);
+        // Roving tabindex: only the selected tab sits in the tab order;
+        // arrow keys move between tabs (WAI-ARIA tabs pattern).
+        tab.tabIndex = m === mode ? 0 : -1;
+    }
     $('panel-document').hidden = mode !== 'document';
     $('panel-text').hidden = mode !== 'text';
     $('results-section').hidden = true;
     $('download-section').hidden = true;
     state.issues = [];
+    if (focusTab) tabs[mode].focus();
 }
 
 function init() {
     switchMode('document');
     $('tab-document').addEventListener('click', () => switchMode('document'));
     $('tab-text').addEventListener('click', () => switchMode('text'));
+    document.querySelector('[role="tablist"]').addEventListener('keydown', e => {
+        if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) return;
+        e.preventDefault();
+        const other = state.mode === 'document' ? 'text' : 'document';
+        if (e.key === 'Home') switchMode('document', true);
+        else if (e.key === 'End') switchMode('text', true);
+        else switchMode(other, true);
+    });
 
     const drop = $('drop-zone');
     const fileInput = $('file-input');
@@ -394,6 +439,8 @@ function init() {
         handleFile(e.dataTransfer.files[0]);
     });
 
+    $('sample-btn').addEventListener('click', checkSample);
+    $('example-text-btn').addEventListener('click', loadExampleText);
     $('download-btn').addEventListener('click', downloadAnnotated);
     $('check-text-btn').addEventListener('click', checkPastedText);
 

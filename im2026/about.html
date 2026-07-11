@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>About – Proof Positive (IM2026)</title>
+<meta name="description" content="How Proof Positive works: an IM2026 Bureaucrat Bot where generative AI drafts and a deterministic Style Manual rule engine verifies. Bot card, limitations and accessibility statement.">
+<link rel="icon" type="image/png" sizes="32x32" href="assets/style-check-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="assets/style-check-16x16.png">
+<link rel="stylesheet" href="assets/site.css?v=4">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700;800&display=swap');
+:root{
+  --blue:#2d7e98;--b1:#192f38;--b2:#295665;--b4:#61a9be;--b5:#b7d6df;
+  --teal:#27854e;
+  --c1:#2b2d2d;--c2:#4f5152;--c3:#707678;--c4:#9c9fa0;--c5:#cfd1d1;
+  --bg:#f6f7f7;--line:#e3e6e6;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{font-family:'Open Sans',Arial,sans-serif;background:var(--bg);color:var(--c1);
+  font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased}
+[hidden]{display:none !important}
+.wrap{max-width:960px;margin:0 auto;padding:36px 28px 56px}
+.hero h1{font-size:28px;font-weight:800;color:var(--b1);letter-spacing:-.01em;line-height:1.15;margin:0}
+.lede{font-size:15.5px;color:var(--c2);margin:10px 0 0;max-width:680px;line-height:1.65}
+.hero{margin-bottom:30px}
+
+section{margin-bottom:36px}
+section h2{font-size:19px;font-weight:800;color:var(--b1);margin-bottom:12px}
+section p{font-size:15px;color:var(--c2);line-height:1.7;max-width:720px;margin-bottom:12px}
+section ul{margin:0 0 12px 22px;max-width:720px}
+section li{font-size:15px;color:var(--c2);line-height:1.7;margin-bottom:6px}
+section a{color:var(--b2)}
+
+.loop{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;
+  margin:18px 0 8px;counter-reset:loopstep}
+.loop-step{background:#fff;border:1px solid var(--line);border-radius:10px;padding:16px 18px;
+  box-shadow:0 1px 2px rgba(25,47,56,.04);position:relative;counter-increment:loopstep}
+.loop-step::before{content:counter(loopstep);display:flex;align-items:center;justify-content:center;
+  width:26px;height:26px;border-radius:999px;background:var(--blue);color:#fff;
+  font:700 13px 'Open Sans',sans-serif;margin-bottom:10px}
+.loop-step h3{font-size:14.5px;font-weight:700;color:var(--b1);margin-bottom:5px}
+.loop-step p{font-size:13.5px;color:var(--c2);line-height:1.6;margin:0}
+.loop-step.ai{border-left:4px solid #5b3d8f}
+.loop-step.rules{border-left:4px solid var(--teal)}
+
+.botcard{background:#fff;border:1px solid var(--line);border-radius:10px;padding:6px 24px;
+  box-shadow:0 1px 2px rgba(25,47,56,.04);max-width:760px}
+.botcard dl{margin:0}
+.botcard dt{font-size:13px;font-weight:800;color:var(--b2);text-transform:uppercase;
+  letter-spacing:.04em;margin:18px 0 4px}
+.botcard dd{font-size:15px;color:var(--c2);line-height:1.7;margin:0 0 4px}
+.botcard dd:last-child{margin-bottom:18px}
+.botcard ul{margin:4px 0 0 20px}
+.botcard li{font-size:15px;color:var(--c2);line-height:1.65;margin-bottom:4px}
+
+@media (max-width:720px){
+  .wrap{padding:26px 18px 44px}
+  .hero h1{font-size:24px}
+}
+</style>
+</head>
+<body>
+
+<a class="gov-skip" href="#main">Skip to main content</a>
+
+<header class="gov-header">
+  <div class="gov-header-inner">
+    <div class="gov-masthead">
+      <img class="gov-mark" src="assets/style-check-96x96.png" alt="" width="42" height="42">
+      <div>
+        <p class="gov-sitename">Proof Positive <span class="gov-im">IM2026</span></p>
+        <p class="gov-tagline">A Bureaucrat Bot for Innovation Month 2026</p>
+      </div>
+    </div>
+  </div>
+</header>
+<nav class="gov-nav" aria-label="Tools">
+  <div class="gov-nav-inner">
+    <a href="index.html" aria-describedby="tip-check">Check a document<span class="gov-tip" id="tip-check" aria-hidden="true">Upload a Word document and get it back with a review comment on every style issue. Your document’s formatting is not changed.</span></a>
+    <a href="plain.html" aria-describedby="tip-plain">Make it plain<span class="gov-tip" id="tip-plain" aria-hidden="true">Paste a hard-to-read passage and get a plain English rewrite that follows Style Manual conventions.</span></a>
+    <a href="lists.html" aria-describedby="tip-lists">Format a list<span class="gov-tip" id="tip-lists" aria-hidden="true">Turn rough bullet points into a correctly punctuated sentence, fragment or stand-alone list.</span></a>
+    <a href="citations.html" aria-describedby="tip-cite">Create a citation<span class="gov-tip" id="tip-cite" aria-hidden="true">Build an author–date reference from a DOI, a form or a messy pasted reference.</span></a>
+    <a href="ask.html" aria-describedby="tip-ask">Ask the Style Manual<span class="gov-tip" id="tip-ask" aria-hidden="true">Ask a question and get an answer from Style Manual content with a link to the relevant page.</span></a>
+    <a href="about.html" aria-current="page" aria-describedby="tip-about">About<span class="gov-tip" id="tip-about" aria-hidden="true">How the bot works, what it can and can’t do, and the full bot card.</span></a>
+  </div>
+</nav>
+
+<main class="wrap" id="main">
+  <header class="hero">
+    <h1>Most AI tools ask you to trust the model. This one doesn't.</h1>
+    <p class="lede">Proof Positive never shows you AI output that its
+      deterministic rule engine has not checked first. The engine codifies more
+      than 100 rules from the
+      <a href="https://www.stylemanual.gov.au" rel="noopener">Australian
+      Government Style Manual</a>; generative AI is used only where fixing
+      something takes judgement – and then the rules mark the AI's homework.</p>
+  </header>
+
+  <section aria-labelledby="how-h">
+    <h2 id="how-h">How the draft-and-verify loop works</h2>
+    <div class="loop">
+      <div class="loop-step rules">
+        <h3>The rules check your text</h3>
+        <p>A deterministic rule engine runs in your browser: the same input
+          gives the same answer every time, and nothing is uploaded.</p>
+      </div>
+      <div class="loop-step ai">
+        <h3>AI drafts where judgement is needed</h3>
+        <p>Rewording a tangled sentence or making list items parallel has no
+          mechanical fix – so Claude drafts a suggestion.</p>
+      </div>
+      <div class="loop-step rules">
+        <h3>The rules mark the AI's homework</h3>
+        <p>Every AI draft goes back through the rule engine before you see it.
+          Mechanical breaches are corrected automatically; anything left is
+          flagged, never hidden.</p>
+      </div>
+      <div class="loop-step">
+        <h3>You stay the editor</h3>
+        <p>Suggestions are always labelled ✦, always reviewable, and never
+          applied to your document without you.</p>
+      </div>
+    </div>
+    <p>The Ask tool adds one more safeguard: answers are grounded in extracts
+      of the actual Style Manual pages retrieved for your question, and can
+      only cite pages the bot really read – it cannot invent rules or
+      references.</p>
+  </section>
+
+  <section aria-labelledby="card-h">
+    <h2 id="card-h">Bot card</h2>
+    <div class="botcard">
+      <dl>
+        <dt>Name</dt>
+        <dd>Proof Positive (IM2026) – an entry in the APS Innovation Month
+          2026 ‘Build a Bureaucrat Bot’ challenge.</dd>
+
+        <dt>Purpose</dt>
+        <dd>Help people who write for government apply the Australian
+          Government Style Manual: check Word documents and pasted text,
+          rewrite dense passages into plain English, format lists, build
+          author–date citations and answer style questions.</dd>
+
+        <dt>Intended users</dt>
+        <dd>Australian public servants and anyone writing to Style Manual
+          conventions. It is a demonstration and a drafting aid – not an
+          official government service and not a substitute for editorial
+          judgement.</dd>
+
+        <dt>Information used</dt>
+        <dd>Public Style Manual content only, © Commonwealth of Australia,
+          used under
+          <a href="https://creativecommons.org/licenses/by/4.0/" rel="noopener">CC BY 4.0</a>.
+          The Ask tool retrieves from 146 saved Style Manual pages. There are
+          no user accounts and no database: documents are processed in your
+          browser and never uploaded, and text sent to AI features is not
+          stored by the tool or used to train models.</dd>
+
+        <dt>Tools used</dt>
+        <dd>
+          <ul>
+            <li>A hand-built rule engine (plain JavaScript, no framework)
+              codifying more than 100 Style Manual rules – it runs entirely
+              in the browser.</li>
+            <li>Anthropic's Claude models via a rate-limited Cloudflare
+              Worker proxy, so the API key never reaches the browser. AI
+              features are marked ✦.</li>
+            <li>GitHub Pages for hosting. No analytics, no cookies, no
+              trackers.</li>
+          </ul>
+        </dd>
+
+        <dt>Limitations</dt>
+        <dd>
+          <ul>
+            <li>The rule engine covers a codified subset of the Style Manual,
+              not every nuance of the full guidance.</li>
+            <li>AI suggestions can misread meaning or tone – always compare
+              them with your original. The verification step catches
+              mechanical breaches, not factual or semantic errors.</li>
+            <li>Pasted-text checks infer headings and lists heuristically;
+              the Word document check reads real formatting and is more
+              accurate.</li>
+            <li>AI features have daily usage limits to keep the free tool
+              affordable.</li>
+          </ul>
+        </dd>
+
+        <dt>Risks and mitigations</dt>
+        <dd>
+          <ul>
+            <li><strong>Invented rules or links</strong> – Ask answers only
+              from retrieved Style Manual extracts and can only cite pages it
+              actually read.</li>
+            <li><strong>Wrong 'corrections'</strong> – quoted examples and
+              URLs are masked so the engine never rewrites them; every
+              automatic fix is deterministic and reported.</li>
+            <li><strong>Sensitive information</strong> – every AI entry point
+              carries the same warning: don't enter classified, sensitive or
+              personal information.</li>
+            <li><strong>Cost abuse</strong> – per-user and whole-of-tool
+              daily request limits, enforced server-side.</li>
+          </ul>
+        </dd>
+
+        <dt>Provenance</dt>
+        <dd>Built by Jen Robertson as a personal project for Innovation Month
+          2026. The rule engine grew from Style Manual Check, a Word add-in
+          developed for working-group testing.</dd>
+      </dl>
+    </div>
+  </section>
+
+  <section aria-labelledby="access-h">
+    <h2 id="access-h">Accessibility</h2>
+    <p>A style tool that checks accessibility guidance should hold itself to
+      the same standard. Proof Positive is built to meet WCAG 2.1 AA:
+      semantic HTML with a skip link on every page, full keyboard operation,
+      visible focus indicators, status messages announced to screen readers,
+      no information conveyed by colour alone, and layouts that reflow at
+      400% zoom.</p>
+    <p>If you hit a barrier, please email
+      <a href="mailto:listformatterfeedback@gmail.com">listformatterfeedback@gmail.com</a>
+      – reports are genuinely welcome and fixes are usually quick.</p>
+  </section>
+
+  <section aria-labelledby="im-h">
+    <h2 id="im-h">Innovation Month 2026</h2>
+    <p>This bot is an entry in the ‘Build a Bureaucrat Bot’ challenge run as
+      part of APS Innovation Month 2026 (IM2026). In the spirit of the
+      challenge – and of Australia's AI Ethics Principles – it tries to show
+      one repeatable pattern: <strong>let generative AI draft, and let
+      deterministic rules verify.</strong> Any team could apply the same
+      pattern to their own guidance, legislation or business rules.</p>
+  </section>
+</main>
+
+<footer class="gov-footer">
+  <div class="gov-footer-inner">
+    <h2>About this bot</h2>
+    <p>Proof Positive (IM2026) is an entry in the APS Innovation Month 2026
+      ‘Build a Bureaucrat Bot’ challenge. It is a personal project, not an
+      official government service, and it does not replace editorial judgement
+      or the <a href="https://www.stylemanual.gov.au" rel="noopener">Australian
+      Government Style Manual</a>.</p>
+    <h2>Your data</h2>
+    <p>Rule-based checks run entirely in your browser – nothing is uploaded.
+      Features marked with ✦ send the text you choose to the Claude API
+      (Anthropic) to generate a suggestion; it is not used to train models.
+      Don't enter classified, sensitive or personal information.</p>
+    <p class="gov-footer-meta">Rules based on the Australian Government Style
+      Manual, © Commonwealth of Australia, used under
+      <a href="https://creativecommons.org/licenses/by/4.0/" rel="noopener">CC BY 4.0</a>.
+      Deterministic rule engine – AI is only used where judgement is needed,
+      and its output is re-checked by the rules.</p>
+  </div>
+</footer>
+
+</body>
+</html>

@@ -66,6 +66,27 @@ textarea#text-input:focus{outline:none;box-shadow:inset 0 0 0 2px var(--b5)}
 .btn-primary{background:var(--blue);color:#fff}
 .btn-primary:hover{background:var(--b2)}
 .btn:disabled{background:var(--c4);cursor:default}
+.btn-ghost{background:#fff;color:var(--b2);border:1px solid var(--c5)}
+.btn-ghost:hover{border-color:var(--b4);background:#eef5f7}
+
+.sample-row{border-top:1px solid var(--line);padding:12px 16px;font-size:13.5px;color:var(--c3);
+  display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.sample-row .linklike{background:none;border:none;padding:0;cursor:pointer;
+  font:600 13.5px 'Open Sans',sans-serif;color:var(--b2);text-decoration:underline;
+  text-underline-offset:2px}
+.sample-row .linklike:hover{color:var(--blue)}
+.sample-row a{color:var(--b2)}
+
+.toolkit{margin-top:44px;border-top:1px solid var(--line);padding-top:28px}
+.toolkit h2{font-size:17px;font-weight:800;color:var(--b1);margin-bottom:4px}
+.toolkit .toolkit-lede{font-size:14px;color:var(--c2);margin-bottom:16px;max-width:640px;line-height:1.6}
+.toolkit-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.tool-card{display:block;background:#fff;border:1px solid var(--line);border-radius:10px;
+  padding:15px 17px;text-decoration:none;box-shadow:0 1px 2px rgba(25,47,56,.04);
+  transition:border-color .15s var(--ease)}
+.tool-card:hover{border-color:var(--b4)}
+.tool-card h3{font-size:14.5px;font-weight:700;color:var(--b2);margin:0 0 4px}
+.tool-card p{font-size:13px;color:var(--c2);line-height:1.55;margin:0}
 
 .controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:22px 0 0}
 .controls .ctrl-lab{font-size:13px;font-weight:600;color:var(--c3)}
@@ -126,6 +147,7 @@ textarea#text-input:focus{outline:none;box-shadow:inset 0 0 0 2px var(--b5)}
     <a href="lists.html" aria-describedby="tip-lists">Format a list<span class="gov-tip" id="tip-lists" aria-hidden="true">Turn rough bullet points into a correctly punctuated sentence, fragment or stand-alone list.</span></a>
     <a href="citations.html" aria-describedby="tip-cite">Create a citation<span class="gov-tip" id="tip-cite" aria-hidden="true">Build an author–date reference from a DOI, a form or a messy pasted reference.</span></a>
     <a href="ask.html" aria-describedby="tip-ask">Ask the Style Manual<span class="gov-tip" id="tip-ask" aria-hidden="true">Ask a question and get an answer from Style Manual content with a link to the relevant page.</span></a>
+    <a href="about.html" aria-describedby="tip-about">About<span class="gov-tip" id="tip-about" aria-hidden="true">How the bot works, what it can and can’t do, and the full bot card.</span></a>
   </div>
 </nav>
 <main class="wrap" id="main">
@@ -147,11 +169,13 @@ textarea#text-input:focus{outline:none;box-shadow:inset 0 0 0 2px var(--b5)}
       <span class="step-hint">a Word document, or pasted text for a quick check</span></div>
 
     <div class="seg" role="tablist" aria-label="What to check">
-      <button id="tab-document" type="button" role="tab" aria-selected="true">Word document</button>
-      <button id="tab-text" type="button" role="tab" aria-selected="false">Pasted text</button>
+      <button id="tab-document" type="button" role="tab" aria-selected="true"
+        aria-controls="panel-document">Word document</button>
+      <button id="tab-text" type="button" role="tab" aria-selected="false"
+        aria-controls="panel-text" tabindex="-1">Pasted text</button>
     </div>
 
-    <div class="card" id="panel-document" role="tabpanel">
+    <div class="card" id="panel-document" role="tabpanel" aria-labelledby="tab-document">
       <div id="drop-zone" tabindex="0" role="button" aria-label="Choose a Word document to check">
         <p><strong>Choose a Word document</strong> or drag it here</p>
         <p class="hint">.docx files only. The tool reads heading styles, list
@@ -159,14 +183,25 @@ textarea#text-input:focus{outline:none;box-shadow:inset 0 0 0 2px var(--b5)}
           browser.</p>
         <p id="file-name"></p>
       </div>
+      <div class="sample-row">
+        <span>No document handy?</span>
+        <button type="button" class="linklike" id="sample-btn">Check the
+          sample briefing</button>
+        <span aria-hidden="true">·</span>
+        <a href="assets/sample-briefing.docx" download>Download the sample
+          (.docx)</a>
+        <span>– a one-page fictional briefing seeded with style issues.</span>
+      </div>
       <input type="file" id="file-input" accept=".docx">
     </div>
 
-    <div class="card" id="panel-text" role="tabpanel" hidden>
+    <div class="card" id="panel-text" role="tabpanel" aria-labelledby="tab-text" hidden>
       <label for="text-input" style="position:absolute;left:-9999px">Text to check</label>
       <textarea id="text-input" spellcheck="false"
         placeholder="Paste your text here. Pasting strips Word formatting, so heading and list checks use a best guess – for full checks, use the Word document option."></textarea>
       <div class="card-foot">
+        <button class="btn btn-ghost" id="example-text-btn" type="button"
+          style="margin-right:auto">Load example text</button>
         <button class="btn btn-primary" id="check-text-btn" type="button">Check text</button>
       </div>
     </div>
@@ -194,6 +229,40 @@ textarea#text-input:focus{outline:none;box-shadow:inset 0 0 0 2px var(--b5)}
       </select>
     </div>
     <div id="issue-list"></div>
+  </section>
+
+  <section class="toolkit" aria-labelledby="toolkit-h">
+    <h2 id="toolkit-h">More in this toolkit</h2>
+    <p class="toolkit-lede">Proof Positive is five tools that share one rule
+      engine. Tools marked ✦ use generative AI – and everything the AI writes
+      is checked by the rules before you see it.</p>
+    <div class="toolkit-grid">
+      <a class="tool-card" href="ask.html">
+        <h3>Ask the Style Manual ✦</h3>
+        <p>Ask a style question in plain words and get an answer drawn from
+          the Style Manual's actual pages, with a link to the source.</p>
+      </a>
+      <a class="tool-card" href="plain.html">
+        <h3>Make it plain ✦</h3>
+        <p>Paste a dense or jargon-heavy passage and get a plain English
+          rewrite that keeps the meaning.</p>
+      </a>
+      <a class="tool-card" href="lists.html">
+        <h3>Format a list ✦</h3>
+        <p>Turn rough bullet points into a correctly punctuated sentence,
+          fragment or stand-alone list.</p>
+      </a>
+      <a class="tool-card" href="citations.html">
+        <h3>Create a citation</h3>
+        <p>Build an author–date reference from a DOI, a form or a messy
+          pasted reference.</p>
+      </a>
+      <a class="tool-card" href="about.html">
+        <h3>About this bot</h3>
+        <p>How the draft-and-verify loop works, what the bot can and can't
+          do, and the full bot card.</p>
+      </a>
+    </div>
   </section>
 </main>
 
