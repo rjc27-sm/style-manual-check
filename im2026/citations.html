@@ -2589,7 +2589,7 @@
                                     helpEl.className = 'help-text';
                                     parent.appendChild(helpEl);
                                 }
-                                helpEl.innerHTML = 'Title inferred from URL \u2013 please verify. <a href="help.html#url-title" target="_blank">Why didn\u2019t it fetch the real title?</a>';
+                                helpEl.textContent = 'Title inferred from the URL \u2013 most websites don\u2019t let the browser read their pages directly, so please check it against the page and correct it if needed.';
                             }
                             showUrlNotice(
                                 `URL detected.${orgNotice} We\u2019ve suggested \u2018${displayType}\u2019 as the source type and pre-filled the URL and access date. A title has been inferred from the URL \u2013 please check and correct it if needed.`
@@ -2609,7 +2609,7 @@
                                 helpEl.className = 'help-text';
                                 parent.appendChild(helpEl);
                             }
-                            helpEl.innerHTML = 'Page title couldn\u2019t be retrieved automatically \u2013 <a href="help.html#url-title" target="_blank">why not?</a> Copy the title from the page and paste it in.';
+                            helpEl.textContent = 'Page title couldn\u2019t be retrieved automatically \u2013 most websites don\u2019t let the browser read their pages directly. Copy the title from the page and paste it in.';
                         }
                         showUrlNotice(
                             `URL detected.${orgNotice} We\u2019ve suggested \u2018${displayType}\u2019 as the source type and pre-filled the URL and access date. Check if this is the appropriate type and complete the remaining fields.`
