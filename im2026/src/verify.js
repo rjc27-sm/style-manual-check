@@ -33,11 +33,11 @@ export function verifyText(text) {
 /** Short human summary of a verification result. */
 export function verifySummary(result) {
     if (result.clean) {
-        return 'Checked against ' + result.ruleCount + ' Style Manual rules - no issues found.';
+        return 'Checked against ' + result.ruleCount + ' Style Manual rules. No issues found.';
     }
     const n = result.issues.length;
     return 'The rule engine flagged ' + n + (n === 1 ? ' issue' : ' issues') +
-        ' in this AI suggestion - shown below.';
+        ' in this AI suggestion, shown below.';
 }
 
 /**

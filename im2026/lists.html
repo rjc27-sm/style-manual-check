@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Format a list – Proof Positive (IM2026)</title>
-<meta name="description" content="Proof Positive, an IM2026 Bureaucrat Bot: rewrite rough list items into a parallel, correctly formatted Australian Government Style Manual list using AI, checked by a deterministic rule engine.">
+<meta name="description" content="Proof Positive, an IM2026 Bureaucrat Bot: rewrite rough list items into a parallel, correctly formatted list using AI, checked by a deterministic rule engine.">
 <link rel="stylesheet" href="assets/site.css?v=4">
 <link rel="icon" type="image/png" sizes="32x32" href="assets/style-check-32x32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="assets/style-check-16x16.png">
@@ -51,6 +51,7 @@ textarea#input:focus{outline:none;box-shadow:inset 0 0 0 2px var(--b5)}
 .out-card{display:flex;flex-direction:column}
 pre#output{flex:1;min-height:194px;padding:18px 20px;margin:0;white-space:pre-wrap;word-break:break-word;
   font:15px/1.7 'Open Sans',Arial,sans-serif;color:var(--c1)}
+pre#output.is-placeholder{color:#9c9fa0}
 .card-foot{border-top:1px solid var(--line);padding:11px 16px;display:flex;justify-content:flex-end;
   min-height:58px;align-items:center}
 .card-foot--start{justify-content:flex-start;gap:12px;flex-wrap:wrap}
@@ -152,7 +153,7 @@ pre#output{flex:1;min-height:194px;padding:18px 20px;margin:0;white-space:pre-wr
     <a href="index.html" aria-describedby="tip-check">Check a document<span class="gov-tip" id="tip-check" aria-hidden="true">Upload a Word document and get it back with a review comment on every style issue. Your document’s formatting is not changed.</span></a>
     <a href="plain.html" aria-describedby="tip-plain">Make it plain<span class="gov-tip" id="tip-plain" aria-hidden="true">Paste a hard-to-read passage and get a plain English rewrite that follows Style Manual conventions.</span></a>
     <a href="lists.html" aria-current="page" aria-describedby="tip-lists">Format a list<span class="gov-tip" id="tip-lists" aria-hidden="true">Turn rough bullet points into a correctly punctuated sentence, fragment or stand-alone list.</span></a>
-    <a href="citations.html" aria-describedby="tip-cite">Create a citation<span class="gov-tip" id="tip-cite" aria-hidden="true">Build an author–date reference from a DOI, a form or a messy pasted reference.</span></a>
+    <a href="citations.html" aria-describedby="tip-cite">Create a citation<span class="gov-tip" id="tip-cite" aria-hidden="true">Build an author–date reference from a DOI, a manual form or a messy pasted reference.</span></a>
     <a href="ask.html" aria-describedby="tip-ask">Ask the Style Manual<span class="gov-tip" id="tip-ask" aria-hidden="true">Ask a question and get an answer from Style Manual content with a link to the relevant page.</span></a>
     <a href="about.html" aria-describedby="tip-about">About<span class="gov-tip" id="tip-about" aria-hidden="true">How the bot works, what it can and can’t do, and the full bot card.</span></a>
   </div>
@@ -160,7 +161,7 @@ pre#output{flex:1;min-height:194px;padding:18px 20px;margin:0;white-space:pre-wr
 <main class="wrap" id="main">
   <header class="head">
     <h1>Format a list</h1>
-    <p class="lede">Paste in a rough list and Proof Positive rewrites the items so they read as one consistent list – <a href="https://www.stylemanual.gov.au/style-manual-resources/government-writing-handbook/editors-tips/parallel-structure-lists" target="_blank" rel="noopener noreferrer">parallel</a> in structure – then formats them to Australian Government Style Manual rules. It works out whether you need a sentence, fragment or stand-alone list, fixes the wording, punctuation, capitals and bullet markers, and flags items that don't belong together. The AI drafts the rewrite; the rule engine then formats and re-checks it. Review the wording before you use it – AI can change meaning.</p>
+    <p class="lede">Paste in a rough list and Proof Positive rewrites the items so they read as one consistent, <a href="https://www.stylemanual.gov.au/style-manual-resources/government-writing-handbook/editors-tips/parallel-structure-lists" target="_blank" rel="noopener noreferrer">parallel</a> list, then formats them to Australian Government Style Manual rules. It works out whether you need a sentence, fragment or stand-alone list, fixes the wording, punctuation, capitals and bullet markers, and flags items that don't belong together. The AI drafts the rewrite; the rule engine then formats and re-checks it. Review the wording before you use it, as AI can sometimes change meaning.</p>
     <div class="examples">
       <span class="ex-lab">Try an example</span>
       <button type="button" class="chip" onclick="loadExample('grant')">Grant eligibility</button>
@@ -184,7 +185,7 @@ pre#output{flex:1;min-height:194px;padding:18px 20px;margin:0;white-space:pre-wr
     <section>
       <div class="step-h"><span class="num">2</span><h2>Formatted list</h2><span class="step-hint">ready to copy</span></div>
       <div class="card out-card">
-        <pre id="output" aria-live="polite">Your formatted list will appear here</pre>
+        <pre id="output" class="is-placeholder" aria-live="polite">Your formatted list will appear here</pre>
         <div class="card-foot card-foot--copy">
           <button class="copy-btn hidden" id="copyWordBtn" type="button">Copy for Word</button>
           <button class="btn btn-ghost hidden" id="copyBtn" type="button">Copy as text</button>
@@ -233,10 +234,6 @@ pre#output{flex:1;min-height:194px;padding:18px 20px;margin:0;white-space:pre-wr
         <p>Use when each item is a phrase, not a sentence. Items start with a lower-case letter (except proper nouns) and only the last item has a full stop. With a phrase lead-in, each item completes it to make a full sentence.</p>
       </div>
       <div class="guide-card">
-        <h4>Items that start with a verb</h4>
-        <p>Commands form a sentence list when the lead-in doesn’t name who acts (‘To write well:’). They form a fragment list when it does (‘The participants will:’).</p>
-      </div>
-      <div class="guide-card">
         <h4>Stand-alone list</h4>
         <p>Use with a heading only. Items start with capitals but have no punctuation at the end. Bullets are optional.</p>
       </div>
@@ -247,6 +244,10 @@ pre#output{flex:1;min-height:194px;padding:18px 20px;margin:0;white-space:pre-wr
       <div class="guide-card">
         <h4>Multilevel list</h4>
         <p>Use sparingly and keep to 2 levels. Mark the second level with an en dash or a lower-case letter.</p>
+      </div>
+      <div class="guide-card">
+        <h4>Items that start with a verb</h4>
+        <p>Commands form a sentence list when the lead-in doesn’t name who acts (‘To write well:’). They form a fragment list when it does (‘The participants will:’).</p>
       </div>
     </div>
   </section>
@@ -263,9 +264,9 @@ pre#output{flex:1;min-height:194px;padding:18px 20px;margin:0;white-space:pre-wr
       Government Style Manual</a>.</p>
     <h2>Your data</h2>
     <p>This page sends your list to the Claude API (Anthropic) to rewrite and
-      format it; the text is not used to train models. Don’t enter classified,
-      sensitive or personal information. The rule engine then formats and
-      re-checks the result in your browser.</p>
+      format it. The rule engine then formats and re-checks the result in
+      your browser. Your text is not used to train models. Don’t enter
+      classified, sensitive or personal information.</p>
   </div>
 </footer>
 
@@ -1078,7 +1079,9 @@ function collectFixes(cleaned) {
     document.getElementById('explanation').classList.add('hidden');
     document.getElementById('copyBtn').classList.add('hidden');
     document.getElementById('copyWordBtn').classList.add('hidden');
-    document.getElementById('output').textContent = 'Your formatted list will appear here';
+    const outEl = document.getElementById('output');
+    outEl.textContent = 'Your formatted list will appear here';
+    outEl.classList.add('is-placeholder');
   }
 
   function analyseList() {
@@ -1108,6 +1111,7 @@ function collectFixes(cleaned) {
     lastResult = result;
     document.getElementById('errorPanel').classList.add('hidden');
     const outputEl = document.getElementById('output');
+    outputEl.classList.remove('is-placeholder');
     if (result.alreadyCorrect) {
       outputEl.textContent = 'Your list is correctly formatted.';
       document.getElementById('copyBtn').classList.add('hidden');
@@ -1278,6 +1282,7 @@ function collectFixes(cleaned) {
     window.__aiListNote = false;
     document.getElementById('input').value = '';
     document.getElementById('output').textContent = 'Your formatted list will appear here';
+    document.getElementById('output').classList.add('is-placeholder');
     document.getElementById('explanation').classList.add('hidden');
     document.getElementById('errorPanel').classList.add('hidden');
     document.getElementById('copyBtn').classList.add('hidden');
@@ -1575,6 +1580,7 @@ function collectFixes(cleaned) {
     document.getElementById('errorPanel').classList.add('hidden');
 
     const outputEl = document.getElementById('output');
+    outputEl.classList.remove('is-placeholder');
     if (res.type === 'standAlone') {
       const lines = formatted.split('\n');
       const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -1591,7 +1597,7 @@ function collectFixes(cleaned) {
       : 'Your items already followed a consistent pattern, so the wording is unchanged.';
     document.getElementById('explanationText').textContent =
       'AI set this up as a ' + (AI_TYPE_WORD[res.type] || 'list') + '. ' + changeText +
-      ' The rule engine then applied the Style Manual markers, capitals and full stops and re-checked the result. Review the wording – AI can change meaning.';
+      ' The rule engine then applied the Style Manual markers, capitals and full stops and re-checked the result. Review the wording, as AI can change meaning.';
     document.getElementById('explanation').classList.remove('hidden');
 
     const notice = document.getElementById('coherenceNotice');

@@ -38,8 +38,7 @@ body{font-family:'Open Sans',Arial,sans-serif;background:var(--bg);color:var(--c
 .msg-check{display:block;margin-top:8px;padding-top:7px;border-top:1px solid var(--line);
   font-size:12px;font-weight:600;color:#27854e}
 .msg-check-warn{color:#7a3d18}
-.msg-label{font-size:11.5px;font-weight:700;opacity:.75;display:block;margin-bottom:3px;
-  text-transform:uppercase;letter-spacing:.04em}
+.msg-label{font-size:11.5px;font-weight:700;opacity:.75;display:block;margin-bottom:3px}
 
 .suggests{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
 .suggests button{font:600 13.5px 'Open Sans',sans-serif;color:var(--b2);background:#fff;
@@ -86,7 +85,7 @@ body{font-family:'Open Sans',Arial,sans-serif;background:var(--bg);color:var(--c
     <a href="index.html" aria-describedby="tip-check">Check a document<span class="gov-tip" id="tip-check" aria-hidden="true">Upload a Word document and get it back with a review comment on every style issue. Your document’s formatting is not changed.</span></a>
     <a href="plain.html" aria-describedby="tip-plain">Make it plain<span class="gov-tip" id="tip-plain" aria-hidden="true">Paste a hard-to-read passage and get a plain English rewrite that follows Style Manual conventions.</span></a>
     <a href="lists.html" aria-describedby="tip-lists">Format a list<span class="gov-tip" id="tip-lists" aria-hidden="true">Turn rough bullet points into a correctly punctuated sentence, fragment or stand-alone list.</span></a>
-    <a href="citations.html" aria-describedby="tip-cite">Create a citation<span class="gov-tip" id="tip-cite" aria-hidden="true">Build an author–date reference from a DOI, a form or a messy pasted reference.</span></a>
+    <a href="citations.html" aria-describedby="tip-cite">Create a citation<span class="gov-tip" id="tip-cite" aria-hidden="true">Build an author–date reference from a DOI, a manual form or a messy pasted reference.</span></a>
     <a href="ask.html" aria-current="page" aria-describedby="tip-ask">Ask the Style Manual<span class="gov-tip" id="tip-ask" aria-hidden="true">Ask a question and get an answer from Style Manual content with a link to the relevant page.</span></a>
     <a href="about.html" aria-describedby="tip-about">About<span class="gov-tip" id="tip-about" aria-hidden="true">How the bot works, what it can and can’t do, and the full bot card.</span></a>
   </div>
@@ -95,8 +94,8 @@ body{font-family:'Open Sans',Arial,sans-serif;background:var(--bg);color:var(--c
   <header class="hero">
     <h1>Ask the Style Manual ✦</h1>
     <p class="lede">Ask a question and get a short answer with a link
-      to the relevant Style Manual page. Answers are AI-generated: check the
-      linked guidance before relying on them. Don't enter classified,
+      to the relevant Style Manual page. Answers are AI-generated, so check
+      the linked guidance before relying on them. Don't enter classified,
       sensitive or personal information.</p>
   </header>
 
@@ -135,12 +134,12 @@ body{font-family:'Open Sans',Arial,sans-serif;background:var(--bg);color:var(--c
       or the <a href="https://www.stylemanual.gov.au" rel="noopener">Australian
       Government Style Manual</a>.</p>
     <h2>Your data</h2>
-    <p>Questions on this page are sent to the Claude API (Anthropic) to
-      generate an answer; they are not used to train models. Don't enter
+    <p>This page sends questions to the Claude API (Anthropic) to generate
+      an answer. Your questions are not used to train models. Don't enter
       classified, sensitive or personal information.</p>
     <p class="gov-footer-meta">Answers are drawn from extracts of the actual
-      Style Manual pages, not the AI's general knowledge, and can only link to
-      the pages it read – the bot cannot invent rules or references.</p>
+      Style Manual pages, not the AI's general knowledge. The bot provides
+      links to the pages it read.</p>
   </div>
 </footer>
 
@@ -193,7 +192,15 @@ function renderAnswer(text, sources) {
     if (inList) out.push('</ul>');
     return out.join('').replace(
         /https:\/\/www\.stylemanual\.gov\.au[\w\-\/]*/g,
-        u => styleManualLink(u, sources));
+        u => {
+            // Only link pages the bot actually retrieved for this question
+            // (plus the site home). A URL it did not read may not exist, so
+            // it is dropped rather than rendered.
+            const clean = u.replace(/\/+$/, '');
+            const ok = clean === 'https://www.stylemanual.gov.au' ||
+                (sources && sources[clean]);
+            return ok ? styleManualLink(clean, sources) : '';
+        });
 }
 
 function addMsg(role, text, sources, check) {

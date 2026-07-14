@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Create a citation – Proof Positive (IM2026)</title>
-<meta name="description" content="Proof Positive, an IM2026 Bureaucrat Bot: build Australian Government Style Manual author–date citations from a DOI, a form, or an AI-parsed messy reference.">
+<meta name="description" content="Proof Positive, an IM2026 Bureaucrat Bot: build Australian Government Style Manual author–date citations from a DOI, a manual form or an AI-parsed messy reference.">
 <link rel="icon" type="image/png" sizes="32x32" href="assets/style-check-32x32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="assets/style-check-16x16.png">
 <link rel="stylesheet" href="assets/site.css?v=4">
@@ -321,7 +321,7 @@
     <a href="index.html" aria-describedby="tip-check">Check a document<span class="gov-tip" id="tip-check" aria-hidden="true">Upload a Word document and get it back with a review comment on every style issue. Your document’s formatting is not changed.</span></a>
     <a href="plain.html" aria-describedby="tip-plain">Make it plain<span class="gov-tip" id="tip-plain" aria-hidden="true">Paste a hard-to-read passage and get a plain English rewrite that follows Style Manual conventions.</span></a>
     <a href="lists.html" aria-describedby="tip-lists">Format a list<span class="gov-tip" id="tip-lists" aria-hidden="true">Turn rough bullet points into a correctly punctuated sentence, fragment or stand-alone list.</span></a>
-    <a href="citations.html" aria-current="page" aria-describedby="tip-cite">Create a citation<span class="gov-tip" id="tip-cite" aria-hidden="true">Build an author–date reference from a DOI, a form or a messy pasted reference.</span></a>
+    <a href="citations.html" aria-current="page" aria-describedby="tip-cite">Create a citation<span class="gov-tip" id="tip-cite" aria-hidden="true">Build an author–date reference from a DOI, a manual form or a messy pasted reference.</span></a>
     <a href="ask.html" aria-describedby="tip-ask">Ask the Style Manual<span class="gov-tip" id="tip-ask" aria-hidden="true">Ask a question and get an answer from Style Manual content with a link to the relevant page.</span></a>
     <a href="about.html" aria-describedby="tip-about">About<span class="gov-tip" id="tip-about" aria-hidden="true">How the bot works, what it can and can’t do, and the full bot card.</span></a>
   </div>
@@ -346,7 +346,7 @@
 
             <!-- Tab 1: Quick lookup -->
             <div id="lookup-panel" class="tab-panel active">
-                <label for="smart-input">Paste a DOI, ISBN, or URL</label>
+                <label for="smart-input">Paste a DOI, ISBN or URL</label>
                 <div class="input-with-button">
                     <input type="text" id="smart-input" placeholder="e.g. 10.1111/j.1460-2466.2008.01410.x" autocomplete="off">
                     <button class="btn btn-secondary" id="lookup-btn" type="button">Look up</button>
@@ -367,7 +367,7 @@
                     <span class="ai-busy" id="aiparse-busy" hidden role="status"><span class="ai-busy-star" aria-hidden="true">✦</span> Reading the reference…</span>
                 </div>
                 <p class="ai-error" id="aiparse-error" hidden role="alert"></p>
-                <p class="ai-disclaimer">AI fills in the manual entry form for you – it never writes the citation itself. The deterministic formatter builds the citation from the fields you confirm. Check every field: AI extraction can be wrong, and it is told to never invent a DOI or URL. Your reference is sent to the Claude API; don't enter classified, sensitive or personal information.</p>
+                <p class="ai-disclaimer">AI fills in the manual entry form for you, but it never writes the citation itself. The deterministic formatter builds the citation from the fields you confirm. Check every field: AI extraction can be wrong, and it is told to never invent a DOI or URL. Your reference is sent to the Claude API; don't enter classified, sensitive or personal information.</p>
             </div>
 
             <!-- Tab 2: Manual entry -->
@@ -401,7 +401,7 @@
                     <button class="copy-btn" id="copy-plain" type="button">Copy plain text</button>
                     <button class="copy-btn" id="copy-rich" type="button">Copy with formatting</button>
                     <button class="copy-btn" id="edit-details-btn" type="button">Edit details</button>
-                    <button class="copy-btn" id="new-citation-btn" type="button">New citation</button>
+                    <button class="copy-btn" id="new-citation-btn" type="button">Start new citation</button>
                 </div>
 
                 <div class="intext-section">
@@ -427,8 +427,8 @@
       or the <a href="https://www.stylemanual.gov.au" rel="noopener">Australian
       Government Style Manual</a>.</p>
     <h2>Your data</h2>
-    <p>The quick lookup queries public citation databases (such as CrossRef)
-      with the DOI or URL you enter. The ✦ messy reference reader sends your
+    <p>The quick look up queries public citation databases (such as CrossRef)
+      with the DOI or URL you enter. The messy reference reader sends your
       pasted reference to the Claude API (Anthropic); it is not used to train
       models. Don't enter classified, sensitive or personal information.
       Everything else runs in your browser.</p>
@@ -559,7 +559,7 @@
               helpText: 'Include the year as it appears in the title' },
             { id: 'jurisdiction', label: 'Jurisdiction', half: true,
               placeholder: 'e.g. Cth',
-              helpText: 'Cth, ACT, NSW, NT, Qld, SA, Tas, Vic or WA \u2014 omit if obvious from context' },
+              helpText: 'Cth, ACT, NSW, NT, Qld, SA, Tas, Vic or WA \u2013 omit if obvious from context' },
             { id: 'url', label: 'URL' },
         ],
     };
@@ -1432,7 +1432,7 @@
         result = await fetchFromGoogleBooks(isbn);
         if (result) return result;
 
-        throw new Error('This ISBN was not found in Open Library or Google Books. It may not be indexed (common for government and specialist publications). Please use the Manual entry tab instead.');
+        throw new Error('This ISBN was not found in Open Library or Google Books. It may not be indexed (common for government and specialist publications). Please use the ‘Manual entry’ tab instead.');
     }
 
     /**
@@ -2488,7 +2488,7 @@
     async function handleSmartPaste() {
         const input = document.getElementById('smart-input').value.trim();
         if (!input) {
-            showStatus('Please paste a DOI, ISBN, or URL.', 'error');
+            showStatus('Please paste a DOI, ISBN or URL.', 'error');
             return;
         }
 
@@ -2498,7 +2498,7 @@
 
         try {
             if (inputType === 'doi') {
-                showStatus('Looking up DOI...', 'loading');
+                showStatus('Looking up DOI…', 'loading');
                 const data = await fetchFromCrossRef(input);
                 state.lookupData = data;
 
@@ -2513,7 +2513,7 @@
                 showStatus('Citation generated from DOI. Review the details below and edit if needed.', 'success');
 
             } else if (inputType === 'isbn') {
-                showStatus('Looking up ISBN...', 'loading');
+                showStatus('Looking up ISBN…', 'loading');
                 const data = await lookupISBN(input);
                 state.lookupData = data;
 
@@ -2589,14 +2589,14 @@
                                     helpEl.className = 'help-text';
                                     parent.appendChild(helpEl);
                                 }
-                                helpEl.textContent = 'Title inferred from the URL \u2013 most websites don\u2019t let the browser read their pages directly, so please check it against the page and correct it if needed.';
+                                helpEl.textContent = 'Title inferred from the URL. Most websites don\u2019t let the browser read their pages directly, so please check it against the page and correct it if needed.';
                             }
                             showUrlNotice(
-                                `URL detected.${orgNotice} We\u2019ve suggested \u2018${displayType}\u2019 as the source type and pre-filled the URL and access date. A title has been inferred from the URL \u2013 please check and correct it if needed.`
+                                `URL detected.${orgNotice} We\u2019ve suggested \u2018${displayType}\u2019 as the source type and pre-filled the URL and access date. Title inferred from the URL \u2013 please check and correct it if needed.`
                             );
                         } else {
                             showUrlNotice(
-                                `URL detected.${orgNotice} We\u2019ve suggested \u2018${displayType}\u2019 as the source type and pre-filled the URL, access date, and page title. Check if this is the appropriate type and review the pre-filled fields.`
+                                `URL detected.${orgNotice} We\u2019ve suggested \u2018${displayType}\u2019 as the source type and pre-filled the URL, access date and page title. Check if this is the appropriate type and review the pre-filled fields.`
                             );
                         }
                     } else {
@@ -2609,7 +2609,7 @@
                                 helpEl.className = 'help-text';
                                 parent.appendChild(helpEl);
                             }
-                            helpEl.textContent = 'Page title couldn\u2019t be retrieved automatically \u2013 most websites don\u2019t let the browser read their pages directly. Copy the title from the page and paste it in.';
+                            helpEl.textContent = 'Page title couldn\u2019t be retrieved automatically. Copy the title from the page and paste it in.';
                         }
                         showUrlNotice(
                             `URL detected.${orgNotice} We\u2019ve suggested \u2018${displayType}\u2019 as the source type and pre-filled the URL and access date. Check if this is the appropriate type and complete the remaining fields.`
@@ -2619,7 +2619,7 @@
 
             } else {
                 showStatus(
-                    'Could not identify the input as a DOI, ISBN, or URL. Please check the format or use the manual entry form below.',
+                    'Could not identify the input as a DOI, ISBN or URL. Please check the format or use the manual entry form below.',
                     'error'
                 );
             }

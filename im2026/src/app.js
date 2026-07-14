@@ -88,7 +88,7 @@ function buildHeuristicSets(text) {
 async function handleFile(file) {
     if (!file) return;
     if (!file.name.toLowerCase().endsWith('.docx')) {
-        showError('Please choose a Word document (.docx). Older .doc files are not supported - save as .docx first.');
+        showError('Please choose a Word document (.docx). Older .doc files are not supported – save as .docx first.');
         return;
     }
     await checkBuffer(file.name, () => file.arrayBuffer());
@@ -168,9 +168,9 @@ const EXAMPLE_TEXT =
     'Unicorn crossing upgrade – progress note\n\n' +
     'The Department of Unicorn Management will modernize signage at fifteen crossings, e.g. new rainbow palettes, following the review released January 15, 2026.  Approx. 45 percent of sites failed the glitter-visibility test.\n\n' +
     'Key dates\n' +
-    '- Round 1 opens: 15 January;\n' +
-    '- round 2 opens: 1 July, and\n' +
-    '- final report due: 30 June etc.';
+    '• Round 1 opens: 15 January;\n' +
+    '• round 2 opens: 1 July, and\n' +
+    '• final report due: 30 June etc.';
 
 function loadExampleText() {
     $('text-input').value = EXAMPLE_TEXT;
@@ -284,7 +284,7 @@ function renderResults() {
                 '" target="_blank" rel="noopener">Style Manual guidance<span style="position:absolute;left:-9999px"> for ' +
                 escapeHtml(rule.name) + ' (opens in a new tab)</span></a>' : '') +
             (rule.category === 'lists'
-                ? '<a class="learn-more" href="lists.html">Fix it with the Format a list tool</a>' : '') +
+                ? '<a class="learn-more" href="lists.html">Fix it with the ‘Format a list’ tool</a>' : '') +
             (aiEligible(issue)
                 ? '<button type="button" class="ai-ghost-btn" data-ai-fix="' + idx +
                   '">✦ Fix with AI</button>' : '') +
@@ -318,7 +318,7 @@ async function handleAiFix(idx, extraGuidance) {
         const check = verifyText(rewrite);
         slot.innerHTML =
             '<div class="ai-panel">' +
-            '<p class="ai-panel-head">✦ AI-drafted rewrite - checked by the rule engine</p>' +
+            '<p class="ai-panel-head">✦ AI-drafted rewrite, checked by the rule engine</p>' +
             '<div class="ai-result-text">' + escapeHtml(rewrite) + '</div>' +
             (check.clean
                 ? '<p class="ai-verified" role="status">✔ ' + escapeHtml(verifySummary(check)) + '</p>'

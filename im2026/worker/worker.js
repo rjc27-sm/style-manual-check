@@ -414,10 +414,10 @@ export default {
         // Check the per-IP cap FIRST: a caller who is over their own limit
         // must not keep draining the shared global budget with refused requests.
         if (!(await bumpCounter(env, `ip:${ip}:${day}`, ipLimit))) {
-            return json({ error: 'You have reached today’s AI usage limit (' + ipLimit + ' requests). The rule-based features still work - try AI again tomorrow.' }, 429, cors);
+            return json({ error: 'You have reached today’s AI usage limit (' + ipLimit + ' requests). The rule-based features still work; try AI again tomorrow.' }, 429, cors);
         }
         if (!(await bumpCounter(env, `g:${day}`, globalLimit))) {
-            return json({ error: 'The daily AI usage limit for this tool has been reached. The rule-based features still work - try AI again tomorrow.' }, 429, cors);
+            return json({ error: 'The daily AI usage limit for this tool has been reached. The rule-based features still work; try AI again tomorrow.' }, 429, cors);
         }
 
         // ---- input validation ----
