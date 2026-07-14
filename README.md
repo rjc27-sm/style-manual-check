@@ -1,51 +1,85 @@
-# Style Manual Check
+# Proof Positive (IM2026) / Style Manual Check
 
-A web tool that checks documents against the [Australian Government Style Manual](https://www.stylemanual.gov.au). Users upload a Word document and download the same document back with review comments marking each style issue. Every comment links to the relevant Style Manual page. A quick text check handles pasted text.
+Tools that check writing against the
+[Australian Government Style Manual](https://www.stylemanual.gov.au) using a
+deterministic rule engine – the same check gives the same answer every time.
+Where fixing an issue takes judgement, generative AI drafts a suggestion and
+the rule engine checks the output before anyone sees it: **AI drafts,
+deterministic rules verify.**
 
-**Live tool:** https://rjc27-sm.github.io/style-manual-check/
+**Live site:** https://rjc27-sm.github.io/style-manual-check/im2026/
 
-The tool runs entirely in the browser. Documents are never uploaded to a server and no data leaves the user's device.
+Proof Positive is an entry in the APS Innovation Month 2026 'Build a
+Bureaucrat Bot' challenge (IM2026). It is a personal project by Jen
+Robertson, not an official government service.
 
-## How it works
+## The five tools
 
-1. The browser reads the .docx as a ZIP (JSZip) and parses `word/document.xml`.
-2. The rule engine (74 rules in 9 categories) runs over the extracted text, with paragraph-level context for headings, lists, bold, italics and tables read straight from the document XML.
-3. For each issue, a Word comment range is anchored to the exact text. Runs are split where needed, keeping identical run properties, so formatting is untouched.
-4. Comments are written to `word/comments.xml` (created, or appended if the document already has comments) with the matching content-type and relationship entries.
-5. The user downloads the modified ZIP as a .docx and reviews the comments in Word.
+| Tool | What it does | AI |
+|---|---|---|
+| Check a document | Upload a .docx, get it back with a Word review comment on every style issue. Runs entirely in the browser – nothing is uploaded. | Optional ✦ rewrites |
+| Ask the Style Manual | Ask a style question; the answer is grounded in retrieved extracts of the actual Style Manual pages and links only to pages it read. | ✦ |
+| Make it plain | Plain English rewrite of a dense passage, auto-corrected by the rule engine. | ✦ |
+| Format a list | Rewrites rough bullets into a parallel, correctly punctuated Style Manual list. | ✦ |
+| Create a citation | Author–date citations from a DOI, a manual form or an AI-parsed messy reference. The deterministic formatter builds every citation. | Optional ✦ parsing |
 
-No document rebuild, no server, no build step.
+Every AI output is re-checked by the rule engine before display: mechanical
+breaches are corrected automatically and anything left is flagged, never
+hidden. See the [About page](https://rjc27-sm.github.io/style-manual-check/im2026/about.html)
+for the full bot card, limitations and accessibility statement.
 
-## Files
+## Architecture
+
+- **Static site** (`im2026/`): plain HTML + vanilla JavaScript ES modules,
+  no framework, no build step. Published by GitHub Pages from the repo root.
+- **Rule engine** (`src/rules.js`, `src/list-analysis.js`,
+  `src/spellings.js`): 106 rules across 12 categories, 1,170 US→AU spelling
+  mappings. Runs in the browser; documents never leave the user's device.
+- **Cloudflare Worker** (`im2026/worker/`): the only server component. Holds
+  the Claude API key, enforces per-IP and global daily limits, and serves
+  the Ask retrieval index over 160+ saved Style Manual pages
+  (`im2026/pages/`). See [im2026/DEPLOY.md](im2026/DEPLOY.md).
+- **Word add-in** (`StyleManualCheck/`, Office.js): the original Style
+  Manual Check tool the rule engine grew from; shares the same rules.
+
+The shared rule files are used by four tools (Word add-in, browser checker,
+Format-a-list, and AI-output verification) – changes to them need regression
+testing across all four.
+
+## Repository layout
 
 ```
-index.html              The app - document check and quick text check
-src/
-  rules.js              71 core rules in 9 categories
-  list-analysis.js      list-type detection and 3 list rules (ported from the list formatter)
-  spellings.js          US-to-AU spelling dictionaries and word lists
-  docx-annotate.js      docx reading and comment insertion
-  app.js                UI logic
-  packs/
-    aihw.js             AIHW house style rule pack (scaffold - no rules yet)
-tests/
-  run-tests.mjs         End-to-end test (Node)
-  sample.docx           Test document with known issues
+im2026/                 Proof Positive – the current tool (published site)
+  index.html            Check a document
+  ask.html              Ask the Style Manual (retrieval-grounded chat)
+  plain.html            Make it plain
+  lists.html            Format a list
+  citations.html        Create a citation
+  about.html            How it works, bot card, accessibility statement
+  pages/                Saved Style Manual pages used by Ask (CC BY 4.0)
+  src/                  Page logic + AI client + verification (autoCorrect)
+  worker/               Cloudflare Worker proxy + retrieval index
+  skill/                Claude skill mirroring the rule engine
+src/                    Canonical shared rule engine
+  rules.js              The rules (id, name, category, description, link, check)
+  list-analysis.js      List-type detection and list rules
+  spellings.js          US→AU spellings, watch words, wordy phrases
+  docx-annotate.js      .docx reading and Word-comment insertion
+StyleManualCheck/       Word add-in (Office.js)
+style-manual-check/     Pre-2026 browser checker (superseded)
+tests/                  End-to-end test for the annotator (npm test)
 ```
-
-## Rule packs
-
-Core Style Manual rules always run. Agency packs add rules on top - same rule shape, separate file, toggled in the UI. `src/packs/aihw.js` is the scaffold for the AIHW module. The toggle stays disabled until the pack has rules.
 
 ## Running locally
 
-ES modules will not load from `file://`. Serve the folder:
+ES modules will not load from `file://`. Serve the repo root:
 
 ```
 python -m http.server 8000
 ```
 
-then open http://localhost:8000.
+then open http://localhost:8000/im2026/. AI features refuse non-allowed
+origins, so locally the rule-based features work and AI calls fail politely.
 
 ## Testing
 
@@ -54,13 +88,14 @@ npm install
 npm test
 ```
 
-The test loads the sample document, runs all rules, writes an annotated copy and verifies: body text unchanged, comment markers balanced, comment ids unique, comments part well formed, content type and relationship registered.
-
-Always open the annotated output in Word as a final check - automated verification cannot confirm how Word renders the comments.
+The test loads a sample document, runs all rules, writes an annotated copy
+and verifies: body text unchanged, comment markers balanced, comment ids
+unique, comments part well formed, content type and relationship registered.
+Always open annotated output in Word as a final check.
 
 ## Updating rules
 
-Edit `src/rules.js` or `src/list-analysis.js` (or a pack file). Each rule is:
+Edit `src/rules.js` or `src/list-analysis.js`. Each rule is:
 
 ```js
 {
@@ -69,14 +104,27 @@ Edit `src/rules.js` or `src/list-analysis.js` (or a pack file). Each rule is:
     category: 'spelling',
     description: 'What and why.',
     link: 'https://www.stylemanual.gov.au/...',
-    check: function(text, headingLines, listLines, boldLines, italicLines, tableLines) {
+    check: function(text, headingLines, listLines, boldLines, italicLines, tableLines, docCtx) {
         // return [{ found, suggestion, autoFix, position, rule: this }]
     }
 }
 ```
 
-`position` is a character offset into the full text (paragraphs joined with `\n`); the line Sets hold paragraph indices.
+`position` is a character offset into the full text (paragraphs joined with
+`\n`); the line Sets hold paragraph indices. Be careful with `autoFix`: the
+AI-answer verifiers apply it automatically, so a wrong fix corrupts text.
+
+## Licensing
+
+- Code: CC BY-NC 4.0 (see `LICENSE`).
+- Style Manual content (rules' source guidance and the saved pages used by
+  Ask): © Commonwealth of Australia, used under
+  [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
 
 ## History
 
-Earlier versions of this repository held a Word add-in (Office.js), a plain-text browser checker and a proof-of-concept upload tool. They were consolidated into this single version in June 2026 - the rule engine carries over unchanged from the add-in. The old versions remain in the git history.
+Earlier versions of this repository held the Word add-in, a plain-text
+browser checker and a proof-of-concept upload tool. The rule engine carries
+over from the add-in; Proof Positive (July 2026) added the AI draft-and-
+verify loop, retrieval-grounded Ask, the list formatter and the citation
+tool. Old versions remain in the git history.

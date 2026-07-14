@@ -18,7 +18,7 @@ Generated from the Proof Positive deterministic rule engine (106 rules). Each ru
 ## Punctuation
 
 - **Em dash to spaced en dash** (`punct-em-dash`): Use a spaced en dash ( – ) rather than an em dash (—) to set off information in sentences. [Guidance](https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/punctuation/dashes)
-- **Unspaced en dash in sentences** (`punct-en-dash-space`): En dashes in sentences should have spaces around them. Unspaced en dashes are for number ranges. [Guidance](https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/punctuation/dashes)
+- **Unspaced en dashes around an aside** (`punct-en-dash-space`): A pair of en dashes setting off an aside in a sentence should be spaced. An unspaced en dash is correct for a span or a connection between words of equal weight, such as 'author–date' or 'cost–benefit'. [Guidance](https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/punctuation/dashes)
 - **Hyphen in date range** (`punct-hyphen-date-range`): Use an en dash (–), not a hyphen (-), for date spans in financial years, calendar years, terms of office and lifespans. [Guidance](https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/punctuation/dashes)
 - **Hyphen as parenthetical dash** (`punct-hyphen-parenthetical`): Use spaced en dashes ( – ) for parenthetical phrases, not spaced hyphens ( - ). [Guidance](https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/punctuation/dashes)
 - **Double space after full stop** (`punct-double-space`): Use a single space after a full stop, not a double space. [Guidance](https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/punctuation/punctuation-and-capitalisation)

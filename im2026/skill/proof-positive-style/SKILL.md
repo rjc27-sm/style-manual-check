@@ -35,8 +35,9 @@ Also use them as a checklist when reviewing or rewriting someone else's text.
 - Dates and time: 15 October 2023; 3:30 pm (colon, space before am/pm);
   spans with an unspaced en dash (2021-22).
 - Punctuation: single quotes; spaced en dashes for asides - like this - and
-  never unspaced em dashes; no serial comma unless needed; one space after
-  a full stop; % closed up (15%).
+  never unspaced em dashes; unspaced en dashes join equal words (author–date,
+  cost–benefit) and spans (2021–22); no serial comma unless needed; one space
+  after a full stop; % closed up (15%).
 - Latin forms: never e.g., i.e., etc. in body text - write 'for example',
   'that is', 'and so on'.
 - Capitals: minimal; proper nouns only; sentence case headings; 'Australian
