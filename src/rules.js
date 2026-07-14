@@ -289,24 +289,49 @@ const RULES = [
     },
     {
         id: 'punct-en-dash-space',
-        name: 'Unspaced en dash in sentences',
+        name: 'Unspaced en dashes around an aside',
         category: 'punctuation',
-        description: 'En dashes in sentences should have spaces around them. Unspaced en dashes are for number ranges.',
+        description: 'A pair of en dashes setting off an aside in a sentence should be spaced. An unspaced en dash is correct for a span or a connection between words of equal weight, such as \'author–date\' or \'cost–benefit\'.',
         link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/punctuation/dashes',
         check: function(text) {
             const issues = [];
-            // Match en dash between words (not numbers)
-            const regex = /([A-Za-z])–([A-Za-z])/g;
+            // A lone word–word en dash is legitimate Style Manual usage (a
+            // connection: author–date, Sydney–Melbourne), so it is never
+            // flagged. What this rule catches is a PAIR of unspaced en dashes
+            // bracketing an aside within one sentence. Two separate compounds
+            // ('author–date and documentary–note systems') also put two dashes
+            // in one sentence, so the between-text must additionally OPEN the
+            // way an aside opens: with a pronoun, determiner or relative
+            // ('we', 'the', 'which'...) or a participle ('conducted',
+            // 'including'). There is deliberately no autoFix - the verifier
+            // must never respace a genuine compound.
+            const ASIDE_OPENERS = /^(which|who|whose|whom|including|but|meaning|say|says|said|see|that|this|these|those|a|an|the|we|it|they|he|she|you|i|not|no|now|then|perhaps|often|usually|sometimes|also|as|so|for|even|especially|mostly|mainly)$/i;
+            const regex = /[A-Za-z]–[A-Za-z]/g;
+            const dashes = [];
             let match;
             while ((match = regex.exec(text)) !== null) {
-                const replacement = match[1] + ' – ' + match[2];
-                issues.push({
-                    found: match[0],
-                    suggestion: replacement,
-                    autoFix: replacement,
-                    position: match.index,
-                    rule: this
-                });
+                dashes.push(match.index + 1);       // the dash itself
+                regex.lastIndex = match.index + 2;  // allow adjacent matches
+            }
+            for (let i = 0; i + 1 < dashes.length; i++) {
+                const between = text.slice(dashes[i] + 1, dashes[i + 1]);
+                const words = between.trim().split(/\s+/);
+                const opensLikeAside = ASIDE_OPENERS.test(words[0]) ||
+                    (/(ed|ing)$/i.test(words[0]) &&
+                     !/^(and|or)$/i.test(words[1] || ''));
+                if (between.length <= 80 && words.length >= 2 && opensLikeAside &&
+                    !/[.!?\n]/.test(between) && !/–/.test(between)) {
+                    for (const pos of [dashes[i], dashes[i + 1]]) {
+                        const found = text.slice(pos - 1, pos + 2);
+                        issues.push({
+                            found,
+                            suggestion: found[0] + ' – ' + found[2],
+                            position: pos - 1,
+                            rule: this
+                        });
+                    }
+                    i++;    // this pair is consumed
+                }
             }
             return issues;
         }
