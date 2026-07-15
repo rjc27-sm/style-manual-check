@@ -45,13 +45,9 @@ const RULES = [
                 const lower = word.toLowerCase();
                 if (SPELLINGS[lower]) {
                     const replacement = preserveCase(word, SPELLINGS[lower]);
-                    issues.push({
-                        found: word,
-                        suggestion: replacement,
-                        autoFix: replacement,
-                        position: match.index,
-                        rule: this
-                    });
+                    const issue = spellingIssue(
+                        this, text, word, match.index, replacement);
+                    if (issue) issues.push(issue);
                 }
             }
             return issues;
@@ -72,13 +68,9 @@ const RULES = [
                 const lower = word.toLowerCase();
                 if (SPELLINGS[lower]) {
                     const replacement = preserveCase(word, SPELLINGS[lower]);
-                    issues.push({
-                        found: word,
-                        suggestion: replacement,
-                        autoFix: replacement,
-                        position: match.index,
-                        rule: this
-                    });
+                    const issue = spellingIssue(
+                        this, text, word, match.index, replacement);
+                    if (issue) issues.push(issue);
                 }
             }
             return issues;
@@ -107,13 +99,9 @@ const RULES = [
                     const suffix = match[2] || '';
                     const replacement =
                         preserveCase(match[1], SPELLINGS[usWord]) + suffix;
-                    issues.push({
-                        found: match[0],
-                        suggestion: replacement,
-                        autoFix: replacement,
-                        position: match.index,
-                        rule: this
-                    });
+                    const issue = spellingIssue(
+                        this, text, match[0], match.index, replacement);
+                    if (issue) issues.push(issue);
                 }
             }
             return issues;
@@ -127,21 +115,25 @@ const RULES = [
         link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/spelling',
         check: function(text) {
             const issues = [];
-            const erWords = ['caliber', 'center', 'fiber', 'liter', 'luster', 'maneuver', 
-                           'meager', 'meter', 'ocher', 'reconnoiter', 'saber', 'scepter', 
-                           'sepulcher', 'somber', 'specter', 'theater'];
+            // Derived forms are separate entries because -re morphology is
+            // irregular (centre + ed = centred); see spellings.js.
+            const erWords = ['caliber', 'calibers', 'center', 'centers',
+                           'centered', 'centering', 'fiber', 'fibers',
+                           'liter', 'liters', 'luster', 'maneuver',
+                           'maneuvers', 'maneuvered', 'maneuvering',
+                           'meager', 'meter', 'meters', 'ocher',
+                           'reconnoiter', 'reconnoitered', 'reconnoitering',
+                           'saber', 'sabers', 'scepter', 'scepters',
+                           'sepulcher', 'sepulchers', 'somber', 'specter',
+                           'specters', 'theater', 'theaters'];
             for (const usWord of erWords) {
                 const regex = new RegExp('\\b(' + usWord + ')\\b', 'gi');
                 let match;
                 while ((match = regex.exec(text)) !== null) {
                     const replacement = preserveCase(match[1], SPELLINGS[usWord]);
-                    issues.push({
-                        found: match[1],
-                        suggestion: replacement,
-                        autoFix: replacement,
-                        position: match.index,
-                        rule: this
-                    });
+                    const issue = spellingIssue(
+                        this, text, match[1], match.index, replacement);
+                    if (issue) issues.push(issue);
                 }
             }
             return issues;
@@ -155,19 +147,18 @@ const RULES = [
         link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/spelling',
         check: function(text) {
             const issues = [];
-            const enseWords = ['defense', 'offense', 'pretense'];
+            // 'license(d/s/ing)' is never flagged: 'license' is the
+            // Australian verb spelling (licence is the noun).
+            const enseWords = ['defense', 'defenses', 'offense', 'offenses',
+                               'pretense', 'pretenses'];
             for (const usWord of enseWords) {
                 const regex = new RegExp('\\b(' + usWord + ')\\b', 'gi');
                 let match;
                 while ((match = regex.exec(text)) !== null) {
                     const replacement = preserveCase(match[1], SPELLINGS[usWord]);
-                    issues.push({
-                        found: match[1],
-                        suggestion: replacement,
-                        autoFix: replacement,
-                        position: match.index,
-                        rule: this
-                    });
+                    const issue = spellingIssue(
+                        this, text, match[1], match.index, replacement);
+                    if (issue) issues.push(issue);
                 }
             }
             return issues;
@@ -191,13 +182,9 @@ const RULES = [
                 let match;
                 while ((match = regex.exec(text)) !== null) {
                     const replacement = preserveCase(match[1], SPELLINGS[usWord]);
-                    issues.push({
-                        found: match[1],
-                        suggestion: replacement,
-                        autoFix: replacement,
-                        position: match.index,
-                        rule: this
-                    });
+                    const issue = spellingIssue(
+                        this, text, match[1], match.index, replacement);
+                    if (issue) issues.push(issue);
                 }
             }
             return issues;
@@ -223,13 +210,9 @@ const RULES = [
                     let match;
                     while ((match = regex.exec(text)) !== null) {
                         const replacement = preserveCase(match[1], SPELLINGS[usWord]);
-                        issues.push({
-                            found: match[1],
-                            suggestion: replacement,
-                            autoFix: replacement,
-                            position: match.index,
-                            rule: this
-                        });
+                        const issue = spellingIssue(
+                            this, text, match[1], match.index, replacement);
+                        if (issue) issues.push(issue);
                     }
                 }
             }
@@ -3925,6 +3908,74 @@ function toSentenceCase(text) {
         // Other words: all lowercase
         return word.toLowerCase();
     }).join(' ');
+}
+
+// Phrases where the US spelling is the correct name and is never flagged.
+const KEEP_SPELLING_PHRASES = [
+    /\bAustralian Labor\b/,
+    /\bLabor Party\b/,
+    /\bVictor Harbor\b/,
+    /\bPearl Harbor\b/
+];
+
+/**
+ * Proper-noun guard for the US->AU spelling rules. Names and titles keep
+ * their original spelling (Style Manual), so:
+ *  - 'skip'  - the word sits inside a known-correct name; no issue at all
+ *  - 'name'  - capitalised mid-sentence, so it may be part of a name or
+ *              title; flag it as a comment only (no automatic fix)
+ *  - null    - ordinary text; fix it
+ */
+function properNounGuard(text, position, word) {
+    for (const phrase of KEEP_SPELLING_PHRASES) {
+        const from = Math.max(0, position - 30);
+        const window = text.slice(from, position + word.length + 30);
+        const m = phrase.exec(window);
+        if (m) {
+            const start = from + m.index;
+            const end = start + m[0].length;
+            if (start <= position && position + word.length <= end) {
+                return 'skip';
+            }
+        }
+    }
+    // Capital-L 'Labor' is almost always the Australian Labor Party -
+    // never fix it automatically, even at the start of a sentence.
+    if (word === 'Labor') return 'name';
+    // Only a Capitalised word signals a name; lowercase and ALL-CAPS
+    // (headings, emphasis) are treated as ordinary text.
+    if (!/^[A-Z][a-z]/.test(word)) return null;
+    // At the start of a sentence, line, list item or after a colon the
+    // capital is expected, so it carries no signal - walk back past
+    // whitespace and opening quotes or brackets to what came before.
+    let i = position - 1;
+    while (i >= 0 && text[i] !== '\n' && /["'‘“(\[\s]/.test(text[i])) i--;
+    if (i < 0) return null;
+    const ch = text[i];
+    if (ch === '\n' || '.!?:'.includes(ch) || '•‣◦▪-*'.includes(ch)) return null;
+    return 'name';
+}
+
+/**
+ * Build an issue for a US spelling, honouring the proper-noun guard.
+ * Returns null when the word should not be flagged at all.
+ */
+function spellingIssue(rule, text, word, position, replacement) {
+    const guard = properNounGuard(text, position, word);
+    if (guard === 'skip') return null;
+    const issue = {
+        found: word,
+        suggestion: replacement,
+        position: position,
+        rule: rule
+    };
+    if (guard === 'name') {
+        issue.note = 'Names and titles keep their original spelling. ' +
+            'If this is not part of a name, use the Australian spelling.';
+    } else {
+        issue.autoFix = replacement;
+    }
+    return issue;
 }
 
 // Helper: preserve case when replacing

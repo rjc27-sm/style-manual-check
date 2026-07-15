@@ -210,29 +210,52 @@ const US_TO_AU_SPELLINGS = {
     "vapor": "vapour",
     "vigor": "vigour",
 
-    // -er → -re
+    // -er → -re (derived forms are explicit because -re morphology is
+    // irregular: centre + ed = centred. 'metered' is deliberately absent -
+    // a measuring device is a 'meter' in Australian English too.)
     "caliber": "calibre",
+    "calibers": "calibres",
     "center": "centre",
+    "centers": "centres",
+    "centered": "centred",
+    "centering": "centring",
     "fiber": "fibre",
+    "fibers": "fibres",
     "liter": "litre",
+    "liters": "litres",
     "luster": "lustre",
     "maneuver": "manoeuvre",
+    "maneuvers": "manoeuvres",
+    "maneuvered": "manoeuvred",
+    "maneuvering": "manoeuvring",
     "meager": "meagre",
     "meter": "metre",
+    "meters": "metres",
     "ocher": "ochre",
     "reconnoiter": "reconnoitre",
+    "reconnoitered": "reconnoitred",
+    "reconnoitering": "reconnoitring",
     "saber": "sabre",
+    "sabers": "sabres",
     "scepter": "sceptre",
+    "scepters": "sceptres",
     "sepulcher": "sepulchre",
+    "sepulchers": "sepulchres",
     "somber": "sombre",
     "specter": "spectre",
+    "specters": "spectres",
     "theater": "theatre",
+    "theaters": "theatres",
 
-    // -ense → -ence
+    // -ense → -ence ('licensed'/'licensing'/'licenses' are NOT flagged
+    // anywhere: 'license' is the Australian verb spelling)
     "defense": "defence",
+    "defenses": "defences",
     "license": "licence",
     "offense": "offence",
+    "offenses": "offences",
     "pretense": "pretence",
+    "pretenses": "pretences",
 
     // -og → -ogue
     "analog": "analogue",
