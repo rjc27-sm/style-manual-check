@@ -285,6 +285,93 @@ function makeCommentMarker(doc, name, id) {
     return el;
 }
 
+// ---------------- Tracked changes (opt-in via options.trackChanges) ----------------
+
+function makeRevisionEl(doc, name, id, author, date) {
+    const el = doc.createElementNS(W_NS, 'w:' + name);
+    el.setAttribute('w:id', String(id));
+    el.setAttribute('w:author', author);
+    el.setAttribute('w:date', date);
+    return el;
+}
+
+/** True if the run holds only text-like content that is safe to delete. */
+function runIsPlainText(run) {
+    for (let c = run.firstChild; c; c = c.nextSibling) {
+        if (c.nodeType === 3) {
+            if ((c.textContent || '').trim()) return false;
+            continue;
+        }
+        if (c.nodeType !== 1) continue;
+        const n = localName(c);
+        if (n !== 'rPr' && n !== 't' && n !== 'tab' && n !== 'br' &&
+            n !== 'cr' && n !== 'noBreakHyphen' && n !== 'softHyphen' &&
+            n !== 'lastRenderedPageBreak') {
+            return false;
+        }
+    }
+    return true;
+}
+
+/**
+ * The sibling nodes from startRun to endRun inclusive, or null if anything
+ * in between is not a plain text run (image, field, bookmark...). Null means
+ * the caller falls back to a comment rather than risk a broken revision.
+ */
+function collectRunChain(startRun, endRun) {
+    if (!startRun || !endRun) return null;
+    if (startRun.parentNode !== endRun.parentNode) return null;
+    const chain = [];
+    let node = startRun;
+    while (node) {
+        if (node.nodeType === 3) {
+            if ((node.textContent || '').trim()) return null;
+            chain.push(node);
+        } else if (node.nodeType === 1 && isW(node, 'r') && runIsPlainText(node)) {
+            chain.push(node);
+        } else {
+            return null;
+        }
+        if (node === endRun) return chain;
+        node = node.nextSibling;
+    }
+    return null;
+}
+
+/** Rename every w:t inside the element to w:delText (required inside w:del). */
+function convertToDelText(doc, container) {
+    const live = container.getElementsByTagName('w:t');
+    const ts = [];
+    for (let i = 0; i < live.length; i++) {
+        ts.push(live.item ? live.item(i) : live[i]);
+    }
+    for (const t of ts) {
+        const d = doc.createElementNS(W_NS, 'w:delText');
+        d.setAttribute('xml:space', 'preserve');
+        d.appendChild(doc.createTextNode(t.textContent || ''));
+        t.parentNode.replaceChild(d, t);
+    }
+}
+
+function makeTextRun(doc, rPr, text) {
+    const run = doc.createElementNS(W_NS, 'w:r');
+    if (rPr) run.appendChild(rPr.cloneNode(true));
+    const t = doc.createElementNS(W_NS, 'w:t');
+    t.setAttribute('xml:space', 'preserve');
+    t.appendChild(doc.createTextNode(text));
+    run.appendChild(t);
+    return run;
+}
+
+/** True if document.xml already carries revisions (w:ins, w:del, moves). */
+function hasExistingRevisions(doc) {
+    const names = ['w:ins', 'w:del', 'w:moveFrom', 'w:moveTo'];
+    for (const n of names) {
+        if (doc.getElementsByTagName(n).length > 0) return true;
+    }
+    return false;
+}
+
 function makeCommentReferenceRun(doc, id) {
     const run = doc.createElementNS(W_NS, 'w:r');
     const rPr = doc.createElementNS(W_NS, 'w:rPr');
@@ -340,16 +427,40 @@ export async function annotateDocx(loaded, issues, env, options) {
     const date = (opts.date || new Date().toISOString().replace(/\.\d+Z$/, 'Z'));
     const { zip, doc, paragraphs, lineStarts } = loaded;
 
+    // Tracked changes are opt-in and never nest inside existing revisions:
+    // if the document already carries any, everything falls back to comments.
+    const revisionsPresent = opts.trackChanges ? hasExistingRevisions(doc) : false;
+    const trackingEnabled = !!opts.trackChanges && !revisionsPresent;
+    let revId = 1;
+    let changeCount = 0;
+
     const byPara = new Map();
     for (const issue of issues) {
-        if (typeof issue.position !== 'number' || !issue.found) continue;
-        const { paraIndex, offset } = locate(lineStarts, paragraphs, issue.position);
-        const para = paragraphs[paraIndex];
-        const start = Math.max(0, Math.min(offset, para.text.length));
-        const end = Math.min(start + issue.found.length, para.text.length);
-        if (end <= start) continue;
-        if (!byPara.has(paraIndex)) byPara.set(paraIndex, []);
-        byPara.get(paraIndex).push({ issue, start, end });
+        if (typeof issue.position !== 'number') continue;
+        let item = null;
+        const plan = trackingEnabled ? issue.trackPlan : null;
+        if (plan && plan.deleteText) {
+            const { paraIndex, offset } = locate(lineStarts, paragraphs, plan.start);
+            const para = paragraphs[paraIndex];
+            const end = offset + plan.deleteText.length;
+            // Re-check the text at the mapped offsets; on any mismatch the
+            // issue quietly becomes a comment instead.
+            if (offset >= 0 && end <= para.text.length &&
+                para.text.slice(offset, end) === plan.deleteText) {
+                item = { paraIndex, issue, start: offset, end, track: plan };
+            }
+        }
+        if (!item) {
+            if (!issue.found) continue;
+            const { paraIndex, offset } = locate(lineStarts, paragraphs, issue.position);
+            const para = paragraphs[paraIndex];
+            const start = Math.max(0, Math.min(offset, para.text.length));
+            const end = Math.min(start + issue.found.length, para.text.length);
+            if (end <= start) continue;
+            item = { paraIndex, issue, start, end, track: null };
+        }
+        if (!byPara.has(item.paraIndex)) byPara.set(item.paraIndex, []);
+        byPara.get(item.paraIndex).push(item);
     }
 
     let nextId = 0;
@@ -385,12 +496,12 @@ export async function annotateDocx(loaded, issues, env, options) {
             }
             accepted.push({
                 start: item.start, end: item.end,
-                issues: [item.issue], merged: []
+                issues: [item.issue], merged: [], track: item.track
             });
         }
 
         for (let i = accepted.length - 1; i >= 0; i--) {
-            const { start, end, issues: anchorIssues, merged } = accepted[i];
+            const { start, end, issues: anchorIssues, merged, track } = accepted[i];
 
             const segs = para.segments.filter(s =>
                 s.start < end && (s.start + s.length) > start);
@@ -411,6 +522,29 @@ export async function annotateDocx(loaded, issues, env, options) {
                     doc, firstSeg.run, firstSeg.tNode, start - firstSeg.start);
                 startRun = suffixRun;
                 if (endRun === firstSeg.run) endRun = suffixRun;
+            }
+
+            // A range becomes a tracked change only when exactly one issue
+            // owns it (overlaps stay comments) and the runs are safe to wrap.
+            if (track && anchorIssues.length === 1 && merged.length === 0) {
+                const chain = collectRunChain(startRun, endRun);
+                if (chain) {
+                    const del = makeRevisionEl(doc, 'del', revId++, author, date);
+                    startRun.parentNode.insertBefore(del, startRun);
+                    for (const node of chain) del.appendChild(node);
+                    convertToDelText(doc, del);
+                    if (track.insertText) {
+                        const firstRun = chain.find(n => n.nodeType === 1);
+                        const ins = makeRevisionEl(doc, 'ins', revId++, author, date);
+                        ins.appendChild(makeTextRun(
+                            doc, getRPr(firstRun), track.insertText));
+                        del.parentNode.insertBefore(ins, del.nextSibling);
+                    }
+                    anchorIssues[0].trackApplied = true;
+                    changeCount++;
+                    continue;
+                }
+                // Runs too complex to wrap safely - fall through to a comment.
             }
 
             for (let k = 0; k < anchorIssues.length; k++) {
@@ -459,7 +593,12 @@ export async function annotateDocx(loaded, issues, env, options) {
         outXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' + outXml;
     }
     zip.file('word/document.xml', outXml);
-    return { zip, commentCount: newComments.length };
+    return {
+        zip,
+        commentCount: newComments.length,
+        changeCount,
+        revisionsPresent
+    };
 }
 
 async function zipString(zip, path) {

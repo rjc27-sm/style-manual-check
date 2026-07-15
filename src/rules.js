@@ -6,6 +6,27 @@
 
 import { SPELLINGS, COMMON_ERRORS, ERRORS_WITH_NOTES, WATCH_WORDS, WORDY_PHRASES, PREFIX_SPELLINGS } from './spellings.js';
 
+// Abbreviations written without full stops. Shared by
+// 'abbrev-common-full-stop' and the sentence-start guard in
+// 'numbers-start-sentence' (an abbreviation's stop is not a sentence end).
+const COMMON_ABBREVS = [
+    // Honorifics and titles
+    'Dr', 'Mr', 'Mrs', 'Ms', 'Mx', 'Prof', 'Rev', 'Hon', 'Sr', 'Jr',
+    // Common abbreviations
+    'para', 'paras', 'vol', 'vols', 'misc', 'app', 'apps',
+    'cont', 'dept', 'depts', 'govt', 'govts', 'approx',
+    'assn', 'ave', 'bldg', 'blvd', 'corp', 'est', 'ext',
+    'inc', 'intl', 'max', 'min', 'natl', 'no', 'nos',
+    'org', 'pt', 'pts', 'qty', 'ref', 'refs',
+    'tel', 'temp', 'yr', 'yrs', 'ed', 'eds', 'fig', 'figs'
+];
+
+// Matches text ending with an abbreviation's full stop plus spacing -
+// includes Latin forms whose internal dots aren't in COMMON_ABBREVS.
+const ABBREV_STOP_BEFORE = new RegExp(
+    '(?:\\b(?:' + COMMON_ABBREVS.join('|') +
+    ')|\\be\\.g|\\bi\\.e|\\betc|\\bcf|\\bvs|\\bviz)\\.\\s+$', 'i');
+
 const RULES = [
     // ==================== SPELLING RULES ====================
     {
@@ -71,16 +92,23 @@ const RULES = [
         link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/spelling',
         check: function(text) {
             const issues = [];
-            const orWords = Object.keys(SPELLINGS).filter(w => 
+            const orWords = Object.keys(SPELLINGS).filter(w =>
                 w.endsWith('or') && SPELLINGS[w].endsWith('our')
             );
             for (const usWord of orWords) {
-                const regex = new RegExp('\\b(' + usWord + ')\\b', 'gi');
+                // Also match derived forms that keep the 'u' in Australian
+                // English (favored -> favoured, colorful -> colourful).
+                // Suffixes that drop the 'u' (humorous, honorary) aren't
+                // formed with these endings, so the expansion is safe.
+                const regex = new RegExp(
+                    '\\b(' + usWord + ')(s|ed|ing|ite|ites|ful|less)?\\b', 'gi');
                 let match;
                 while ((match = regex.exec(text)) !== null) {
-                    const replacement = preserveCase(match[1], SPELLINGS[usWord]);
+                    const suffix = match[2] || '';
+                    const replacement =
+                        preserveCase(match[1], SPELLINGS[usWord]) + suffix;
                     issues.push({
-                        found: match[1],
+                        found: match[0],
                         suggestion: replacement,
                         autoFix: replacement,
                         position: match.index,
@@ -557,7 +585,7 @@ const RULES = [
                 const day = match[2];
                 const month = match[1];
                 const year = match[3];
-                const replacement = day + ' ' + month + ' ' + year;
+                const replacement = day + ' ' + month + ' ' + year;
                 issues.push({
                     found: match[0],
                     suggestion: replacement,
@@ -592,7 +620,7 @@ const RULES = [
                 
                 // If second number > 12, it's clearly US format (month/day)
                 if (second > 12) {
-                    const replacement = second + ' ' + months[first - 1] + ' ' + year;
+                    const replacement = second + ' ' + months[first - 1] + ' ' + year;
                     issues.push({
                         found: match[0],
                         suggestion: replacement,
@@ -623,19 +651,26 @@ const RULES = [
             const issues = [];
             const months = ['January', 'February', 'March', 'April', 'May', 'June',
                           'July', 'August', 'September', 'October', 'November', 'December'];
-            // Match ordinal + month (1st January, 2nd Feb, 23rd March, etc.)
+            // Match ordinal + month (1st January, 2nd Feb, 3rd of March, etc.),
+            // optionally preceded by 'the' ('on the 3rd of March' -> 'on 3 March')
             const monthPattern = months.join('|') + '|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sept?|Oct|Nov|Dec';
-            const regex = new RegExp('\\b(\\d{1,2})(st|nd|rd|th)\\s+(' + monthPattern + ')\\b', 'gi');
+            const regex = new RegExp('\\b(the\\s+)?(\\d{1,2})(st|nd|rd|th)\\s+(?:of\\s+)?(' + monthPattern + ')\\b', 'gi');
             let match;
             while ((match = regex.exec(text)) !== null) {
-                const day = match[1];
-                const month = match[3];
-                const replacement = day + ' ' + month;
+                const article = match[1] || '';
+                const day = match[2];
+                const month = match[4];
+                // Only a lowercase 'the' is dropped; a sentence-start 'The'
+                // stays outside the fix.
+                const dropArticle = article.trim() === 'the';
+                const found = dropArticle ? match[0] : match[0].slice(article.length);
+                const position = match.index + (dropArticle ? 0 : article.length);
+                const replacement = day + '\u00A0' + month;
                 issues.push({
-                    found: match[0],
+                    found: found,
                     suggestion: replacement,
                     autoFix: replacement,
-                    position: match.index,
+                    position: position,
                     rule: this
                 });
             }
@@ -757,7 +792,7 @@ const RULES = [
             const regex = new RegExp('\\b(' + dayPattern + '),\\s+(\\d{1,2})\\b', 'gi');
             let match;
             while ((match = regex.exec(text)) !== null) {
-                const replacement = match[1] + ' ' + match[2];
+                const replacement = match[1] + ' ' + match[2];
                 issues.push({
                     found: match[0],
                     suggestion: replacement,
@@ -1438,20 +1473,12 @@ const RULES = [
         link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/shortened-words-and-phrases/abbreviations',
         check: function(text) {
             const issues = [];
-            // Common abbreviations that shouldn't have full stops
-            // Excludes: n.d. (no date - exception), scientific name abbreviations
-            const abbrevs = [
-                // Honorifics and titles
-                'Dr', 'Mr', 'Mrs', 'Ms', 'Mx', 'Prof', 'Rev', 'Hon', 'Sr', 'Jr',
-                // Common abbreviations
-                'para', 'paras', 'vol', 'vols', 'misc', 'app', 'apps',
-                'cont', 'dept', 'depts', 'govt', 'govts', 'approx',
-                'assn', 'ave', 'bldg', 'blvd', 'corp', 'est', 'ext',
-                'inc', 'intl', 'max', 'min', 'natl', 'no', 'nos',
-                'org', 'pt', 'pts', 'qty', 'ref', 'refs',
-                'tel', 'temp', 'yr', 'yrs', 'ed', 'eds', 'fig', 'figs'
-            ];
-            const pattern = abbrevs.join('|');
+            // Common abbreviations that shouldn't have full stops (shared
+            // COMMON_ABBREVS list). Excludes: n.d. (no date - exception),
+            // scientific name abbreviations.
+            // Some are better written in full than merely unstopped.
+            const expansions = { approx: 'approximately' };
+            const pattern = COMMON_ABBREVS.join('|');
             const regex = new RegExp('\\b(' + pattern + ')\\.', 'gi');
             let match;
             while ((match = regex.exec(text)) !== null) {
@@ -1465,10 +1492,12 @@ const RULES = [
                 }
 
                 // Preserve original case
+                const expanded = expansions[abbrev.toLowerCase()];
+                const replacement = expanded ? preserveCase(abbrev, expanded) : abbrev;
                 issues.push({
                     found: match[0],
-                    suggestion: abbrev,
-                    autoFix: abbrev,
+                    suggestion: replacement,
+                    autoFix: replacement,
                     position: match.index,
                     rule: this
                 });
@@ -1564,8 +1593,9 @@ const RULES = [
                 // Skip centuries (1st century, 9th-century)
                 if (/^\s*[-\u2010\u2011]?\s*centur/i.test(after)) continue;
 
-                // Skip dates (followed by month name) - already handled by date-ordinal-in-date
-                if (/^\s+(?:January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Sept?|Oct|Nov|Dec)\b/i.test(after)) continue;
+                // Skip dates (followed by month name, with or without 'of')
+                // - already handled by date-ordinal-in-date
+                if (/^\s+(?:of\s+)?(?:January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Sept?|Oct|Nov|Dec)\b/i.test(after)) continue;
 
                 // Skip reference editions (2nd edn, 3rd ed., 1st edition)
                 if (/^\s+(?:edn|ed\.|edition)\b/i.test(after)) continue;
@@ -2424,6 +2454,12 @@ const RULES = [
                     continue;
                 }
 
+                // Skip if the 'sentence end' is really an abbreviation's
+                // full stop ('Approx. 45 per cent' is mid-sentence)
+                if (ABBREV_STOP_BEFORE.test(before)) {
+                    continue;
+                }
+
                 // Skip if this is a date (number followed by month name)
                 if (/^\s+(?:January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)\b/i.test(after)) {
                     continue;
@@ -2822,7 +2858,8 @@ const RULES = [
                 const number = match[1];
                 const pluralUnit = match[2];
                 const singularUnit = pluralUnit.slice(0, -1);
-                const replacement = number + singularUnit;
+                // Join with a non-breaking space (also covers '5kgs' -> '5 kg')
+                const replacement = number.replace(/\s*$/, ' ') + singularUnit;
                 issues.push({
                     found: match[0],
                     suggestion: replacement,
@@ -3203,7 +3240,7 @@ const RULES = [
             const regex = /\b(\d{1,2}(?:[.:]\d{2})?)(am|pm)\b/gi;
             let match;
             while ((match = regex.exec(text)) !== null) {
-                const replacement = match[1] + ' ' + match[2].toLowerCase();
+                const replacement = match[1] + ' ' + match[2].toLowerCase();
                 issues.push({
                     found: match[0],
                     suggestion: replacement,
@@ -3233,7 +3270,7 @@ const RULES = [
                     const marker = match[2];
                     if (marker === 'am' || marker === 'pm') continue; // already correct
                     const base = /^[Aa]/.test(marker) ? 'am' : 'pm';
-                    const replacement = match[1] + ' ' + base;
+                    const replacement = match[1] + ' ' + base;
                     const end = match.index + match[0].length;
                     const after = text.substring(end, Math.min(text.length, end + 3));
                     // If the marker's final full stop may end the sentence, don't auto-fix
@@ -3818,8 +3855,11 @@ const RULES = [
                 });
             };
             let match;
-            // Ordinary space before am/pm
-            const ampm = /\b(\d{1,2}(?::\d{2})?) (am|pm)\b/g;
+            // Ordinary space before am/pm. The lookbehind stops a partial
+            // match inside a dotted time ('30 am' in '7.30 am') - that whole
+            // time belongs to time-full-stop, whose fix already applies the
+            // non-breaking space.
+            const ampm = /\b(?<![\d.:])(\d{1,2}(?::\d{2})?) (am|pm)\b/g;
             while ((match = ampm.exec(text)) !== null) {
                 push(match, match[1] + ' ' + match[2]);
             }

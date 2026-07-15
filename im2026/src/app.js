@@ -2,7 +2,8 @@
  * Proof Positive (IM2026) - Check page logic
  * Adapted from the Style Manual Check app:
  *   1. Document check - upload a .docx, review issues, download the same
- *      document with Word review comments added (formatting preserved).
+ *      document marked up: mechanical fixes as tracked changes, everything
+ *      else as Word review comments (formatting preserved).
  *   2. Quick text check - paste plain text for an instant check.
  * Rule checks happen entirely in the browser.
  * New here: 'Fix with AI' on judgement-call issues. Claude drafts a rewrite,
@@ -12,6 +13,7 @@
 import { RULES } from '../../src/rules.js';
 import { LIST_RULES } from '../../src/list-analysis.js';
 import { loadDocx, annotateDocx } from '../../src/docx-annotate.js';
+import { planTrackedChanges } from './track-plan.js';
 import { aiFix, AI_ENABLED, AI_NOTICE } from './ai.js';
 import { verifyText, verifySummary } from './verify.js';
 
@@ -127,13 +129,15 @@ function checkSample() {
 
 async function downloadAnnotated() {
     if (!state.loaded || state.issues.length === 0) return;
-    setBusy(true, 'Adding comments…');
+    setBusy(true, 'Marking up the document…');
     try {
         const loaded = await loadDocx(state.fileBuffer.slice(0));
         const issues = runRules(loaded.fullText, loaded);
         addListToolNotes(issues);
-        const { zip, commentCount } = await annotateDocx(loaded, issues, undefined,
-            { author: 'Proof Positive', initials: 'PP' });
+        planTrackedChanges(issues, loaded.fullText);
+        const { zip, commentCount, changeCount, revisionsPresent } =
+            await annotateDocx(loaded, issues, undefined,
+                { author: 'Proof Positive', initials: 'PP', trackChanges: true });
         const blob = await zip.generateAsync({
             type: 'blob',
             mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
@@ -147,8 +151,18 @@ async function downloadAnnotated() {
         a.click();
         a.remove();
         setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+        const parts = [];
+        if (changeCount > 0) {
+            parts.push(changeCount +
+                (changeCount === 1 ? ' tracked change' : ' tracked changes'));
+        }
+        parts.push(commentCount +
+            (commentCount === 1 ? ' comment' : ' comments'));
         $('download-note').textContent =
-            commentCount + (commentCount === 1 ? ' comment' : ' comments') +
+            (revisionsPresent
+                ? 'Your document already contains tracked changes, so every issue was added as a comment instead. '
+                : '') +
+            parts.join(' and ') +
             ' added. Open the file in Word and use the Review pane.';
     } catch (err) {
         console.error(err);
@@ -166,11 +180,11 @@ async function downloadAnnotated() {
 // line as a paragraph, so a hard-wrapped line would read as a heading.
 const EXAMPLE_TEXT =
     'Unicorn crossing upgrade – progress note\n\n' +
-    'The Department of Unicorn Management will modernize signage at fifteen crossings, e.g. new rainbow palettes, following the review released January 15, 2026.  Approx. 45 percent of sites failed the glitter-visibility test.\n\n' +
+    'The Department of Unicorn Management will modernize signage at fifteen crossings, e.g. new rainbow palettes, following the review released on January 15, 2026.  Approx. 45 percent of sites failed the glitter-visibility test.\n\n' +
     'Key dates\n' +
     '• Round 1 opens: 15 January;\n' +
     '• round 2 opens: 1 July, and\n' +
-    '• final report due: 30 June etc.';
+    '• final report due: 30 June.';
 
 function loadExampleText() {
     $('text-input').value = EXAMPLE_TEXT;
