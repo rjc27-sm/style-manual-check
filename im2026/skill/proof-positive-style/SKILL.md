@@ -32,8 +32,8 @@ Also use them as a checklist when reviewing or rewriting someone else's text.
 - Australian spelling: -ise, -yse, -our, -re; program not programme.
 - Numbers: words for zero and one; numerals for 2 and above; comma
   separators over 1,000; numerals for all ages, measurements, percentages.
-- Dates and time: 15 October 2023; 3:30 pm (colon, space before am/pm);
-  spans with an unspaced en dash (2021-22).
+- Dates and time: 15 October 2023; 3:30 pm (colon, non-breaking space
+  before am/pm); spans with an unspaced en dash (2021-22).
 - Punctuation: single quotes; spaced en dashes for asides - like this - and
   never unspaced em dashes; unspaced en dashes join equal words (author–date,
   cost–benefit) and spans (2021–22); no serial comma unless needed; one space

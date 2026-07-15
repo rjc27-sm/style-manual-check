@@ -17,7 +17,7 @@ Robertson, not an official government service.
 
 | Tool | What it does | AI |
 |---|---|---|
-| Check a document | Upload a .docx, get it back with a Word review comment on every style issue. Runs entirely in the browser – nothing is uploaded. | Optional ✦ rewrites |
+| Check a document | Upload a .docx, get it back with mechanical fixes as tracked changes and a comment on every other style issue. Runs entirely in the browser – nothing is uploaded. | Optional ✦ rewrites |
 | Ask the Style Manual | Ask a style question; the answer is grounded in retrieved extracts of the actual Style Manual pages and links only to pages it read. | ✦ |
 | Make it plain | Plain English rewrite of a dense passage, auto-corrected by the rule engine. | ✦ |
 | Format a list | Rewrites rough bullets into a parallel, correctly punctuated Style Manual list. | ✦ |
@@ -33,7 +33,7 @@ for the full bot card, limitations and accessibility statement.
 - **Static site** (`im2026/`): plain HTML + vanilla JavaScript ES modules,
   no framework, no build step. Published by GitHub Pages from the repo root.
 - **Rule engine** (`src/rules.js`, `src/list-analysis.js`,
-  `src/spellings.js`): 106 rules across 12 categories, 1,170 US→AU spelling
+  `src/spellings.js`): 106 rules across 12 categories, 1,190 US→AU spelling
   mappings. Runs in the browser; documents never leave the user's device.
 - **Cloudflare Worker** (`im2026/worker/`): the only server component. Holds
   the Claude API key, enforces per-IP and global daily limits, and serves
@@ -64,7 +64,7 @@ src/                    Canonical shared rule engine
   rules.js              The rules (id, name, category, description, link, check)
   list-analysis.js      List-type detection and list rules
   spellings.js          US→AU spellings, watch words, wordy phrases
-  docx-annotate.js      .docx reading and Word-comment insertion
+  docx-annotate.js      .docx reading, Word comments and tracked changes
 StyleManualCheck/       Word add-in (Office.js)
 style-manual-check/     Pre-2026 browser checker (superseded)
 tests/                  End-to-end test for the annotator (npm test)
@@ -88,9 +88,13 @@ npm install
 npm test
 ```
 
-The test loads a sample document, runs all rules, writes an annotated copy
-and verifies: body text unchanged, comment markers balanced, comment ids
+The first test loads a sample document, runs all rules, writes an annotated
+copy and verifies: body text unchanged, comment markers balanced, comment ids
 unique, comments part well formed, content type and relationship registered.
+The second (`tests/tracked-changes.mjs`) runs the tracked-changes path on the
+Proof Positive sample briefing and verifies the revision XML: rejecting every
+change reconstructs the original text exactly, accepting them applies every
+fix, and documents that already contain revisions fall back to comments.
 Always open annotated output in Word as a final check.
 
 ## Updating rules

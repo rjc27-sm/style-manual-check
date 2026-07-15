@@ -4,7 +4,7 @@
   "description": "Checks Word documents and text against the Australian Government Style Manual. Runs entirely in the browser.",
   "type": "module",
   "scripts": {
-    "test": "node tests/run-tests.mjs tests/sample.docx"
+    "test": "node tests/run-tests.mjs tests/sample.docx && node tests/tracked-changes.mjs"
   },
   "devDependencies": {
     "jszip": "^3.10.1",

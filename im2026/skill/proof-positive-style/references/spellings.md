@@ -1,6 +1,6 @@
 # US to Australian spellings
 
-Generated from the Proof Positive spelling dictionary (1170 mappings). Use the Australian form on the right.
+Generated from the Proof Positive spelling dictionary (1190 mappings). Use the Australian form on the right.
 
 | US | Australian |
 |---|---|
@@ -75,6 +75,7 @@ Generated from the Proof Positive spelling dictionary (1170 mappings). Use the A
 | breathalyzes | breathalyses |
 | breathalyzing | breathalysing |
 | caliber | calibre |
+| calibers | calibres |
 | canceled | cancelled |
 | canceling | cancelling |
 | candor | candour |
@@ -104,6 +105,9 @@ Generated from the Proof Positive spelling dictionary (1170 mappings). Use the A
 | cauterizes | cauterises |
 | cauterizing | cauterising |
 | center | centre |
+| centered | centred |
+| centering | centring |
+| centers | centres |
 | centralization | centralisation |
 | centralizations | centralisations |
 | centralize | centralise |
@@ -188,6 +192,7 @@ Generated from the Proof Positive spelling dictionary (1170 mappings). Use the A
 | decolonizes | decolonises |
 | decolonizing | decolonising |
 | defense | defence |
+| defenses | defences |
 | demeanor | demeanour |
 | demobilization | demobilisation |
 | demobilizations | demobilisations |
@@ -334,6 +339,7 @@ Generated from the Proof Positive spelling dictionary (1170 mappings). Use the A
 | fertilizing | fertilising |
 | fervor | fervour |
 | fiber | fibre |
+| fibers | fibres |
 | finalization | finalisation |
 | finalizations | finalisations |
 | finalize | finalise |
@@ -556,6 +562,7 @@ Generated from the Proof Positive spelling dictionary (1170 mappings). Use the A
 | lionizes | lionises |
 | lionizing | lionising |
 | liter | litre |
+| liters | litres |
 | localization | localisation |
 | localizations | localisations |
 | localize | localise |
@@ -570,6 +577,9 @@ Generated from the Proof Positive spelling dictionary (1170 mappings). Use the A
 | magnetizes | magnetises |
 | magnetizing | magnetising |
 | maneuver | manoeuvre |
+| maneuvered | manoeuvred |
+| maneuvering | manoeuvring |
+| maneuvers | manoeuvres |
 | marginalization | marginalisation |
 | marginalizations | marginalisations |
 | marginalize | marginalise |
@@ -619,6 +629,7 @@ Generated from the Proof Positive spelling dictionary (1170 mappings). Use the A
 | metabolizes | metabolises |
 | metabolizing | metabolising |
 | meter | metre |
+| meters | metres |
 | militarization | militarisation |
 | militarizations | militarisations |
 | militarize | militarise |
@@ -697,6 +708,7 @@ Generated from the Proof Positive spelling dictionary (1170 mappings). Use the A
 | ocher | ochre |
 | odor | odour |
 | offense | offence |
+| offenses | offences |
 | optimization | optimisation |
 | optimizations | optimisations |
 | optimize | optimise |
@@ -792,6 +804,7 @@ Generated from the Proof Positive spelling dictionary (1170 mappings). Use the A
 | pressurizes | pressurises |
 | pressurizing | pressurising |
 | pretense | pretence |
+| pretenses | pretences |
 | prioritization | prioritisation |
 | prioritizations | prioritisations |
 | prioritize | prioritise |
@@ -865,6 +878,8 @@ Generated from the Proof Positive spelling dictionary (1170 mappings). Use the A
 | recognizes | recognises |
 | recognizing | recognising |
 | reconnoiter | reconnoitre |
+| reconnoitered | reconnoitred |
+| reconnoitering | reconnoitring |
 | regularization | regularisation |
 | regularizations | regularisations |
 | regularize | regularise |
@@ -900,6 +915,7 @@ Generated from the Proof Positive spelling dictionary (1170 mappings). Use the A
 | romanticizing | romanticising |
 | rumor | rumour |
 | saber | sabre |
+| sabers | sabres |
 | sanitization | sanitisation |
 | sanitizations | sanitisations |
 | sanitize | sanitise |
@@ -921,6 +937,7 @@ Generated from the Proof Positive spelling dictionary (1170 mappings). Use the A
 | scandalizes | scandalises |
 | scandalizing | scandalising |
 | scepter | sceptre |
+| scepters | sceptres |
 | scrutinization | scrutinisation |
 | scrutinizations | scrutinisations |
 | scrutinize | scrutinise |
@@ -940,6 +957,7 @@ Generated from the Proof Positive spelling dictionary (1170 mappings). Use the A
 | sensitizes | sensitises |
 | sensitizing | sensitising |
 | sepulcher | sepulchre |
+| sepulchers | sepulchres |
 | serialization | serialisation |
 | serializations | serialisations |
 | serialize | serialise |
@@ -981,6 +999,7 @@ Generated from the Proof Positive spelling dictionary (1170 mappings). Use the A
 | specializes | specialises |
 | specializing | specialising |
 | specter | spectre |
+| specters | spectres |
 | spiraled | spiralled |
 | spiraling | spiralling |
 | splendor | splendour |
@@ -1073,6 +1092,7 @@ Generated from the Proof Positive spelling dictionary (1170 mappings). Use the A
 | terrorizes | terrorises |
 | terrorizing | terrorising |
 | theater | theatre |
+| theaters | theatres |
 | theorization | theorisation |
 | theorizations | theorisations |
 | theorize | theorise |
