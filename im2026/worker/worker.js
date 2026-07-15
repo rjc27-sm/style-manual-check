@@ -167,10 +167,14 @@ end punctuation yourself.
 ${AU_STYLE_CORE}
 
 DECIDE THE TYPE - look at the ITEMS first, then the lead-in:
-- If each item is (or should be) a complete sentence with its own subject and
-  verb, the type is "sentence" - whether the first line is a sentence lead-in, a
-  phrase lead-in or just a plain heading. Complete sentences are always a
-  sentence list.
+- If each item is (or should be) a complete sentence, the type is "sentence" -
+  whether the first line is a sentence lead-in, a phrase lead-in or just a
+  plain heading. Complete sentences are always a sentence list.
+- Instructions and commands to the reader ("Choose the days...", "Enter your
+  name") are complete imperative sentences - the subject "you" is implied. So
+  a list of steps, instructions or rules is a sentence list; do NOT apply the
+  fragment test to it. EXCEPTION: if the lead-in names who acts ("Participants
+  will:", "You must:"), the items complete that lead-in and are fragments.
 - If the items are fragments (phrases that are not complete sentences):
   - If there is a lead-in they complete, apply the fragment test: attach each
     item to the lead-in; if the result is a complete, grammatical sentence of

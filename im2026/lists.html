@@ -165,7 +165,7 @@ pre#output.is-placeholder{color:#9c9fa0}
     <div class="examples">
       <span class="ex-lab">Try an example</span>
       <button type="button" class="chip" onclick="loadExample('grant')">Grant eligibility</button>
-      <button type="button" class="chip" onclick="loadExample('docs')">Registration steps</button>
+      <button type="button" class="chip" onclick="loadExample('docs')">Sign up steps</button>
       <button type="button" class="chip" onclick="loadExample('allergies')">Allergy list</button>
     </div>
   </header>
@@ -1560,20 +1560,27 @@ function collectFixes(cleaned) {
   // stand-alone list uses a bare heading; a sentence list keeps the writer's
   // colon or full stop, but a plain heading above a sentence list stays bare
   // (headings never take end punctuation).
-  function aiLeadIn(type, leadIn) {
+  function aiLeadIn(type, leadIn, rawLeadIn) {
     const raw = (leadIn || '').trim();
     if (type === 'standAlone') return raw.replace(/[.!?:]+\s*$/, '');
     if (type === 'fragment') return raw;               // formatFragmentAI adds the colon
-    if (classifyLeadIn(raw) === 'heading') return raw.replace(/[.!?:]+\s*$/, '');
-    if (/[.!?]\s*$/.test(raw)) return raw;             // sentence lead-in ending in a full stop
-    return buildLeadIn(raw, true);                     // sentence/phrase lead-in with a colon
+    // The model often strips the trailing colon or full stop off the lead-in,
+    // which would make a colon-ended lead-in classify as a heading. If the
+    // model kept the user's wording, work from the user's line instead so
+    // their punctuation decides heading-versus-lead-in and survives intact.
+    const userRaw = (rawLeadIn || '').trim();
+    const noEnd = s => s.replace(/[.!?:]+\s*$/, '');
+    const src = (userRaw && noEnd(raw) === noEnd(userRaw)) ? userRaw : raw;
+    if (classifyLeadIn(src) === 'heading') return noEnd(src);
+    if (/[.!?]\s*$/.test(src)) return src;             // sentence lead-in ending in a full stop
+    return buildLeadIn(src, true);                     // sentence/phrase lead-in with a colon
   }
 
-  function renderAiResult(res, numbered) {
+  function renderAiResult(res, numbered, rawNorm, rawLeadIn) {
     const cleaned = res.items.map(t => cleanItem(t));
     let formatted;
     if (res.type === 'standAlone') formatted = formatStandAlone(aiLeadIn('standAlone', res.leadIn), cleaned, numbered);
-    else if (res.type === 'sentence') formatted = formatSentence(aiLeadIn('sentence', res.leadIn), cleaned, numbered, true);
+    else if (res.type === 'sentence') formatted = formatSentence(aiLeadIn('sentence', res.leadIn, rawLeadIn), cleaned, numbered, true);
     else formatted = formatFragmentAI(res.leadIn, cleaned, numbered);
 
     lastResult = { formatted, listType: res.type };
@@ -1581,6 +1588,20 @@ function collectFixes(cleaned) {
 
     const outputEl = document.getElementById('output');
     outputEl.classList.remove('is-placeholder');
+
+    // The final output matches the input, so nothing needed to change.
+    // Mirror the deterministic path's already-correct presentation.
+    if (rawNorm === formatted) {
+      outputEl.textContent = 'Your list is correctly formatted.';
+      document.getElementById('copyBtn').classList.add('hidden');
+      document.getElementById('copyWordBtn').classList.add('hidden');
+      document.getElementById('explanationText').textContent =
+        'AI read this as a ' + (AI_TYPE_WORD[res.type] || 'list') +
+        ' and the rule engine re-checked the markers, capitals and full stops. Nothing needed to change.';
+      document.getElementById('explanation').classList.remove('hidden');
+      document.getElementById('coherenceNotice').classList.add('hidden');
+      return;
+    }
     if (res.type === 'standAlone') {
       const lines = formatted.split('\n');
       const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -1592,8 +1613,13 @@ function collectFixes(cleaned) {
     document.getElementById('copyBtn').classList.remove('hidden');
     document.getElementById('copyWordBtn').classList.remove('hidden');
 
+    // The model's change notes arrive without end punctuation; present each
+    // as a sentence rather than joining them with interpuncts.
     const changeText = (res.changes && res.changes.length)
-      ? res.changes.join(' · ')
+      ? res.changes.map(c => {
+          const s = c.charAt(0).toUpperCase() + c.slice(1);
+          return /[.!?]$/.test(s) ? s : s + '.';
+        }).join(' ')
       : 'Your items already followed a consistent pattern, so the wording is unchanged.';
     document.getElementById('explanationText').textContent =
       'AI set this up as a ' + (AI_TYPE_WORD[res.type] || 'list') + '. ' + changeText +
@@ -1638,11 +1664,16 @@ function collectFixes(cleaned) {
     const items = rawItemLines
       .map(l => stripMarker(l).replace(/[.!?;,]+\s*$/, '').trim())
       .filter(Boolean);
+    // The input in normalised form (the user's lines with the markers the
+    // formatter writes), for the already-correct check in renderAiResult.
+    const rawNorm = [leadIn].concat(
+      rawItemLines.map((l, i) => `${marker(numbered, i)} ${stripMarker(l).trim()}`)
+    ).join('\n');
 
     setFormatBusy(true);
     try {
       const res = await window.aiListFormat({ leadIn, items, forcedType: getForcedType() });
-      renderAiResult(res, numbered);
+      renderAiResult(res, numbered, rawNorm, leadIn);
     } catch (err) {
       // AI unavailable (offline, rate limit, error) – fall back to the rule engine.
       analyseList();
@@ -1663,7 +1694,7 @@ function collectFixes(cleaned) {
   // (mixed punctuation, stray capitals) so the formatter has something to fix.
   var EXAMPLES = {
     grant: "Your application must include:\n- a current ABN;\n- Proof of identity, and\n- 2 referees.",
-    docs: "How to register for the conference:\n1. Choose the days you will attend.\n2. Pick the workshops you want to join.\n3. Enter your discount code (if you have one).",
+    docs: "How to sign up for our newsletter:\n1. Enter your name\n2. Enter your email address\n3. Verify your email address.",
     allergies: "They are allergic to:\n• tree nuts:\no\talmonds\no\tcashews\no\twalnuts.\n• dairy products:\no\tcow's milk\no\tgoat's milk.\n• crustaceans:\no\tcrabs\no\tprawns."
   };
   function loadExample(key){
