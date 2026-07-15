@@ -36,3 +36,6 @@ style_manual_urls.*
 # Local test scratch that the mount will not let us unlink; never publish.
 im2026/_e2e_tmp.mjs
 im2026/_s2_tmp.mjs
+
+# Local build scripts (source of truth for generated Word docs)
+/build_rules_doc.mjs
