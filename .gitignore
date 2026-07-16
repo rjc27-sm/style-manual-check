@@ -39,3 +39,4 @@ im2026/_s2_tmp.mjs
 
 # Local build scripts (source of truth for generated Word docs)
 /build_rules_doc.mjs
+/build_user_facing_doc.mjs
