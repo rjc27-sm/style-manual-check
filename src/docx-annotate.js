@@ -448,6 +448,21 @@ export async function annotateDocx(loaded, issues, env, options) {
             if (offset >= 0 && end <= para.text.length &&
                 para.text.slice(offset, end) === plan.deleteText) {
                 item = { paraIndex, issue, start: offset, end, track: plan };
+                // The claim is the full text the rule matched, not just the
+                // trimmed edit; two rules claiming identical text are
+                // alternative fixes that must not both be applied.
+                const target = issue.searchText != null
+                    ? issue.searchText : issue.found;
+                const claim = locate(lineStarts, paragraphs, issue.position);
+                if (claim.paraIndex === paraIndex && typeof target === 'string') {
+                    const cs = Math.max(0, Math.min(claim.offset, para.text.length));
+                    const ce = Math.min(cs + target.length, para.text.length);
+                    item.claimStart = Math.min(cs, offset);
+                    item.claimEnd = Math.max(ce, end);
+                } else {
+                    item.claimStart = offset;
+                    item.claimEnd = end;
+                }
             }
         }
         if (!item) {
@@ -457,7 +472,8 @@ export async function annotateDocx(loaded, issues, env, options) {
             const start = Math.max(0, Math.min(offset, para.text.length));
             const end = Math.min(start + issue.found.length, para.text.length);
             if (end <= start) continue;
-            item = { paraIndex, issue, start, end, track: null };
+            item = { paraIndex, issue, start, end, track: null,
+                     claimStart: start, claimEnd: end };
         }
         if (!byPara.has(item.paraIndex)) byPara.set(item.paraIndex, []);
         byPara.get(item.paraIndex).push(item);
@@ -486,7 +502,9 @@ export async function annotateDocx(loaded, issues, env, options) {
         const accepted = [];
         for (const item of items) {
             const prev = accepted[accepted.length - 1];
-            if (prev && item.start < prev.end) {
+            if (prev && (item.start < prev.end ||
+                (item.claimStart === prev.claimStart &&
+                 item.claimEnd === prev.claimEnd))) {
                 if (item.start === prev.start && item.end === prev.end) {
                     prev.issues.push(item.issue);
                 } else {
@@ -496,6 +514,7 @@ export async function annotateDocx(loaded, issues, env, options) {
             }
             accepted.push({
                 start: item.start, end: item.end,
+                claimStart: item.claimStart, claimEnd: item.claimEnd,
                 issues: [item.issue], merged: [], track: item.track
             });
         }

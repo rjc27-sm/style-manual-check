@@ -1,6 +1,6 @@
 ---
 name: proof-positive-style
-description: Apply the Proof Positive rule engine's 106 codified Australian Government Style Manual rules when writing, editing or reviewing text. Use whenever drafting Australian Government or AIHW content, when the user asks for Style Manual compliance, plain English rewrites, or a style check, or when producing any user-facing text for the Proof Positive / Style Manual Check projects.
+description: Apply the Proof Positive rule engine's 105 codified Australian Government Style Manual rules when writing, editing or reviewing text. Use whenever drafting Australian Government or AIHW content, when the user asks for Style Manual compliance, plain English rewrites, or a style check, or when producing any user-facing text for the Proof Positive / Style Manual Check projects.
 ---
 
 # Proof Positive style rules

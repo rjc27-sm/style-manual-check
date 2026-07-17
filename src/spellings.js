@@ -229,8 +229,6 @@ const US_TO_AU_SPELLINGS = {
     "maneuvered": "manoeuvred",
     "maneuvering": "manoeuvring",
     "meager": "meagre",
-    "meter": "metre",
-    "meters": "metres",
     "ocher": "ochre",
     "reconnoiter": "reconnoitre",
     "reconnoitered": "reconnoitred",
@@ -327,22 +325,20 @@ const US_TO_AU_SPELLINGS = {
     "worshiping": "worshipping",
 
     // Other common differences
+    // 'check', 'curb', 'draft', 'draftsman', 'jail', 'tire' and bare
+    // 'meter'/'meters' are deliberately absent: each US spelling is also
+    // a correct Australian word in another (often more common) sense.
     "acknowledgment": "acknowledgement",
     "aging": "ageing",
     "airplane": "aeroplane",
     "aluminum": "aluminium",
     "artifact": "artefact",
     "ax": "axe",
-    "check": "cheque",
     "cozy": "cosy",
-    "curb": "kerb",
     "donut": "doughnut",
-    "draft": "draught",
-    "draftsman": "draughtsman",
     "fulfill": "fulfil",
     "gray": "grey",
     "installment": "instalment",
-    "jail": "gaol",
     "jewelry": "jewellery",
     "judgment": "judgement",
     "licorice": "liquorice",
@@ -360,7 +356,6 @@ const US_TO_AU_SPELLINGS = {
     "skillful": "skilful",
     "smolder": "smoulder",
     "sulfur": "sulphur",
-    "tire": "tyre",
     "willful": "wilful",
     "woolen": "woollen"
 };

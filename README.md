@@ -33,7 +33,7 @@ for the full bot card, limitations and accessibility statement.
 - **Static site** (`im2026/`): plain HTML + vanilla JavaScript ES modules,
   no framework, no build step. Published by GitHub Pages from the repo root.
 - **Rule engine** (`src/rules.js`, `src/list-analysis.js`,
-  `src/spellings.js`): 106 rules across 12 categories, 1,190 US→AU spelling
+  `src/spellings.js`): 105 rules across 12 categories, 1,182 US→AU spelling
   mappings. Runs in the browser; documents never leave the user's device.
 - **Cloudflare Worker** (`im2026/worker/`): the only server component. Holds
   the Claude API key, enforces per-IP and global daily limits, and serves

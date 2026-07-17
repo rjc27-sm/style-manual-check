@@ -121,7 +121,7 @@ const RULES = [
                            'centered', 'centering', 'fiber', 'fibers',
                            'liter', 'liters', 'luster', 'maneuver',
                            'maneuvers', 'maneuvered', 'maneuvering',
-                           'meager', 'meter', 'meters', 'ocher',
+                           'meager', 'ocher',
                            'reconnoiter', 'reconnoitered', 'reconnoitering',
                            'saber', 'sabers', 'scepter', 'scepters',
                            'sepulcher', 'sepulchers', 'somber', 'specter',
@@ -135,6 +135,26 @@ const RULES = [
                         this, text, match[1], match.index, replacement);
                     if (issue) issues.push(issue);
                 }
+            }
+            // 'meter' needs context: a measuring device (water meter, smart
+            // meter, parking meter) is correctly a 'meter' in Australian
+            // English. Prefixed forms are always the unit of length; bare
+            // 'meter'/'meters' is flagged only in measurement contexts.
+            let m;
+            const prefixed = /\b((?:kilo|centi|milli)meters?)\b/gi;
+            while ((m = prefixed.exec(text)) !== null) {
+                const au = m[1].toLowerCase().replace(/meter(s?)$/, 'metre$1');
+                const issue = spellingIssue(
+                    this, text, m[1], m.index, preserveCase(m[1], au));
+                if (issue) issues.push(issue);
+            }
+            const bareUnit = /\b(\d[\d,.]*|square|cubic|per)([\s-]+)(meters?)\b/gi;
+            while ((m = bareUnit.exec(text)) !== null) {
+                const idx = m.index + m[1].length + m[2].length;
+                const au = m[3].toLowerCase() === 'meter' ? 'metre' : 'metres';
+                const issue = spellingIssue(
+                    this, text, m[3], idx, preserveCase(m[3], au));
+                if (issue) issues.push(issue);
             }
             return issues;
         }
@@ -198,12 +218,16 @@ const RULES = [
         link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/spelling',
         check: function(text) {
             const issues = [];
+            // 'curb', 'draft', 'draftsman' and 'tire' are deliberately
+            // absent: each is also a correct Australian word in its most
+            // common government sense ('curb spending', 'draft a bill',
+            // 'legislative draftsman', 'tire of').
             const otherWords = ['acknowledgment', 'aging', 'airplane', 'aluminum', 'artifact',
-                              'ax', 'cozy', 'curb', 'donut', 'draft', 'draftsman', 'fulfill',
+                              'ax', 'cozy', 'donut', 'fulfill',
                               'gray', 'installment', 'jewelry', 'licorice',
                               'mold', 'molding', 'molt', 'mom', 'mustache', 'pajamas',
                               'peddler', 'plow', 'skeptic', 'skeptical', 'skepticism',
-                              'skillful', 'smolder', 'sulfur', 'tire', 'willful', 'woolen'];
+                              'skillful', 'smolder', 'sulfur', 'willful', 'woolen'];
             for (const usWord of otherWords) {
                 if (SPELLINGS[usWord]) {
                     const regex = new RegExp('\\b(' + usWord + ')\\b', 'gi');
@@ -3096,28 +3120,6 @@ const RULES = [
                     found: match[0],
                     suggestion: replacement,
                     autoFix: replacement,
-                    position: match.index,
-                    rule: this
-                });
-            }
-            return issues;
-        }
-    },
-    {
-        id: 'punct-eg-ie-comma',
-        name: "Comma after 'e.g.' or 'i.e.'",
-        category: 'punctuation',
-        description: 'Don\'t put a comma after \'e.g.\' or \'i.e.\'. The comma after these forms is an American convention. (Better still, replace them with \'for example\' or \'that is\'.)',
-        link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/punctuation/commas',
-        check: function(text) {
-            const issues = [];
-            const regex = /\b(e\.g\.|i\.e\.)\s?,/gi;
-            let match;
-            while ((match = regex.exec(text)) !== null) {
-                issues.push({
-                    found: match[0],
-                    suggestion: match[1],
-                    autoFix: match[1],
                     position: match.index,
                     rule: this
                 });

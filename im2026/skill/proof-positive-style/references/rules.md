@@ -1,6 +1,6 @@
 # Proof Positive rule reference
 
-Generated from the Proof Positive deterministic rule engine (106 rules). Each rule links to its Australian Government Style Manual source.
+Generated from the Proof Positive deterministic rule engine (105 rules). Each rule links to its Australian Government Style Manual source.
 
 ## Spelling
 
@@ -34,7 +34,6 @@ Generated from the Proof Positive deterministic rule engine (106 rules). Each ru
 - **Nested or unmatched parentheses** (`punct-parentheses-nested`): Don't use sets of parentheses inside each other. Use square brackets for parenthetical information within parentheses, or reword. Also flags parentheses that don't appear to have a matching pair. [Guidance](https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/punctuation/brackets-and-parentheses)
 - **Apostrophe in possessive pronoun** (`punct-possessive-pronoun`): Possessive pronouns never take apostrophes. Write 'theirs', 'yours', 'ours', 'hers' and 'its', not 'their's' or 'its''. [Guidance](https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/punctuation/apostrophes)
 - **Apostrophe in plural time period** (`punct-plural-time-apostrophe`): Noun phrases about plural time periods don't need apostrophes because they're descriptive, not possessive. Write '6 weeks time' and '3 months wages'. This has been the Style Manual's guidance for many years. Singular forms keep the apostrophe ('a day's work'). [Guidance](https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/punctuation/apostrophes)
-- **Comma after 'e.g.' or 'i.e.'** (`punct-eg-ie-comma`): Don't put a comma after 'e.g.' or 'i.e.'. The comma after these forms is an American convention. (Better still, replace them with 'for example' or 'that is'.) [Guidance](https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/punctuation/commas)
 - **Spaced colon in ratio** (`punct-ratio-colon-space`): Write mathematical ratios with an unspaced colon. Write '50:50', not '50 : 50'. [Guidance](https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/punctuation/colons)
 - **Hanging hyphen** (`punct-hyphen-hanging`): Hanging hyphens ('full- and part-time') can be difficult to follow. Consider repeating the words instead to be clearer ('full-time and part-time'). [Guidance](https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/punctuation/hyphens)
 - **'from' or 'between' with a dash** (`punct-dash-from-between`): Never mix 'from' or 'between' with an en dash. Pair 'from' with 'to' and 'between' with 'and'. Write 'from 2017 to 2019', not 'from 2017–2019'. [Guidance](https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/punctuation/dashes)

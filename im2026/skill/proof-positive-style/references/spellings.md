@@ -1,6 +1,6 @@
 # US to Australian spellings
 
-Generated from the Proof Positive spelling dictionary (1190 mappings). Use the Australian form on the right.
+Generated from the Proof Positive spelling dictionary (1182 mappings). Use the Australian form on the right.
 
 | US | Australian |
 |---|---|
@@ -120,7 +120,6 @@ Generated from the Proof Positive spelling dictionary (1190 mappings). Use the A
 | characterized | characterised |
 | characterizes | characterises |
 | characterizing | characterising |
-| check | cheque |
 | civilization | civilisation |
 | civilizations | civilisations |
 | civilize | civilise |
@@ -172,7 +171,6 @@ Generated from the Proof Positive spelling dictionary (1190 mappings). Use the A
 | criticizing | criticising |
 | crueler | crueller |
 | cruelest | cruellest |
-| curb | kerb |
 | customization | customisation |
 | customizations | customisations |
 | customize | customise |
@@ -246,8 +244,6 @@ Generated from the Proof Positive spelling dictionary (1190 mappings). Use the A
 | disorganizes | disorganises |
 | disorganizing | disorganising |
 | donut | doughnut |
-| draft | draught |
-| draftsman | draughtsman |
 | dramatization | dramatisation |
 | dramatizations | dramatisations |
 | dramatize | dramatise |
@@ -519,7 +515,6 @@ Generated from the Proof Positive spelling dictionary (1190 mappings). Use the A
 | itemized | itemised |
 | itemizes | itemises |
 | itemizing | itemising |
-| jail | gaol |
 | jeopardization | jeopardisation |
 | jeopardizations | jeopardisations |
 | jeopardize | jeopardise |
@@ -628,8 +623,6 @@ Generated from the Proof Positive spelling dictionary (1190 mappings). Use the A
 | metabolized | metabolised |
 | metabolizes | metabolises |
 | metabolizing | metabolising |
-| meter | metre |
-| meters | metres |
 | militarization | militarisation |
 | militarizations | militarisations |
 | militarize | militarise |
@@ -1099,7 +1092,6 @@ Generated from the Proof Positive spelling dictionary (1190 mappings). Use the A
 | theorized | theorised |
 | theorizes | theorises |
 | theorizing | theorising |
-| tire | tyre |
 | tranquilization | tranquillisation |
 | tranquilizations | tranquillisations |
 | tranquilize | tranquillise |

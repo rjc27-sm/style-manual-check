@@ -53,10 +53,34 @@ const CASES = [
     ['punct-plural-time-apostrophe', "the year's cycle", false],
     ['punct-plural-time-apostrophe', 'in 6 weeks time', false],
 
-    // ---- punct-eg-ie-comma (PU-13) ----
-    ['punct-eg-ie-comma', 'some drugs (e.g., lithium) need monitoring', true, 'e.g.'],
-    ['punct-eg-ie-comma', 'the main one (i.e., lithium)', true, 'i.e.'],
-    ['punct-eg-ie-comma', 'some drugs (e.g. lithium) need monitoring', false],
+    // ---- latin-eg / latin-ie (the fix always carries the comma) ----
+    ['latin-eg', 'some drugs (e.g., lithium) need monitoring', true, 'for example,'],
+    ['latin-eg', 'some drugs (e.g. lithium) need monitoring', true, 'for example,'],
+    ['latin-ie', 'the main one (i.e., lithium)', true, 'that is,'],
+    ['latin-ie', 'the main one (i.e. lithium)', true, 'that is,'],
+
+    // ---- spelling-other (US words that are correct AU words elsewhere) ----
+    ['spelling-other', 'we will draft a message to staff', false],
+    ['spelling-other', 'measures to curb spending growth', false],
+    ['spelling-other', 'participants tire quickly', false],
+    ['spelling-other', 'the gray areas of policy', true, 'grey'],
+
+    // ---- spelling-er (bare meter only in measurement contexts) ----
+    ['spelling-er', 'install a smart meter at each site', false],
+    ['spelling-er', 'read the water meters quarterly', false],
+    ['spelling-er', 'a buffer of 100 meters', true, 'metres'],
+    ['spelling-er', 'a 50-meter setback applies', true, 'metre'],
+    ['spelling-er', 'floor area in square meters', true, 'metres'],
+    ['spelling-er', 'the route is 3 kilometers long', true, 'kilometres'],
+    ['spelling-er', 'rainfall in millimeters', true, 'millimetres'],
+
+    // ---- time-ampm-case (sentence stop is not abbreviation punctuation) ----
+    ['time-ampm-case', 'the meeting ends at 5.30 pm.', false],
+    ['time-ampm-case', 'it ends at 5.30 pm. Then we leave.', false],
+    ['time-ampm-case', '(doors close at 5 pm.)', false],
+    ['time-ampm-case', 'we meet at 5 pm. tomorrow at the office', true, '5 pm'],
+    ['time-ampm-case', 'arrive by 9.15 AM.', true, '9.15 am.'],
+    ['time-ampm-case', 'it runs until 3 p.m. daily', true, '3 pm'],
 
     // ---- punct-ratio-colon-space (PU-14) ----
     ['punct-ratio-colon-space', 'a 50 : 50 split', true, '50:50'],
@@ -79,13 +103,13 @@ const CASES = [
     ['punct-dash-from-between', 'rainfall in 2017–2019 was lower', false],
 
     // ---- time-ampm-space (DT-01) ----
-    ['time-ampm-space', 'the meeting is at 3pm', true, '3 pm'],
-    ['time-ampm-space', 'starts at 6:30pm sharp', true, '6:30 pm'],
+    ['time-ampm-space', 'the meeting is at 3pm', true, '3 pm'],
+    ['time-ampm-space', 'starts at 6:30pm sharp', true, '6:30 pm'],
     ['time-ampm-space', 'the meeting is at 3 pm', false],
 
     // ---- time-ampm-case (DT-02) ----
     ['time-ampm-case', 'arrive by 10 A.M. tomorrow', true],
-    ['time-ampm-case', 'arrive by 10 AM tomorrow', true, '10 am'],
+    ['time-ampm-case', 'arrive by 10 AM tomorrow', true, '10 am'],
     ['time-ampm-case', 'arrive by 10 a.m. tomorrow', true],
     ['time-ampm-case', 'arrive by 10 am tomorrow', false],
     ['time-ampm-case', 'the AM radio band', false],
