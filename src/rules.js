@@ -1269,7 +1269,7 @@ const RULES = [
             const regex = /\bi\.e\.(?:,)?/gi;
             let match;
             while ((match = regex.exec(text)) !== null) {
-                const replacement = 'that is' + (match[0].endsWith(',') ? ',' : '');
+                const replacement = 'that is,';
                 issues.push({
                     found: match[0],
                     suggestion: replacement,
@@ -3256,12 +3256,39 @@ const RULES = [
                     const replacement = match[1] + ' ' + base;
                     const end = match.index + match[0].length;
                     const after = text.substring(end, Math.min(text.length, end + 3));
-                    // If the marker's final full stop may end the sentence, don't auto-fix
-                    const ambiguous = marker.endsWith('.') && /^\s*[A-Z]/.test(after);
+                    // A trailing full stop followed by end of text, a new line,
+                    // a closing bracket/quote or a capitalised word is (or may
+                    // be) the sentence's own full stop, not abbreviation
+                    // punctuation.
+                    const atSentenceEnd = marker.endsWith('.') &&
+                        (/^\s*$/.test(after) || /^\s*\n/.test(after) ||
+                         /^[)\]"'”’]/.test(after) || /^\s+[A-Z]/.test(after));
+                    if (marker === 'am.' || marker === 'pm.') {
+                        // Lower-case 'am'/'pm' where the only dot is the
+                        // sentence stop is correct text - don't flag it.
+                        if (atSentenceEnd) continue;
+                        issues.push({
+                            found: match[0],
+                            suggestion: replacement,
+                            autoFix: replacement,
+                            position: match.index,
+                            rule: this
+                        });
+                        continue;
+                    }
+                    // Wrong case or internal dots are always an issue, but if
+                    // the final dot may be the sentence stop the safe fix
+                    // depends on context: a definite sentence end keeps the
+                    // stop, anything ambiguous becomes suggestion-only.
+                    let autoFix = replacement;
+                    if (atSentenceEnd) {
+                        const definiteEnd = /^\s*$/.test(after) || /^\s*\n/.test(after);
+                        autoFix = definiteEnd ? replacement + '.' : undefined;
+                    }
                     issues.push({
                         found: match[0],
                         suggestion: replacement,
-                        autoFix: ambiguous ? undefined : replacement,
+                        autoFix: autoFix,
                         position: match.index,
                         rule: this
                     });
