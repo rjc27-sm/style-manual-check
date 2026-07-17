@@ -221,13 +221,14 @@ const RULES = [
             // 'curb', 'draft', 'draftsman' and 'tire' are deliberately
             // absent: each is also a correct Australian word in its most
             // common government sense ('curb spending', 'draft a bill',
-            // 'legislative draftsman', 'tire of').
+            // 'legislative draftsman', 'tire of'). 'sulfur' is absent
+            // too: it is the international scientific standard spelling.
             const otherWords = ['acknowledgment', 'aging', 'airplane', 'aluminum', 'artifact',
                               'ax', 'cozy', 'donut', 'fulfill',
                               'gray', 'installment', 'jewelry', 'licorice',
                               'mold', 'molding', 'molt', 'mom', 'mustache', 'pajamas',
                               'peddler', 'plow', 'skeptic', 'skeptical', 'skepticism',
-                              'skillful', 'smolder', 'sulfur', 'willful', 'woolen'];
+                              'skillful', 'smolder', 'willful', 'woolen'];
             for (const usWord of otherWords) {
                 if (SPELLINGS[usWord]) {
                     const regex = new RegExp('\\b(' + usWord + ')\\b', 'gi');

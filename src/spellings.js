@@ -328,6 +328,8 @@ const US_TO_AU_SPELLINGS = {
     // 'check', 'curb', 'draft', 'draftsman', 'jail', 'tire' and bare
     // 'meter'/'meters' are deliberately absent: each US spelling is also
     // a correct Australian word in another (often more common) sense.
+    // 'sulfur' is also absent: it is the international scientific
+    // standard, and government documents mentioning it are technical.
     "acknowledgment": "acknowledgement",
     "aging": "ageing",
     "airplane": "aeroplane",
@@ -355,7 +357,6 @@ const US_TO_AU_SPELLINGS = {
     "skepticism": "scepticism",
     "skillful": "skilful",
     "smolder": "smoulder",
-    "sulfur": "sulphur",
     "willful": "wilful",
     "woolen": "woollen"
 };

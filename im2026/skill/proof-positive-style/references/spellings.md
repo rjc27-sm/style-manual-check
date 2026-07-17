@@ -1,6 +1,6 @@
 # US to Australian spellings
 
-Generated from the Proof Positive spelling dictionary (1182 mappings). Use the Australian form on the right.
+Generated from the Proof Positive spelling dictionary (1181 mappings). Use the Australian form on the right.
 
 | US | Australian |
 |---|---|
@@ -1029,7 +1029,6 @@ Generated from the Proof Positive spelling dictionary (1182 mappings). Use the A
 | subsidizes | subsidises |
 | subsidizing | subsidising |
 | succor | succour |
-| sulfur | sulphur |
 | summarization | summarisation |
 | summarizations | summarisations |
 | summarize | summarise |
