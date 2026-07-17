@@ -77,17 +77,6 @@ textarea#text-input:focus{outline:none;box-shadow:inset 0 0 0 2px var(--b5)}
 .sample-row .linklike:hover{color:var(--blue)}
 .sample-row a{color:var(--b2)}
 
-.toolkit{margin-top:44px;border-top:1px solid var(--line);padding-top:28px}
-.toolkit h2{font-size:17px;font-weight:800;color:var(--b1);margin-bottom:4px}
-.toolkit .toolkit-lede{font-size:14px;color:var(--c2);margin-bottom:16px;max-width:640px;line-height:1.6}
-.toolkit-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
-.tool-card{display:block;background:#fff;border:1px solid var(--line);border-radius:10px;
-  padding:15px 17px;text-decoration:none;box-shadow:0 1px 2px rgba(25,47,56,.04);
-  transition:border-color .15s var(--ease)}
-.tool-card:hover{border-color:var(--b4)}
-.tool-card h3{font-size:14.5px;font-weight:700;color:var(--b2);margin:0 0 4px}
-.tool-card p{font-size:13px;color:var(--c2);line-height:1.55;margin:0}
-
 .controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:22px 0 0}
 .controls .ctrl-lab{font-size:13px;font-weight:600;color:var(--c3)}
 .controls select{font:600 14px 'Open Sans',sans-serif;color:var(--c2);padding:9px 12px;
@@ -231,39 +220,6 @@ textarea#text-input:focus{outline:none;box-shadow:inset 0 0 0 2px var(--b5)}
     <div id="issue-list"></div>
   </section>
 
-  <section class="toolkit" aria-labelledby="toolkit-h">
-    <h2 id="toolkit-h">More in this toolkit</h2>
-    <p class="toolkit-lede">Proof Positive contains 5 tools that share the
-      same rule engine. Tools marked ✦ use generative AI, but everything the
-      AI writes is checked against the rules before you see it.</p>
-    <div class="toolkit-grid">
-      <a class="tool-card" href="index.html">
-        <h3>Check a document</h3>
-        <p>This page. Check your document against the deterministic rule
-          engine. Only uses AI if you request a rewrite.</p>
-      </a>
-      <a class="tool-card" href="plain.html">
-        <h3>Make it plain ✦</h3>
-        <p>Paste a dense or jargon-heavy passage and get a plain English
-          rewrite that keeps the meaning.</p>
-      </a>
-      <a class="tool-card" href="lists.html">
-        <h3>Format a list ✦</h3>
-        <p>Turn rough bullet points into a correctly punctuated sentence,
-          fragment or stand-alone list.</p>
-      </a>
-      <a class="tool-card" href="citations.html">
-        <h3>Create a citation</h3>
-        <p>Build an author–date reference from a DOI, a manual form or a
-          messy pasted reference.</p>
-      </a>
-      <a class="tool-card" href="ask.html">
-        <h3>Ask the Style Manual ✦</h3>
-        <p>Ask a style question in plain words and get an answer drawn from
-          the Style Manual's actual pages, with a link to the source.</p>
-      </a>
-    </div>
-  </section>
 </main>
 
 <footer class="gov-footer">

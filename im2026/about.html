@@ -48,6 +48,14 @@ section a{color:var(--b2)}
 .botcard ul{margin:4px 0 0 20px}
 .botcard li{font-size:15px;color:var(--c2);line-height:1.65;margin-bottom:4px}
 
+.toolkit-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-top:16px}
+.tool-card{display:block;background:#fff;border:1px solid var(--line);border-radius:10px;
+  padding:15px 17px;text-decoration:none;box-shadow:0 1px 2px rgba(25,47,56,.04);
+  transition:border-color .15s ease}
+.tool-card:hover{border-color:var(--b4)}
+.tool-card h3{font-size:14.5px;font-weight:700;color:var(--b2);margin:0 0 4px}
+.tool-card p{font-size:13px;color:var(--c2);line-height:1.55;margin:0}
+
 @media (max-width:720px){
   .wrap{padding:26px 18px 44px}
   .hero h1{font-size:24px}
@@ -95,6 +103,40 @@ section a{color:var(--b2)}
       <a href="https://www.stylemanual.gov.au" rel="noopener">Australian
       Government Style Manual</a>.</p>
   </header>
+
+  <section aria-labelledby="toolkit-h">
+    <h2 id="toolkit-h">What's in the toolkit</h2>
+    <p>Proof Positive contains 5 tools that share the same rule engine. Tools
+      marked ✦ use generative AI, but everything the AI writes is checked
+      against the rules before you see it.</p>
+    <div class="toolkit-grid">
+      <a class="tool-card" href="index.html">
+        <h3>Check a document</h3>
+        <p>Check a Word document or pasted text against the deterministic
+          rule engine. Only uses AI if you request a rewrite.</p>
+      </a>
+      <a class="tool-card" href="plain.html">
+        <h3>Make it plain ✦</h3>
+        <p>Paste a dense or jargon-heavy passage and get a plain English
+          rewrite that keeps the meaning.</p>
+      </a>
+      <a class="tool-card" href="lists.html">
+        <h3>Format a list ✦</h3>
+        <p>Turn rough bullet points into a correctly punctuated sentence,
+          fragment or stand-alone list.</p>
+      </a>
+      <a class="tool-card" href="citations.html">
+        <h3>Create a citation</h3>
+        <p>Build an author–date reference from a DOI, a manual form or a
+          messy pasted reference.</p>
+      </a>
+      <a class="tool-card" href="ask.html">
+        <h3>Ask the Style Manual ✦</h3>
+        <p>Ask a style question in plain words and get an answer drawn from
+          the Style Manual's actual pages, with a link to the source.</p>
+      </a>
+    </div>
+  </section>
 
   <section aria-labelledby="how-h">
     <h2 id="how-h">How the draft-and-verify loop works</h2>
@@ -171,6 +213,9 @@ the rules re-checking the AI's output before it reaches you.">
             <li>Anthropic's Claude models via a rate-limited Cloudflare
               Worker proxy, so the API key never reaches the browser. AI
               features are marked ✦.</li>
+            <li>Claude Design, which generated 3 ‘look and feel’ options for
+              the original Style Manual Check (web version). Proof Positive
+              uses the same design.</li>
             <li>GitHub Pages for hosting (no analytics, cookies or
               trackers).</li>
           </ul>
