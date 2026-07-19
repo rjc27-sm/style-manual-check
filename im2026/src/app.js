@@ -120,7 +120,7 @@ async function checkBuffer(name, getBuffer) {
 
 /** The bundled sample: a fictional briefing seeded with style issues. */
 function checkSample() {
-    checkBuffer('sample-briefing.docx', async () => {
+    return checkBuffer('sample-briefing.docx', async () => {
         const res = await fetch('assets/sample-briefing.docx');
         if (!res.ok) throw new Error('The sample could not be fetched (' + res.status + ').');
         return res.arrayBuffer();
@@ -468,6 +468,15 @@ function init() {
         const btn = e.target.closest('[data-ai-fix]');
         if (btn) handleAiFix(Number(btn.getAttribute('data-ai-fix')));
     });
+
+    // ?sample in the URL runs the sample briefing check on arrival
+    // (linked from the About page's toolkit card).
+    if (new URLSearchParams(window.location.search).has('sample')) {
+        Promise.resolve(checkSample()).then(() => {
+            const results = $('results-section');
+            if (results && !results.hidden) results.scrollIntoView();
+        });
+    }
 }
 
 document.addEventListener('DOMContentLoaded', init);

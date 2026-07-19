@@ -55,6 +55,9 @@ section a{color:var(--b2)}
 .tool-card:hover{border-color:var(--b4)}
 .tool-card h3{font-size:14.5px;font-weight:700;color:var(--b2);margin:0 0 4px}
 .tool-card p{font-size:13px;color:var(--c2);line-height:1.55;margin:0}
+.tool-card h3 a{color:inherit;text-decoration:none}
+.tool-card h3 a:hover,.tool-card h3 a:focus{text-decoration:underline}
+.tool-card p a{color:var(--b2)}
 
 @media (max-width:720px){
   .wrap{padding:26px 18px 44px}
@@ -110,12 +113,13 @@ section a{color:var(--b2)}
       marked ✦ use generative AI, but everything the AI writes is checked
       against the rules before you see it.</p>
     <div class="toolkit-grid">
-      <a class="tool-card" href="index.html">
-        <h3>Check a document</h3>
+      <div class="tool-card">
+        <h3><a href="index.html">Check a document</a></h3>
         <p>Check a Word document or pasted text against the deterministic
-          rule engine. Only uses AI if you request a rewrite. Try it on the
-          sample briefing in one click.</p>
-      </a>
+          rule engine. Only uses AI if you request a rewrite.
+          <a href="index.html?sample">Try it on the sample briefing</a>
+          in one click.</p>
+      </div>
       <a class="tool-card" href="plain.html">
         <h3>Make it plain ✦</h3>
         <p>Paste a dense or jargon-heavy passage and get a plain English
