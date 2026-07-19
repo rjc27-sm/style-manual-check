@@ -470,11 +470,15 @@ function init() {
     });
 
     // ?sample in the URL runs the sample briefing check on arrival
-    // (linked from the About page's toolkit card).
+    // (linked from the About page's toolkit card). Scroll to the sample
+    // note so the description of what was checked stays in view above
+    // step 2 and the results.
     if (new URLSearchParams(window.location.search).has('sample')) {
         Promise.resolve(checkSample()).then(() => {
+            const note = document.querySelector('.sample-row');
             const results = $('results-section');
-            if (results && !results.hidden) results.scrollIntoView();
+            const target = note || results;
+            if (target && !target.hidden) target.scrollIntoView();
         });
     }
 }
