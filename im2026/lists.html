@@ -973,7 +973,7 @@ function analyse(input, forcedType /* optional: 'sentence'|'fragment'|'standAlon
       : '';
     // The writer forced a sentence list onto phrase items: the tool cannot supply the missing grammar.
     const sentForcedNote = (forcedType === 'sentence' && (kind === 'noun phrases' || kind === 'phrases'))
-      ? ' These items are phrases, not full sentences, and a sentence list needs each item to have a subject and a verb. The tool cannot add words. Reword each item as a complete sentence, or leave them as phrases and they will format as a fragment list.'
+      ? ' These items are phrases (not full sentences), and a sentence list needs each item to have a subject and a verb. The tool cannot add words. Reword each item as a complete sentence, or leave them as phrases and they will format as a fragment list.'
       : '';
     explanation =
       `This is a sentence list. ${reason}, so every item starts with a capital letter and ends with a full stop. ` +
@@ -1614,11 +1614,14 @@ function collectFixes(cleaned) {
     document.getElementById('copyWordBtn').classList.remove('hidden');
 
     // The model's change notes arrive without end punctuation; present each
-    // as a sentence rather than joining them with interpuncts.
+    // as a sentence rather than joining them with interpuncts. The notes are
+    // AI text like any other, so each one gets the rule engine's mechanical
+    // fixes before display (quoted user wording stays masked and untouched).
+    const fixNote = window.aiAutoCorrect ? (t => window.aiAutoCorrect(t).text) : (t => t);
     const changeText = (res.changes && res.changes.length)
       ? res.changes.map(c => {
           const s = c.charAt(0).toUpperCase() + c.slice(1);
-          return /[.!?]$/.test(s) ? s : s + '.';
+          return fixNote(/[.!?]$/.test(s) ? s : s + '.');
         }).join(' ')
       : 'Your items already followed a consistent pattern, so the wording is unchanged.';
     document.getElementById('explanationText').textContent =
@@ -1709,10 +1712,14 @@ function collectFixes(cleaned) {
   </script>
 <script type="module">
 import { aiListFormat, AI_ENABLED } from './src/ai.js';
+import { autoCorrect } from './src/verify.js';
 // Bridge the ES-module AI client across to the classic formatting script above,
-// which owns the deterministic formatters and all the DOM wiring.
+// which owns the deterministic formatters and all the DOM wiring. autoCorrect
+// gives the model's change notes the same mechanical rule-engine pass as any
+// other AI output.
 window.aiListFormat = aiListFormat;
 window.AI_ENABLED = AI_ENABLED;
+window.aiAutoCorrect = autoCorrect;
 </script>
 </body>
 </html>
