@@ -27,8 +27,10 @@ form) keep working; AI features show as unavailable.
 - `ALLOWED_ORIGINS` – locked to the GitHub Pages origin. Browser calls from
   any other site are refused. Set to `""` temporarily for local testing, then
   re-lock and redeploy.
-- `MODEL` / `STRONG_MODEL` – default model and the stronger model used by
-  judgement-heavy endpoints (Ask, list formatting).
+- `MODEL` / `STRONG_MODEL` – the Claude model. All endpoints run Sonnet
+  (`claude-sonnet-5`) as of 26 July 2026; `STRONG_MODEL` / `ASK_MODEL` are kept
+  equal to `MODEL` for the `spec.strong` code path but no longer select a
+  different model. To change the model, edit the var and redeploy the worker.
 - `IP_DAILY_LIMIT` – AI requests per IP per day. Note that an office NAT
   shares one IP across everyone in the building.
 - `GLOBAL_DAILY_LIMIT` – shared daily cap across all users; the cost
@@ -71,5 +73,7 @@ style-clean.
 root are the canonical rules, shared by four tools: the Word add-in, the
 browser checker, Format-a-list, and the verification step applied to every
 AI answer. Any rule change needs regression testing across all four, and
-extra care with rules that carry an `autoFix` – the Ask and Make-it-plain
-verifiers apply those automatically.
+extra care with rules that carry an `autoFix` – every AI-output verifier
+applies those automatically (Make-it-plain, Ask, Format-a-list items and
+Check-a-document rewrites), so a wrong `autoFix` silently corrupts text.
+Create-a-citation is the one exemption: it preserves source wording verbatim.
