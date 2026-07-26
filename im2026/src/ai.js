@@ -59,14 +59,6 @@ export function aiFix({ passage, ruleName, ruleDescription, guidance }) {
 }
 
 /**
- * Rewrite list items in parallel form.
- * Returns { items: string[] }
- */
-export function aiParallelList({ leadIn, items, listType }) {
-    return callWorker('/api/list-parallel', { leadIn, items, listType });
-}
-
-/**
  * Parse a messy pasted reference into structured citation fields.
  * Returns { sourceType: string, fields: object, confidence: string }
  */

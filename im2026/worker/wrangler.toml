@@ -18,10 +18,12 @@ id = "3cace9b99cdd430ba1a873add185c670"
 # other website are refused. To allow local testing temporarily, set this
 # back to "" and redeploy - but re-lock it afterwards.
 ALLOWED_ORIGINS = "https://rjc27-sm.github.io"
-MODEL = "claude-haiku-4-5"
-# Judgement-heavy endpoints (Ask, and the list formatter) use a stronger model.
+# All endpoints run on Sonnet: these tools are about editorial finesse, and at
+# the current usage caps the cost difference over Haiku is negligible.
+MODEL = "claude-sonnet-5"
+# STRONG_MODEL/ASK_MODEL are now the same as MODEL (kept for the spec.strong
+# path and backward compatibility; harmless while every endpoint uses Sonnet).
 STRONG_MODEL = "claude-sonnet-5"
-# Backward-compatible alias, still read if STRONG_MODEL is unset.
 ASK_MODEL = "claude-sonnet-5"
 # Where the scraped page extracts are hosted (the im2026/pages/ folder).
 PAGES_BASE_URL = "https://rjc27-sm.github.io/style-manual-check/im2026/pages/"

@@ -135,28 +135,6 @@ Rules:
         shape: r => ({ rewrite: r.trim() })
     },
 
-    'list-parallel': {
-        system: `You rewrite bullet-list items into parallel grammatical form for
-'Proof Positive', an Australian Government Style Manual tool.
-${AU_STYLE_CORE}
-Rules:
-- Make every item the same grammatical form. If a lead-in is given, each item
-  must continue the lead-in naturally and the whole must read as grammatical.
-- Prefer the form most items already use; change as little as possible.
-- Do not add or remove items. Do not add markers, numbering or punctuation at
-  the ends of items - a deterministic formatter handles punctuation.
-- Reply with one item per line and nothing else.`,
-        build(body) {
-            return (body.listType ? `List type: ${body.listType}\n` : '') +
-                (body.leadIn ? `Lead-in: ${body.leadIn}\n` : '') +
-                `Items:\n${body.items.join('\n')}`;
-        },
-        maxChars: 4000,
-        shape: r => ({
-            items: r.split('\n').map(s => s.replace(/^[-•*\d.)\s]+/, '').trim()).filter(Boolean)
-        })
-    },
-
     'list-format': {
         system: `You prepare list items for 'Proof Positive', an Australian Government
 Style Manual tool. The user gives a lead-in (or heading) and some rough list
@@ -170,6 +148,10 @@ DECIDE THE TYPE - look at the ITEMS first, then the lead-in:
 - If each item is (or should be) a complete sentence, the type is "sentence" -
   whether the first line is a sentence lead-in, a phrase lead-in or just a
   plain heading. Complete sentences are always a sentence list.
+- In Style Manual style, a phrase lead-in ending in a colon is fully compatible
+  with a sentence list. Never convert complete sentences into fragments merely
+  to match a phrase lead-in. First check whether every item is a complete
+  sentence - if it is, the type is "sentence", and you format it as one.
 - Instructions and commands to the reader ("Choose the days...", "Enter your
   name") are complete imperative sentences - the subject "you" is implied. So
   a list of steps, instructions or rules is a sentence list; do NOT apply the
@@ -177,13 +159,12 @@ DECIDE THE TYPE - look at the ITEMS first, then the lead-in:
   will:", "You must:"), the items complete that lead-in and are fragments.
 - If the items are fragments (phrases that are not complete sentences):
   - If there is a lead-in they complete, apply the fragment test: attach each
-    item to the lead-in; if the result is a complete, grammatical sentence of
-    25 words or fewer, the type is "fragment".
+    item to the lead-in; if the result is a complete, grammatical sentence, the
+    type is "fragment".
   - If there is only a heading and nothing for the fragments to complete, the
     type is "standAlone".
 - Use "standAlone" ONLY for a heading followed by words or short phrases. Never
   use it for items that are complete sentences.
-- If the user gives a "Requested type", honour it and rewrite the items to suit.
 
 REWRITE THE ITEMS:
 - Make every item follow the same grammatical pattern: the same word type to
@@ -266,7 +247,7 @@ Field notes: for chapters use chapterTitle + bookTitle (not title); for
 newspaper use publicationName and fullDate ('24 May 2018'); for legislation,
 title includes the year ('Major Bank Levy Act 2017') and jurisdiction is Cth,
 ACT, NSW, NT, Qld, SA, Tas, Vic or WA; accessDate format is '20 January 2025';
-pages format is '172-188'.
+pages format is '172–188'.
 Only include fields actually present in the reference. Never invent a DOI,
 URL, date or page numbers. If unsure of the type, choose the most likely and
 set confidence to low.`,
@@ -429,8 +410,7 @@ export default {
         try { body = await request.json(); } catch {
             return json({ error: 'Invalid request.' }, 400, cors);
         }
-        if ((endpoint === 'list-parallel' || endpoint === 'list-format') &&
-            !Array.isArray(body.items)) {
+        if (endpoint === 'list-format' && !Array.isArray(body.items)) {
             return json({ error: 'Invalid request.' }, 400, cors);
         }
         let userMsg;
