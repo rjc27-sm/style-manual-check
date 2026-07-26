@@ -1639,6 +1639,72 @@ function collectFixes(cleaned) {
     }
   }
 
+  // A transient AI failure is one that usually clears on the next attempt: an
+  // empty answer or 5xx (kind 'server'), a network blip (kind 'network'), or a
+  // brief 'busy' 429 (kind 'limit' with 'busy' in the message). A daily-limit
+  // 429, an over-length input, or 'AI not configured' are lasting, so we don't
+  // retry those.
+  function isTransientAiError(err) {
+    const kind = err && err.kind;
+    const msg = (err && err.message) || '';
+    return kind === 'network' || kind === 'server' ||
+      (kind === 'limit' && /busy/i.test(msg));
+  }
+
+  // Call the AI, retrying once (after a short pause) if the failure looks
+  // transient. This handles the common 'didn't work first time, worked the
+  // second' case without the user having to click again.
+  async function aiListFormatWithRetry(payload, tries) {
+    let lastErr;
+    for (let i = 0; i < tries; i++) {
+      try {
+        return await window.aiListFormat(payload);
+      } catch (err) {
+        lastErr = err;
+        if (!isTransientAiError(err) || i === tries - 1) throw err;
+        await new Promise(r => setTimeout(r, 600));
+      }
+    }
+    throw lastErr;
+  }
+
+  // Fall back sensibly when the AI call fails even after a retry.
+  //  - If the rule engine can format the list as-is, show that result and
+  //    invite an AI retry for a reworded version.
+  //  - If it can't (for example the items aren't parallel) and the failure was
+  //    transient, ask the user to try again rather than showing the confusing
+  //    'this list can't be formatted' refusal - the AI is what handles this case.
+  //  - Otherwise (a lasting AI problem the rule engine also can't work around),
+  //    show the rule engine's guidance with the AI error.
+  function handleAiFailure(err) {
+    const transient = isTransientAiError(err);
+    const msg = (err && err.message) || '';
+
+    const input = document.getElementById('input').value;
+    const raw = document.querySelector('input[name="listType"]:checked')?.value || 'auto';
+    const forceNumberedDet = raw === 'numbered';
+    const forcedTypeDet = (raw === 'auto' || raw === 'multilevel' || raw === 'numbered') ? null : raw;
+    const det = analyse(input, forcedTypeDet, forceNumberedDet);
+
+    if (det.status === 'ok') {
+      analyseList();
+      const notice = document.getElementById('coherenceNotice');
+      document.getElementById('coherenceText').textContent =
+        'The AI was briefly unavailable, so this is the rule-engine result. It formats your list but does not reword it. Select Format with AI again to get a reworded version.';
+      notice.classList.remove('hidden');
+    } else if (transient) {
+      showError('The AI was briefly unavailable',
+        'This happens from time to time. Select Format with AI again – it usually works on the next try.');
+    } else {
+      analyseList();
+      const notice = document.getElementById('coherenceNotice');
+      document.getElementById('coherenceText').textContent =
+        (msg ? msg + ' ' : '') +
+        'The rule engine cannot reword items, so it could not format this list.';
+      notice.classList.remove('hidden');
+    }
+  }
+
   async function formatWithAI() {
     document.getElementById('coherenceNotice').classList.add('hidden');
     document.getElementById('explanation').classList.add('hidden');
@@ -1675,16 +1741,11 @@ function collectFixes(cleaned) {
 
     setFormatBusy(true);
     try {
-      const res = await window.aiListFormat({ leadIn, items, forcedType: getForcedType() });
+      const res = await aiListFormatWithRetry(
+        { leadIn, items, forcedType: getForcedType() }, 2);
       renderAiResult(res, numbered, rawNorm, leadIn);
     } catch (err) {
-      // AI unavailable (offline, rate limit, error) – fall back to the rule engine.
-      analyseList();
-      const notice = document.getElementById('coherenceNotice');
-      document.getElementById('coherenceText').textContent =
-        (err && err.message ? err.message + ' ' : '') +
-        'Showed the rule-engine result instead – it formats your list but does not rewrite the wording.';
-      notice.classList.remove('hidden');
+      handleAiFailure(err);
     } finally {
       setFormatBusy(false);
     }
