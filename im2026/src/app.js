@@ -15,7 +15,7 @@ import { LIST_RULES } from '../../src/list-analysis.js';
 import { loadDocx, annotateDocx } from '../../src/docx-annotate.js';
 import { planTrackedChanges } from './track-plan.js';
 import { aiFix, AI_ENABLED, AI_NOTICE } from './ai.js';
-import { verifyText, verifySummary } from './verify.js';
+import { verifyText, verifySummary, autoCorrect } from './verify.js';
 
 const state = {
     mode: 'document',        // 'document' | 'text'
@@ -329,14 +329,23 @@ async function handleAiFix(idx, extraGuidance) {
             ruleDescription: issue.rule.description,
             guidance: extraGuidance || ''
         });
-        const check = verifyText(rewrite);
+        // Mark the AI's homework: apply the rule engine's mechanical fixes to
+        // the rewrite (the same pass the other AI tools use), then re-check what
+        // remains. The corrected text is what we show and copy.
+        const corrected = autoCorrect(rewrite);
+        const rewriteText = corrected.text;
+        const check = verifyText(rewriteText);
+        const fixNote = corrected.fixes
+            ? escapeHtml(corrected.fixes + ' automatic ' +
+                (corrected.fixes === 1 ? 'correction' : 'corrections') + ' applied. ')
+            : '';
         slot.innerHTML =
             '<div class="ai-panel">' +
             '<p class="ai-panel-head">✦ AI-drafted rewrite, checked by the rule engine</p>' +
-            '<div class="ai-result-text">' + escapeHtml(rewrite) + '</div>' +
+            '<div class="ai-result-text">' + escapeHtml(rewriteText) + '</div>' +
             (check.clean
-                ? '<p class="ai-verified" role="status">✔ ' + escapeHtml(verifySummary(check)) + '</p>'
-                : '<p class="ai-reflagged" role="status">⚠ ' + escapeHtml(verifySummary(check)) + '</p>' +
+                ? '<p class="ai-verified" role="status">✔ ' + fixNote + escapeHtml(verifySummary(check)) + '</p>'
+                : '<p class="ai-reflagged" role="status">⚠ ' + fixNote + escapeHtml(verifySummary(check)) + '</p>' +
                   '<ul style="margin:6px 0 0 18px;font-size:13px;color:#555a5e">' +
                   check.issues.slice(0, 5).map(i =>
                       '<li>' + escapeHtml(i.rule.name) + ': ‘' +
@@ -352,7 +361,7 @@ async function handleAiFix(idx, extraGuidance) {
             '</div>';
         const copyBtn = slot.querySelector('[data-ai-copy]');
         if (copyBtn) copyBtn.addEventListener('click', async () => {
-            await navigator.clipboard.writeText(rewrite);
+            await navigator.clipboard.writeText(rewriteText);
             copyBtn.textContent = 'Copied';
             setTimeout(() => { copyBtn.textContent = 'Copy rewrite'; }, 1600);
         });
@@ -360,12 +369,12 @@ async function handleAiFix(idx, extraGuidance) {
         if (reviseBtn) reviseBtn.addEventListener('click', () => {
             const flagged = check.issues.slice(0, 5).map(i =>
                 i.rule.name + ' (found: "' + i.found + '")').join('; ');
-            handleAiFix(idx, 'Your previous rewrite was: "' + rewrite +
+            handleAiFix(idx, 'Your previous rewrite was: "' + rewriteText +
                 '". The rule engine flagged these remaining issues - fix them as well: ' + flagged);
         });
         const retryBtn = slot.querySelector('[data-ai-retry]');
         if (retryBtn) retryBtn.addEventListener('click', () =>
-            handleAiFix(idx, 'Offer a different rewrite from: "' + rewrite + '".'));
+            handleAiFix(idx, 'Offer a different rewrite from: "' + rewriteText + '".'));
     } catch (err) {
         slot.innerHTML = '<p class="ai-error" role="alert">' + escapeHtml(err.message) + '</p>';
     } finally {

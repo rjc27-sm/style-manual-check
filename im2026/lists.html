@@ -1577,7 +1577,24 @@ function collectFixes(cleaned) {
   }
 
   function renderAiResult(res, numbered, rawNorm, rawLeadIn) {
-    const cleaned = res.items.map(t => cleanItem(t));
+    // Mark the AI's homework on the item wording: run the deterministic rule
+    // engine's mechanical fixes (spaced en dashes for parenthetical hyphens,
+    // US-to-AU spelling, and so on) over each item, the same pass the change
+    // notes already get. The model's punctuation is never trusted, only
+    // recomputed. Preserve the AI's leading-letter case so a fragment list's
+    // deliberate lower-case start is not undone.
+    const cleaned = res.items.map(t => {
+      const c = cleanItem(t);
+      if (window.aiAutoCorrect) {
+        const first = c.text.charAt(0);
+        let fixed = window.aiAutoCorrect(c.text).text;
+        if (first && fixed.charAt(0).toLowerCase() === first.toLowerCase()) {
+          fixed = first + fixed.slice(1);
+        }
+        c.text = fixed;
+      }
+      return c;
+    });
     let formatted;
     if (res.type === 'standAlone') formatted = formatStandAlone(aiLeadIn('standAlone', res.leadIn), cleaned, numbered);
     else if (res.type === 'sentence') formatted = formatSentence(aiLeadIn('sentence', res.leadIn, rawLeadIn), cleaned, numbered, true);
