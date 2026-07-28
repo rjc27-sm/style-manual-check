@@ -217,7 +217,11 @@ you changed nothing.`,
                 `Items${levels ? ' (each marked with its level)' : ''}:\n${itemLines.join('\n')}`;
         },
         maxChars: 4000,
-        maxTokens: 1500,
+        // Multilevel answers return every item as a {text, level} object plus
+        // change notes - roughly double a flat answer. 1,500 tokens truncated
+        // the JSON on long lists (AEC list, 28 July 2026), which surfaced as
+        // 'AI briefly unavailable' after the shape() parse failed.
+        maxTokens: 3500,
         strong: true,
         shape(r) {
             const match = r.match(/\{[\s\S]*\}/);

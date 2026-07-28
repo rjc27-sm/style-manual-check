@@ -1859,7 +1859,18 @@ function collectFixes(cleaned) {
       try {
         const res = await aiListFormatWithRetry(
           { leadIn, items, levels, forcedType: getForcedType() }, 2);
-        renderAiResult(res, ordered, rawNorm, leadIn);
+        if (Array.isArray(res.levels) && res.levels.length === res.items.length) {
+          renderAiResult(res, ordered, rawNorm, leadIn);
+        } else {
+          // The AI answered without levels (or they don't line up) - never
+          // flatten the user's hierarchy; show the deterministic multilevel
+          // result instead.
+          analyseList();
+          const lvlNotice = document.getElementById('coherenceNotice');
+          document.getElementById('coherenceText').textContent =
+            'The AI could not keep your list levels this time, so this is the rule-engine result. It formats your list but does not reword it. Select Format with AI again to get a reworded version.';
+          lvlNotice.classList.remove('hidden');
+        }
       } catch (err) {
         handleAiFailure(err);
       } finally {
