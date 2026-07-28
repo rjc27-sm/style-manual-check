@@ -416,6 +416,9 @@ function classifyItem(cleanText) {
   // Starts with an -ing word → gerund phrase ('reaching out', 'cleaning storage').
   // NOT_GERUND screens out everyday 'ing' words that are verbs or nouns ('bring', 'morning').
   if (/[a-z]{2}ing$/.test(fw) && !NOT_GERUND.includes(fw)) return 'gerund';
+  // A base-form verb followed by 'of' is a noun ('use of restraints',
+  // 'register of interests', 'change of address'), not a command.
+  if (isBaseVerb(fw) && words[1] && words[1].replace(/[^A-Za-z]/g, '').toLowerCase() === 'of') return 'phrase';
   // Starts with a base-form verb → imperative ('use everyday words').
   if (isBaseVerb(fw)) return 'imperative';
   // Starts with a subject pronoun → independent clause ('You must…').
@@ -534,11 +537,18 @@ function detect(rawLeadIn, rawItems) {
   //  - Heading + fragments/phrases/nouns             → stand-alone list.
   let listType;
   let imperativeBasis = null; // 'noSubject' | 'subject' when command items decided the type
+  const leadLastWord = rawLeadIn.trim().replace(/:\s*$/, '').replace(/[.!?]\s*$/, '')
+    .trim().split(/\s+/).pop().toLowerCase().replace(/[^a-z'-]/g, '');
   if (leadInType === 'heading') {
     listType = allClause ? 'sentence' : 'standAlone';
   } else if (allClause) {
     listType = 'sentence';
   } else if (allPhrase) {
+    listType = 'fragment';
+  } else if (leadInType === 'phrase' && DANGLING_WORDS.includes(leadLastWord)) {
+    // A phrase lead-in that dangles on a connecting word ('This policy aims
+    // to:', 'famous for its:') is completed by the items even when they start
+    // with verbs, so this is a fragment list (28 July 2026).
     listType = 'fragment';
   } else {
     imperativeBasis = leadInStatesSubject(rawLeadIn) ? 'subject' : 'noSubject';
@@ -667,17 +677,22 @@ function parseHierarchy(rawItems) {
   if (hasL1Marker || hasL2Marker) {
     multilevel = true;
     if (hasL2Marker) tooDeep = true;
-    const maxMarkedChildLevel = hasL2Marker ? 2 : 1;
-    rows.forEach(r => {
+    rows.forEach((r, idx) => {
       if (level2Kinds.has(r.marker)) {
         r.level = 2;
       } else if (level1Kinds.has(r.marker)) {
         r.level = 1;
       } else if (r.marker === 'none' && r.indent > base) {
-        // An unmarked item indented deeper than its siblings is a grandchild
-        // (e.g. plain-text level-3 items that carry no marker character).
-        r.level = maxMarkedChildLevel + 1;
-        tooDeep = true;
+        // An unmarked item indented deeper than the base nests one level
+        // below the item above it; consecutive unmarked lines at the same
+        // indent are siblings. (Until 28 July 2026 these jumped straight to
+        // the level below the deepest marker anywhere in the list, which
+        // turned the children of a bulleted parent into third-level squares.)
+        const prev = rows[idx - 1];
+        r.level = (prev && prev.marker === 'none' && prev.indent === r.indent)
+          ? prev.level
+          : Math.min(2, (prev ? prev.level : 0) + 1);
+        if (r.level === 2) tooDeep = true;
       } else {
         r.level = 0;   // bullet, number, upperLetter, or unindented 'none'
       }
@@ -801,9 +816,13 @@ function analyseMultilevel(rawLeadIn, h, forcedType, forceNumbered) {
 
   let listType = forcedType;
   if (!listType) {
+    const leadLastWord = rawLeadIn.trim().replace(/:\s*$/, '').replace(/[.!?]\s*$/, '')
+      .trim().split(/\s+/).pop().toLowerCase().replace(/[^a-z'-]/g, '');
     if (leadInType === 'heading') listType = allClause ? 'sentence' : 'standAlone';
     else if (allClause) listType = 'sentence';
     else if (allPhrase) listType = 'fragment';
+    // A dangling phrase lead-in ('aims to:') is completed by the items (see detect()).
+    else if (leadInType === 'phrase' && DANGLING_WORDS.includes(leadLastWord)) listType = 'fragment';
     // Command-verb items follow the Style Manual's stated-subject rule (see detect()).
     else listType = leadInStatesSubject(rawLeadIn) ? 'fragment' : 'sentence';
   }
@@ -1548,6 +1567,62 @@ function collectFixes(cleaned) {
     return out.trim();
   }
 
+  // Multilevel counterpart of the AI formatters: rebuilds the hierarchy from
+  // the AI's per-item levels with Style Manual markers (bullet, en dash,
+  // filled square; numbers then letters). Like formatFragmentAI it trusts the
+  // AI's leading-letter case for fragment items.
+  function formatMultilevelAI(leadLine, rows, listType, ordered) {
+    let out = leadLine + '\n';
+    const lastIndex = rows.length - 1;
+    let parentNo = 0, childNo = 0;
+    rows.forEach((r, i) => {
+      let text = r.text;
+      // A parent item's structural colon is dropped, matching the
+      // deterministic multilevel formatter.
+      const hasChild = i < lastIndex && rows[i + 1].level > r.level;
+      if (hasChild) text = text.replace(/:\s*$/, '');
+      if (listType === 'fragment') {
+        if (i === lastIndex) text += '.';
+      } else if (listType === 'sentence') {
+        text = text.charAt(0).toUpperCase() + text.slice(1) + '.';
+      } else {
+        text = text.charAt(0).toUpperCase() + text.slice(1);
+      }
+      if (r.level === 0) {
+        parentNo += 1; childNo = 0;
+        out += `${ordered ? parentNo + '.' : '•'} ${text}\n`;
+      } else if (r.level === 1) {
+        const mk = ordered ? `${letterFor(childNo)}.` : '–';
+        childNo += 1;
+        out += `    ${mk} ${text}\n`;
+      } else {
+        out += `        ▪ ${text}\n`;
+      }
+    });
+    return out.trim();
+  }
+
+  // The user's multilevel input in normalised form (their text with the
+  // markers the formatter writes), for the already-correct check.
+  function multilevelRawNorm(rawLeadIn, rows, ordered) {
+    const out = [rawLeadIn.trim()];
+    let parentNo = 0, childNo = 0;
+    rows.forEach(r => {
+      const text = stripMarker(r.line).trim();
+      if (r.level === 0) {
+        parentNo += 1; childNo = 0;
+        out.push(`${ordered ? parentNo + '.' : '•'} ${text}`);
+      } else if (r.level === 1) {
+        const mk = ordered ? `${letterFor(childNo)}.` : '–';
+        childNo += 1;
+        out.push(`    ${mk} ${text}`);
+      } else {
+        out.push(`        ▪ ${text}`);
+      }
+    });
+    return out.join('\n');
+  }
+
   function setFormatBusy(on) {
     const btn = document.getElementById('formatBtn');
     const busy = document.getElementById('formatBusy');
@@ -1595,10 +1670,32 @@ function collectFixes(cleaned) {
       }
       return c;
     });
+    // Multilevel answers carry a level per item; rebuild the hierarchy.
+    const levels = (Array.isArray(res.levels) && res.levels.length === cleaned.length)
+      ? res.levels : null;
+    const multilevel = !!(levels && levels.some(l => l > 0));
+
     let formatted;
-    if (res.type === 'standAlone') formatted = formatStandAlone(aiLeadIn('standAlone', res.leadIn), cleaned, numbered);
+    if (multilevel) {
+      const rows = cleaned.map((c, i) => ({ text: c.text, level: levels[i] }));
+      const leadLine = res.type === 'standAlone' ? aiLeadIn('standAlone', res.leadIn)
+        : res.type === 'sentence' ? aiLeadIn('sentence', res.leadIn, rawLeadIn)
+        : buildLeadIn(res.leadIn, true);
+      formatted = formatMultilevelAI(leadLine, rows, res.type, numbered);
+    }
+    else if (res.type === 'standAlone') formatted = formatStandAlone(aiLeadIn('standAlone', res.leadIn), cleaned, numbered);
     else if (res.type === 'sentence') formatted = formatSentence(aiLeadIn('sentence', res.leadIn, rawLeadIn), cleaned, numbered, true);
     else formatted = formatFragmentAI(res.leadIn, cleaned, numbered);
+
+    const typeWord = (multilevel ? 'multilevel ' : '') + (AI_TYPE_WORD[res.type] || 'list');
+    const levelNote = multilevel
+      ? (numbered
+          ? ' It uses numbers for the first level and lower-case letters for the second, as the Style Manual requires.'
+          : ' It uses bullets for the first level and an en dash (–) for the second, as the Style Manual requires.') +
+        (levels.some(l => l === 2)
+          ? ' The third level is shown with a filled square (▪) – the Style Manual advises keeping multilevel lists to 2 levels.'
+          : ' Keep multilevel lists to 2 levels and use them sparingly, since they are harder to follow.')
+      : '';
 
     lastResult = { formatted, listType: res.type };
     document.getElementById('errorPanel').classList.add('hidden');
@@ -1613,7 +1710,7 @@ function collectFixes(cleaned) {
       document.getElementById('copyBtn').classList.add('hidden');
       document.getElementById('copyWordBtn').classList.add('hidden');
       document.getElementById('explanationText').textContent =
-        'AI read this as a ' + (AI_TYPE_WORD[res.type] || 'list') +
+        'AI read this as a ' + typeWord +
         ' and the rule engine re-checked the markers, capitals and full stops. Nothing needed to change.';
       document.getElementById('explanation').classList.remove('hidden');
       document.getElementById('coherenceNotice').classList.add('hidden');
@@ -1642,7 +1739,7 @@ function collectFixes(cleaned) {
         }).join(' ')
       : 'Your items already followed a consistent pattern, so the wording is unchanged.';
     document.getElementById('explanationText').textContent =
-      'AI set this up as a ' + (AI_TYPE_WORD[res.type] || 'list') + '. ' + changeText +
+      'AI set this up as a ' + typeWord + '. ' + changeText + levelNote +
       ' The rule engine then applied the Style Manual markers, capitals and full stops and re-checked the result. Review the wording, as AI can change meaning.';
     document.getElementById('explanation').classList.remove('hidden');
 
@@ -1740,9 +1837,34 @@ function collectFixes(cleaned) {
       return;
     }
 
-    // Multilevel lists and the offline case stay on the deterministic engine.
-    if (!window.AI_ENABLED || parseHierarchy(rawItemLines).multilevel) {
+    // Offline, the deterministic engine handles everything.
+    if (!window.AI_ENABLED) {
       analyseList();
+      return;
+    }
+
+    // Multilevel lists go to the AI too (since 28 July 2026): each item is
+    // sent with its level, and the answer carries the levels back so the
+    // deterministic formatter can rebuild the hierarchy.
+    const hierarchy = parseHierarchy(rawItemLines);
+    if (hierarchy.multilevel) {
+      const rows = hierarchy.rows;
+      const items = rows.map(r => stripMarker(r.line).replace(/[.!?;,]+\s*$/, '').trim());
+      const levels = rows.map(r => r.level);
+      const ordered = hierarchy.ordered || document.querySelector('input[name="listType"]:checked')?.value === 'numbered';
+      // The input in normalised form (the user's text with the markers the
+      // multilevel formatter writes), for the already-correct check.
+      const rawNorm = multilevelRawNorm(leadIn, rows, ordered);
+      setFormatBusy(true);
+      try {
+        const res = await aiListFormatWithRetry(
+          { leadIn, items, levels, forcedType: getForcedType() }, 2);
+        renderAiResult(res, ordered, rawNorm, leadIn);
+      } catch (err) {
+        handleAiFailure(err);
+      } finally {
+        setFormatBusy(false);
+      }
       return;
     }
 

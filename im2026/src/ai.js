@@ -86,9 +86,11 @@ export function aiPlain({ passage }) {
 /**
  * Decide a list's type, rewrite its items into parallel form and report the
  * changes. A deterministic formatter then applies markers and punctuation.
+ * For a multilevel list, pass `levels` (one 0/1/2 per item); the answer then
+ * carries a matching `levels` array.
  * Returns { type: 'sentence'|'fragment'|'standAlone', leadIn, items: string[],
- *           changes: string[], coherent: boolean, note: string }
+ *           levels: number[]|null, changes: string[], coherent, note }
  */
-export function aiListFormat({ leadIn, items, forcedType }) {
-    return callWorker('/api/list-format', { leadIn, items, forcedType });
+export function aiListFormat({ leadIn, items, levels, forcedType }) {
+    return callWorker('/api/list-format', { leadIn, items, levels, forcedType });
 }

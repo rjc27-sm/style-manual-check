@@ -53,6 +53,9 @@ function classifyItem(cleanText) {
 
     if (fw === 'please') return 'imperative';
     if (/[a-z]{2}ing$/.test(fw)) return 'gerund';
+    // A base-form verb followed by 'of' is a noun ('use of restraints',
+    // 'register of interests', 'change of address'), not a command.
+    if (isBaseVerb(fw) && words[1] && words[1].replace(/[^A-Za-z]/g, '').toLowerCase() === 'of') return 'phrase';
     if (isBaseVerb(fw)) return 'imperative';
     if (SUBJECT_PRONOUNS.includes(fw)) return 'clause';
     for (let i = 1; i <= 2 && i < words.length; i++) {
@@ -80,7 +83,9 @@ function looksLikeSentence(text) {
     const words = text.split(/\s+/);
     if (words.length < 4) return false;             // stand-alone items are short
     const fw = firstWord(text);
-    if (fw === 'please' || isBaseVerb(fw) || IMPERATIVE_EXTRA.has(fw)) return true;
+    const secondIsOf = words[1] && cleanWord(words[1]) === 'of';
+    if (fw === 'please' ||
+        ((isBaseVerb(fw) || IMPERATIVE_EXTRA.has(fw)) && !secondIsOf)) return true;
     // Imperative with a fronted adverbial: 'In legal material, use initial ...'
     for (let i = 0; i < words.length - 1 && i < 6; i++) {
         if (/,$/.test(words[i])) {

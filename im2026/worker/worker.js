@@ -181,6 +181,17 @@ REWRITE THE ITEMS:
   does not matter there.
 - Do not add a full stop, semicolon, comma, bullet or number to any item.
 
+MULTILEVEL LISTS:
+- The user message may mark each item with its level: "0:" for a first-level
+  item, "1:" for a sub-item, "2:" for a rare third level.
+- Keep every item at its given level and in its given order. Do not merge,
+  split, promote or demote items - return exactly one rewritten item per
+  input item.
+- Make the items at each level parallel with their siblings at that level.
+- A first-level item that introduces sub-items may end in a colon; keep it.
+- When levels are given, reply with items as objects:
+  "items":[{"text":"rewritten item","level":0}, ...]
+
 COHERENCE:
 - If the items do not belong together as one list, are nonsense, or cannot be
   made parallel without inventing content, set "coherent" to false and explain
@@ -196,9 +207,14 @@ verb" or "Moved 'the committee will' into the lead-in"). Use an empty array if
 you changed nothing.`,
         build(body) {
             const items = (body.items || []).map(s => String(s)).filter(s => s.trim());
+            const levels = Array.isArray(body.levels) && body.levels.length ? body.levels : null;
+            const itemLines = levels
+                ? items.map((s, i) =>
+                    `${Math.max(0, Math.min(2, parseInt(levels[i], 10) || 0))}: ${s}`)
+                : items;
             return (body.forcedType ? `Requested type: ${body.forcedType}\n` : '') +
                 `Lead-in or heading: ${body.leadIn || '(none given)'}\n` +
-                `Items:\n${items.join('\n')}`;
+                `Items${levels ? ' (each marked with its level)' : ''}:\n${itemLines.join('\n')}`;
         },
         maxChars: 4000,
         maxTokens: 1500,
@@ -207,8 +223,22 @@ you changed nothing.`,
             const match = r.match(/\{[\s\S]*\}/);
             if (!match) throw new Error('no-json');
             const p = JSON.parse(match[0]);
-            const items = Array.isArray(p.items)
-                ? p.items.map(s => String(s).trim()).filter(Boolean) : [];
+            const raw = Array.isArray(p.items) ? p.items : [];
+            // Multilevel answers carry items as {text, level} objects; flat
+            // answers as plain strings. Normalise to items + optional levels.
+            let items, levels = null;
+            if (raw.length && typeof raw[0] === 'object' && raw[0] !== null) {
+                const objs = raw
+                    .map(o => ({
+                        text: String((o && o.text) || '').trim(),
+                        level: Math.max(0, Math.min(2, parseInt(o && o.level, 10) || 0))
+                    }))
+                    .filter(o => o.text);
+                items = objs.map(o => o.text);
+                levels = objs.map(o => o.level);
+            } else {
+                items = raw.map(s => String(s).trim()).filter(Boolean);
+            }
             if (!items.length) throw new Error('no-items');
             const type = ['sentence', 'fragment', 'standAlone'].includes(p.type)
                 ? p.type : 'sentence';
@@ -216,6 +246,7 @@ you changed nothing.`,
                 type,
                 leadIn: String(p.leadIn || ''),
                 items,
+                levels,
                 changes: Array.isArray(p.changes)
                     ? p.changes.map(s => String(s).trim()).filter(Boolean) : [],
                 coherent: p.coherent !== false,
