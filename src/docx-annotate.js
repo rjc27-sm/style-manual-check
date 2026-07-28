@@ -100,6 +100,25 @@ function hasNumPr(pEl) {
     return false;
 }
 
+// The paragraph's list level (w:ilvl inside w:numPr), or 0. Kept in
+// listLevels so list rules can one day tell sub-items from parents -
+// today's rules treat a Word list as flat.
+function getIlvl(pEl) {
+    for (let c = pEl.firstChild; c; c = c.nextSibling) {
+        if (!isW(c, 'pPr')) continue;
+        for (let s = c.firstChild; s; s = s.nextSibling) {
+            if (!isW(s, 'numPr')) continue;
+            for (let n = s.firstChild; n; n = n.nextSibling) {
+                if (isW(n, 'ilvl')) {
+                    const v = parseInt(n.getAttribute('w:val'), 10);
+                    return isNaN(v) ? 0 : v;
+                }
+            }
+        }
+    }
+    return 0;
+}
+
 function toggleOn(rPr, name) {
     if (!rPr) return false;
     for (let c = rPr.firstChild; c; c = c.nextSibling) {
@@ -147,6 +166,7 @@ export async function loadDocx(arrayBuffer, env) {
     const paragraphs = [];
     const headingLines = new Set();
     const listLines = new Set();
+    const listLevels = new Map();
     const boldLines = new Set();
     const italicLines = new Set();
     const tableLines = new Set();
@@ -181,6 +201,7 @@ export async function loadDocx(arrayBuffer, env) {
         if (hMatch) headingLevels.set(i, parseInt(hMatch[1], 10));
         if (hasNumPr(pEl) || /^(ListParagraph|ListBullet|ListNumber)/i.test(style)) {
             listLines.add(i);
+            listLevels.set(i, getIlvl(pEl));
         }
         if (text.trim()) {
             if (paragraphToggle(segments, 'b')) boldLines.add(i);
@@ -242,7 +263,7 @@ export async function loadDocx(arrayBuffer, env) {
 
     return {
         zip, doc, paragraphs, fullText, lineStarts,
-        headingLines, listLines, boldLines, italicLines, tableLines,
+        headingLines, listLines, listLevels, boldLines, italicLines, tableLines,
         headingLevels, links, underlines
     };
 }

@@ -1,6 +1,6 @@
 # Proof Positive rule reference
 
-Generated from the Proof Positive deterministic rule engine (105 rules). Each rule links to its Australian Government Style Manual source.
+Generated from the Proof Positive deterministic rule engine (102 rules). Each rule links to its Australian Government Style Manual source.
 
 ## Spelling
 
@@ -77,7 +77,6 @@ Generated from the Proof Positive deterministic rule engine (105 rules). Each ru
 - **Full stop in common abbreviation** (`abbrev-common-full-stop`): Don't put a full stop after abbreviations (unless the abbreviation ends a sentence). [Guidance](https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/shortened-words-and-phrases/abbreviations)
 - **Full stop after unit symbol** (`abbrev-unit-full-stop`): Don't put a full stop after unit symbols. Write 'kg', not 'kg.' (unless the symbol ends a sentence). [Guidance](https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/numbers-and-measurements/measurement-and-units)
 - **Pluralised unit symbol** (`abbrev-unit-plural`): Don't add 's' to unit symbols. Write '5 kg', not '5 kgs'. [Guidance](https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/numbers-and-measurements/measurement-and-units)
-- **Apostrophe in abbreviation plural** (`abbrev-plural-apostrophe`): Don't use an apostrophe to pluralise abbreviations. Write 'DVDs', not 'DVD's'. [Guidance](https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/shortened-words-and-phrases/abbreviations)
 
 ## Government terms
 
@@ -122,9 +121,7 @@ Generated from the Proof Positive deterministic rule engine (105 rules). Each ru
 - **Comma at end of list item** (`list-trailing-comma`): Don't use commas at the end of list items. Use minimal punctuation in lists. [Guidance](https://www.stylemanual.gov.au/structuring-content/lists)
 - **'And' or 'or' at end of list item** (`list-and-or`): Don't use 'and' or 'or' at the end of list items. The bullet or number structure makes these unnecessary. [Guidance](https://www.stylemanual.gov.au/structuring-content/lists)
 - **'Etc.' in list** (`list-etc`): Don't write 'etc.' at the end of a list to show the list is incomplete. Use a lead-in like 'including' or 'for example' instead. [Guidance](https://www.stylemanual.gov.au/structuring-content/lists)
-- **List items not parallel** (`list-parallel-structure`): Every item in a list should follow the same grammatical pattern so they all read smoothly after the lead-in. [Guidance](https://www.stylemanual.gov.au/structuring-content/lists)
-- **List item capitalisation** (`list-item-capitals`): Sentence and stand-alone list items start with a capital letter. Fragment list items start lower case unless they begin with a proper noun. [Guidance](https://www.stylemanual.gov.au/structuring-content/lists)
-- **List item end punctuation** (`list-item-end-punctuation`): Sentence list items end with a full stop. In fragment lists, only the last item ends with a full stop. Stand-alone list items have no end punctuation. [Guidance](https://www.stylemanual.gov.au/structuring-content/lists)
+- **Check this list** (`list-check`): Lists are checked as a whole. Every item should follow the same grammatical pattern so they all read smoothly after the lead-in. Sentence and stand-alone list items start with a capital letter; fragment list items start lower case unless they begin with a proper noun. Sentence list items end with a full stop; in fragment lists, only the last item ends with a full stop; stand-alone list items have no end punctuation. [Guidance](https://www.stylemanual.gov.au/structuring-content/lists)
 
 ## Inclusive language
 

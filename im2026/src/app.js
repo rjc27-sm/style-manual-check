@@ -56,8 +56,8 @@ function addListToolNotes(issues) {
     for (const issue of issues) {
         if (issue.rule.category === 'lists') {
             issue.note = (issue.note ? issue.note + ' ' : '') +
-                "You can fix the list automatically with Proof Positive's " +
-                "'Format a list' tool: " + LISTS_TOOL_URL;
+                "Check your list with Proof Positive's 'Format a list' tool: " +
+                LISTS_TOOL_URL;
         }
     }
 }
@@ -70,7 +70,7 @@ function buildHeuristicSets(text) {
     for (let i = 0; i < lines.length; i++) {
         const trimmed = lines[i].trim();
         if (!trimmed) continue;
-        if (/^[•‣◦⁃∙\-\*\+]\s/.test(trimmed) ||
+        if (/^[•‣◦⁃∙–—\-\*\+]\s/.test(trimmed) ||
             /^\d+[\.\)]\s/.test(trimmed)) {
             listLines.add(i);
             continue;
@@ -244,7 +244,10 @@ function passageFor(issue) {
 
 /** AI help is offered where there is no mechanical fix - the judgement calls. */
 function aiEligible(issue) {
-    return AI_ENABLED && !issue.autoFix && passageFor(issue).length >= 20;
+    // List issues are excluded: the comment points at the Format a list tool,
+    // and a prose rewrite of one item would contradict that advice.
+    return AI_ENABLED && !issue.autoFix && issue.rule.category !== 'lists' &&
+        passageFor(issue).length >= 20;
 }
 
 function renderResults() {

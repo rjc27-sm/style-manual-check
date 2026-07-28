@@ -2879,30 +2879,11 @@ const RULES = [
             return issues;
         }
     },
-    {
-        id: 'abbrev-plural-apostrophe',
-        name: 'Apostrophe in abbreviation plural',
-        category: 'abbreviations',
-        description: 'Don\'t use an apostrophe to pluralise abbreviations. Write \'DVDs\', not \'DVD\'s\'.',
-        link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/shortened-words-and-phrases/abbreviations',
-        check: function(text) {
-            const issues = [];
-            const regex = /\b([A-Z]{2,})'s\b/g;
-            let match;
-            while ((match = regex.exec(text)) !== null) {
-                const abbrev = match[1];
-                const replacement = abbrev + 's';
-                issues.push({
-                    found: match[0],
-                    suggestion: replacement,
-                    autoFix: replacement,
-                    position: match.index,
-                    rule: this
-                });
-            }
-            return issues;
-        }
-    },
+    // 'abbrev-plural-apostrophe' was deleted on 28 July 2026: it could not
+    // tell a plural (DVD's) from a possessive (the AIHW's report, which is
+    // correct), and possessive acronyms are far more common in agency
+    // writing. Its autoFix silently stripped correct apostrophes from every
+    // AI-drafted text that passed through autoCorrect.
 
     // ==================== BATCH 1 - TRIAGE REGISTER RULES (July 2026) ====================
     {

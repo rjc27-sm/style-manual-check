@@ -13,8 +13,9 @@
 
 // Base-form verbs used to spot imperative-style items ('use everyday words').
 // Deliberately excludes words that are commonly nouns at the start of a phrase
-// (support, report, order, plan, record, review, monitor, etc.).
-const VERB_LIST = ['be','have','do','say','get','make','go','know','take','see','come','think','use','find','give','tell','call','try','ask','need','feel','become','leave','put','keep','let','begin','seem','help','talk','turn','show','hear','run','move','believe','hold','bring','happen','write','provide','sit','lose','meet','include','continue','learn','change','lead','understand','speak','allow','spend','grow','open','walk','win','offer','remember','consider','appear','buy','wait','serve','send','expect','build','stay','reach','remain','suggest','sell','require','decide','pull','explain','develop','carry','break','eat','catch','choose','gather','apply','produce','prevent','operate','communicate','achieve','complete','obtain','attend','register','submit','ensure','identify','describe','select','enter','contact','confirm','attach','sign','arrange','prepare','update','assess'];
+// (support, report, order, plan, record, review, monitor, contact, etc. -
+// 'contact details for the party office' is a noun phrase, not a command).
+const VERB_LIST = ['be','have','do','say','get','make','go','know','take','see','come','think','use','find','give','tell','call','try','ask','need','feel','become','leave','put','keep','let','begin','seem','help','talk','turn','show','hear','run','move','believe','hold','bring','happen','write','provide','sit','lose','meet','include','continue','learn','change','lead','understand','speak','allow','spend','grow','open','walk','win','offer','remember','consider','appear','buy','wait','serve','send','expect','build','stay','reach','remain','suggest','sell','require','decide','pull','explain','develop','carry','break','eat','catch','choose','gather','apply','produce','prevent','operate','communicate','achieve','complete','obtain','attend','register','submit','ensure','identify','describe','select','enter','confirm','attach','sign','arrange','prepare','update','assess'];
 
 const SUBJECT_PRONOUNS = ['i','you','we','they','he','she','it'];
 
@@ -152,7 +153,7 @@ function findLists(text, listLines) {
         lineStarts.push(pos);
         pos += line.length + 1;
     }
-    const bulletPattern = /^[ \t]*([•●○◦▪▸\-*]|\d+[.)]|[a-z][.)])\s+/i;
+    const bulletPattern = /^[ \t]*([•●○◦▪▸–—\-*]|\d+[.)]|[a-z][.)])\s+/i;
     const isItem = i => (listLines && listLines.has(i)) ||
         bulletPattern.test(lines[i] || '');
 
@@ -227,151 +228,77 @@ function analyseList(list) {
     } else if (allPhrase) {
         listType = 'fragment';
     } else {
-        listType = (leadInType === 'sentence' || allEndWithStop) ? 'sentence' : 'fragment';
+        // Mixed item forms: let the majority of items decide, not the lead-in.
+        // One misread item (a noun phrase taken for a command) must not drag a
+        // whole fragment list into sentence formatting (AEC list, 28 July 2026).
+        const phraseCount = granular.filter(g => g === 'phrase' || g === 'gerund').length;
+        if (!allEndWithStop && phraseCount >= Math.ceil(granular.length * 0.6)) {
+            listType = 'fragment';
+        } else {
+            listType = (leadInType === 'sentence' || allEndWithStop) ? 'sentence' : 'fragment';
+        }
     }
     return { listType, leadInType, granular, parallel, mismatch };
 }
 
-const TYPE_LABEL = {
-    sentence: 'sentence list (each item is a complete sentence)',
-    fragment: 'fragment list (each item completes the lead-in)',
-    standAlone: 'stand-alone list (a series of items under a heading)'
-};
-
 const LIST_LINK = 'https://www.stylemanual.gov.au/structuring-content/lists';
+
+/*
+ * One comment per list (agreed with Jen, 28 July 2026). The item-level
+ * checks below still decide WHETHER a list needs attention, but the
+ * comment no longer names the inferred list type or suggests per-item
+ * fixes: a wrong type guess (broken paragraphs, misread items) produced
+ * confident wrong diagnoses, one per item. The Format a list tool is the
+ * place to fix a whole list.
+ */
+
+// Would the detailed item checks flag this list? Mirrors the retired
+// per-item rules: parallel structure, item capitalisation and item end
+// punctuation for the inferred list type.
+function listNeedsAttention(list) {
+    const a = analyseList(list);
+    if (!a.parallel) return true;
+    const items = list.items;
+    for (let i = 0; i < items.length; i++) {
+        const stripped = items[i].stripped;
+        const first = stripped.split(/\s+/)[0];
+        if (!first) continue;
+        const last = i === items.length - 1;
+        const endsStop = /[.!?]\s*$/.test(stripped);
+        const endsSoft = /[;,]\s*$/.test(stripped);
+        if (a.listType === 'fragment') {
+            if (/^[A-Z]/.test(first) && !looksProper(first)) return true;
+            if (!last && endsStop) return true;
+            if (last && !endsStop && !endsSoft) return true;
+        } else {
+            if (/^[a-z]/.test(first)) return true;
+            if (a.listType === 'sentence' && !endsStop && !endsSoft) return true;
+            if (a.listType === 'standAlone' && endsStop) return true;
+        }
+    }
+    return false;
+}
 
 const LIST_RULES = [
     {
-        id: 'list-parallel-structure',
-        name: 'List items not parallel',
+        id: 'list-check',
+        name: 'Check this list',
         category: 'lists',
-        description: 'Every item in a list should follow the same grammatical pattern so they all read smoothly after the lead-in.',
+        description: 'List formatting can be complex.',
         link: LIST_LINK,
         check: function(text, headingLines, listLines) {
             const issues = [];
             for (const list of findLists(text, listLines)) {
-                const a = analyseList(list);
-                if (a.parallel) continue;
-                // Anchor on the item whose form differs from the majority
-                const counts = {};
-                a.granular.forEach(g => { counts[g] = (counts[g] || 0) + 1; });
-                const majority = Object.keys(counts).sort((x, y) => counts[y] - counts[x])[0];
-                const oddIndex = a.granular.findIndex(g => g !== majority);
-                const odd = list.items[oddIndex] || list.items[0];
-                const note = a.mismatch === 'command'
-                    ? 'One item is a command while others are phrases. Rewrite the odd one out to match its neighbours, or move it out of the list.'
-                    : 'Some items are complete statements while others are short phrases or commands. Rewrite the items so they all follow the same pattern.';
+                if (!listNeedsAttention(list)) continue;
+                // Anchor on the first word of the first item: highlighting the
+                // whole item would overlap tracked changes inside it, and the
+                // overlap rule in annotateDocx would demote those to comments.
+                const first = list.items[0];
+                const word = first.stripped.split(/\s+/)[0];
                 issues.push({
-                    found: odd.stripped,
-                    suggestion: 'Rewrite this item to match the structure of the others',
-                    note: note,
-                    position: odd.start,
+                    found: word,
+                    position: first.start,
                     rule: this
-                });
-            }
-            return issues;
-        }
-    },
-    {
-        id: 'list-item-capitals',
-        name: 'List item capitalisation',
-        category: 'lists',
-        description: 'Sentence and stand-alone list items start with a capital letter. Fragment list items start lower case unless they begin with a proper noun.',
-        link: LIST_LINK,
-        check: function(text, headingLines, listLines) {
-            const issues = [];
-            for (const list of findLists(text, listLines)) {
-                const a = analyseList(list);
-                if (!a.parallel) continue; // structure first, then formatting
-                for (const item of list.items) {
-                    const first = item.stripped.split(/\s+/)[0];
-                    if (!first) continue;
-                    if (a.listType === 'fragment') {
-                        if (/^[A-Z]/.test(first) && !looksProper(first)) {
-                            issues.push({
-                                found: first,
-                                suggestion: first.charAt(0).toLowerCase() + first.slice(1),
-                                autoFix: first.charAt(0).toLowerCase() + first.slice(1),
-                                note: 'This looks like a ' + TYPE_LABEL.fragment + ', so items start lower case. Keep the capital if this is a proper noun.',
-                                position: item.start,
-                                rule: this
-                            });
-                        }
-                    } else if (/^[a-z]/.test(first)) {
-                        issues.push({
-                            found: first,
-                            suggestion: first.charAt(0).toUpperCase() + first.slice(1),
-                            autoFix: first.charAt(0).toUpperCase() + first.slice(1),
-                            note: 'This looks like a ' + TYPE_LABEL[a.listType] + ', so items start with a capital letter.',
-                            position: item.start,
-                            rule: this
-                        });
-                    }
-                }
-            }
-            return issues;
-        }
-    },
-    {
-        id: 'list-item-end-punctuation',
-        name: 'List item end punctuation',
-        category: 'lists',
-        description: 'Sentence list items end with a full stop. In fragment lists, only the last item ends with a full stop. Stand-alone list items have no end punctuation.',
-        link: LIST_LINK,
-        check: function(text, headingLines, listLines) {
-            const issues = [];
-            for (const list of findLists(text, listLines)) {
-                const a = analyseList(list);
-                if (!a.parallel) continue;
-                list.items.forEach((item, i) => {
-                    const last = i === list.items.length - 1;
-                    const endsStop = /[.!?]\s*$/.test(item.stripped);
-                    const endPos = item.start + item.stripped.length - 1;
-                    const lastWordMatch = item.stripped.match(/(\S+)\s*$/);
-                    const lastWord = lastWordMatch ? lastWordMatch[1] : item.stripped;
-                    const lastWordPos = item.start + item.stripped.length - lastWord.length;
-                    const typeNote = 'This looks like a ' + TYPE_LABEL[a.listType] + '.';
-
-                    if (a.listType === 'sentence' && !endsStop &&
-                        !/[;,]\s*$/.test(item.stripped)) {
-                        issues.push({
-                            found: lastWord,
-                            suggestion: lastWord + '.',
-                            autoFix: lastWord + '.',
-                            note: typeNote + ' Each item ends with a full stop.',
-                            position: lastWordPos,
-                            rule: this
-                        });
-                    } else if (a.listType === 'fragment') {
-                        if (!last && /[.!?]$/.test(item.stripped.trim())) {
-                            issues.push({
-                                found: lastWord,
-                                suggestion: lastWord.replace(/[.!?]+$/, ''),
-                                autoFix: lastWord.replace(/[.!?]+$/, ''),
-                                note: typeNote + ' Only the last item ends with a full stop.',
-                                position: lastWordPos,
-                                rule: this
-                            });
-                        } else if (last && !endsStop && !/[;,]\s*$/.test(item.stripped)) {
-                            issues.push({
-                                found: lastWord,
-                                suggestion: lastWord + '.',
-                                autoFix: lastWord + '.',
-                                note: typeNote + ' The last item ends with a full stop.',
-                                position: lastWordPos,
-                                rule: this
-                            });
-                        }
-                    } else if (a.listType === 'standAlone' && endsStop) {
-                        issues.push({
-                            found: lastWord,
-                            suggestion: lastWord.replace(/[.!?]+$/, ''),
-                            autoFix: lastWord.replace(/[.!?]+$/, ''),
-                            note: typeNote + ' Items have no end punctuation.',
-                            position: lastWordPos,
-                            rule: this
-                        });
-                    }
                 });
             }
             return issues;

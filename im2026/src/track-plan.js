@@ -18,10 +18,11 @@ export const COMMENT_ONLY_RULES = new Set([
     'govt-generic-department',   // house styles often capitalise these
     'govt-generic-minister',
     'govt-generic-agency',
-    'list-and-or',               // these depend on the inferred list type -
-    'list-item-capitals',        // the Format a list tool handles whole lists
-    'list-item-end-punctuation'
+    'list-and-or'                // depends on the inferred list type - the
+                                 // Format a list tool handles whole lists
 ]);
+// ('list-item-capitals' and 'list-item-end-punctuation' were retired on
+// 28 July 2026 - lists now get a single 'list-check' comment with no autoFix.)
 
 /**
  * Attach a trackPlan to every issue that qualifies for a tracked change:
