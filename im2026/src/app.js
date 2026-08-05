@@ -56,8 +56,8 @@ function addListToolNotes(issues) {
     for (const issue of issues) {
         if (issue.rule.category === 'lists') {
             issue.note = (issue.note ? issue.note + ' ' : '') +
-                "Check your list with Proof Positive's 'Format a list' tool: " +
-                LISTS_TOOL_URL;
+                "Check your list with Proof Positive's ";
+            issue.noteLink = { text: "'Format a list' tool", url: LISTS_TOOL_URL };
         }
     }
 }
@@ -294,7 +294,7 @@ function renderResults() {
                   (issue.autoFix === suggestion
                       ? '‘' + escapeHtml(truncate(suggestion, 120)) + '’'
                       : escapeHtml(truncate(suggestion, 120))) + '</p>' : '') +
-            '<p class="issue-desc">' + escapeHtml(rule.description) +
+            '<p class="issue-desc">' + escapeHtml(issue.description || rule.description) +
             (issue.note ? ' ' + escapeHtml(issue.note) : '') + '</p>' +
             '<div class="issue-links">' +
             (rule.link ? '<a class="learn-more" href="' + escapeHtml(rule.link) +
@@ -329,7 +329,7 @@ async function handleAiFix(idx, extraGuidance) {
         const { rewrite } = await aiFix({
             passage: passageFor(issue),
             ruleName: issue.rule.name,
-            ruleDescription: issue.rule.description,
+            ruleDescription: issue.description || issue.rule.description,
             guidance: extraGuidance || ''
         });
         // Mark the AI's homework: apply the rule engine's mechanical fixes to

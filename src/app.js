@@ -204,7 +204,7 @@ function renderResults() {
                   (issue.autoFix === suggestion
                       ? '‘' + escapeHtml(truncate(suggestion, 120)) + '’'
                       : escapeHtml(truncate(suggestion, 120))) + '</p>' : '') +
-            '<p class="issue-desc">' + escapeHtml(rule.description) +
+            '<p class="issue-desc">' + escapeHtml(issue.description || rule.description) +
             (issue.note ? ' ' + escapeHtml(issue.note) : '') + '</p>' +
             (rule.link ? '<a class="learn-more" href="' + escapeHtml(rule.link) +
                 '" target="_blank" rel="noopener">Style Manual guidance</a>' : '') +

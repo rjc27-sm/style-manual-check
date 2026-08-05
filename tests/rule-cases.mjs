@@ -246,6 +246,33 @@ const CTX_CASES = [
         { headingLevels: new Map([[0, 3]]) }, false],
     ['heading-skipped-level', 'Plain text\nwith no headings', null, false],
 
+    // ---- heading-title-case ----
+    // Styled headings: a capitalised small word, or one capitalised word in a
+    // paragraph we know is a heading, is enough on its own.
+    ['heading-title-case', 'Background And Context',
+        { headingLines: new Set([0]) }, true, 'Background and context'],
+    ['heading-title-case', 'Terms Of Reference',
+        { headingLines: new Set([0]) }, true, 'Terms of reference'],
+    ['heading-title-case', 'Executive Summary',
+        { headingLines: new Set([0]) }, true, 'Executive summary'],
+    ['heading-title-case', 'Report On Program Delivery',
+        { headingLines: new Set([0]) }, true, 'Report on program delivery'],
+    ['heading-title-case', 'Background and context',
+        { headingLines: new Set([0]) }, false],
+    ['heading-title-case', 'Recommendations.',
+        { headingLines: new Set([0]) }, false],
+    ['heading-title-case', 'Unicorn crossing modernisation program: interim briefing',
+        { headingLines: new Set([0]) }, false],
+    ['heading-title-case', 'Data on unicorn movements in Australia',
+        { headingLines: new Set([0]) }, false],
+    // Bold pseudo-headings keep the stricter two-word test
+    ['heading-title-case', 'Key Numbers Summary',
+        { boldLines: new Set([0]) }, true, 'Key numbers summary'],
+    ['heading-title-case', 'Background And Context',
+        { boldLines: new Set([0]) }, true, 'Background and context'],
+    ['heading-title-case', 'Report on program delivery',
+        { boldLines: new Set([0]) }, false],
+
     // ---- format-underline-not-link (HS-03) ----
     ['format-underline-not-link', 'This is an important note here',
         { underlines: [{ text: 'important note', position: 11, length: 14, line: 0 }] }, true],
@@ -330,7 +357,11 @@ for (const [ruleId, text, docCtx, shouldFlag, expectedFix] of CTX_CASES) {
     }
     let issues;
     try {
-        issues = rule.check(text, NONE, NONE, NONE, NONE, NONE, docCtx);
+        // Heading rules read headingLines/boldLines positionally, so pass them
+        // through when the case supplies them (loadDocx returns them too).
+        issues = rule.check(text,
+            (docCtx && docCtx.headingLines) || NONE, NONE,
+            (docCtx && docCtx.boldLines) || NONE, NONE, NONE, docCtx);
     } catch (err) {
         console.log('FAIL - ' + ruleId + ' threw :: ' + err.message);
         fail++;

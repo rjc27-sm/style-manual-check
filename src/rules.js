@@ -878,7 +878,7 @@ const RULES = [
         id: 'heading-title-case',
         name: 'Title case heading',
         category: 'headings',
-        description: 'Use sentence case for headings, not title case. Only capitalise the first word and proper nouns. Note: you may need to adjust the suggested fix if the heading contains proper nouns.',
+        description: 'Use sentence case in headings, not title case. Only capitalise the first word and proper nouns. You may need to adjust the suggested fix if the heading contains proper nouns.',
         link: 'https://www.stylemanual.gov.au/structuring-content/headings',
         check: function(text, headingLines, listLines, boldLines, italicLines, tableLines) {
             const issues = [];
@@ -937,13 +937,20 @@ const RULES = [
                     // Count words that start with capitals (excluding first word and small words)
                     let capitalizedCount = 0;
                     let significantWords = 0;
+                    // A capitalised small word ('Background And Context') is the
+                    // clearest signal of title case, so count it as evidence
+                    // rather than discarding it with the rest of the small words.
+                    let smallWordCapitalised = false;
 
                     for (let i = 1; i < words.length; i++) {
                         const word = words[i];
                         const wordLower = word.toLowerCase().replace(/[^a-z]/g, '');
 
                         // Skip small words and likely proper nouns
-                        if (smallWords.includes(wordLower)) continue;
+                        if (smallWords.includes(wordLower)) {
+                            if (/^[A-Z]/.test(word)) smallWordCapitalised = true;
+                            continue;
+                        }
                         if (likelyProperNouns.includes(wordLower)) continue;
                         if (word === word.toUpperCase() && word.length <= 5) continue; // Likely acronym
 
@@ -955,10 +962,16 @@ const RULES = [
                         }
                     }
 
-                    // If most significant words (after the first) are capitalised, likely title case
-                    // Need at least 2 capitalised words and >50% of significant words capitalised
-                    if (capitalizedCount >= 2 && significantWords >= 2 &&
-                        capitalizedCount / significantWords >= 0.5) {
+                    // If most significant words (after the first) are capitalised, likely title case.
+                    // Normally that needs 2 capitalised words, but two signals are enough on their own:
+                    // a capitalised small word, or a single capitalised word in a paragraph we KNOW is
+                    // a heading ('Executive Summary'). Bold pseudo-headings keep the stricter test.
+                    const ratioOk = significantWords >= 1 &&
+                        capitalizedCount / significantWords >= 0.5;
+                    const titleCase = smallWordCapitalised ||
+                        (capitalizedCount >= 2 && significantWords >= 2 && ratioOk) ||
+                        (hasHeadingStyle && capitalizedCount >= 1 && ratioOk);
+                    if (titleCase) {
                         // Convert to sentence case: first letter caps, rest lowercase (except acronyms)
                         const sentenceCase = toSentenceCase(trimmed);
                         const issue = {
@@ -969,7 +982,7 @@ const RULES = [
                             rule: this
                         };
                         if (!hasHeadingStyle) {
-                            issue.description = 'Is this a heading? If so, apply a heading style. Use sentence case for headings, not title case.';
+                            issue.description = 'Is this a heading? If so, apply a heading style. Use sentence case in headings, not title case.';
                             issue.applyHeadingStyle = true;
                         }
                         issues.push(issue);

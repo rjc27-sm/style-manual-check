@@ -5,7 +5,9 @@
 const W_NS = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
 const REL_NS = 'http://schemas.openxmlformats.org/package/2006/relationships';
 const COMMENTS_CT = 'application/vnd.openxmlformats-officedocument.wordprocessingml.comments+xml';
-const COMMENTS_REL = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/comments';
+const R_NS = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
+const COMMENTS_REL = R_NS + '/comments';
+const HYPERLINK_REL = R_NS + '/hyperlink';
 
 function getEnv(env) {
     return {
@@ -412,32 +414,143 @@ function escapeXml(s) {
         .replace(/"/g, '&quot;').replace(/'/g, '&apos;');
 }
 
-function commentXml(id, paragraphsOfText, author, initials, date) {
-    const paras = paragraphsOfText.map(t =>
-        '<w:p><w:pPr><w:pStyle w:val="CommentText"/></w:pPr>' +
-        '<w:r><w:t xml:space="preserve">' + escapeXml(t) + '</w:t></w:r></w:p>'
-    ).join('');
+// Comment runs carry direct formatting rather than named styles: the uploaded
+// document may not define CommentText, Hyperlink or anything else we'd lean on.
+const LINK_COLOUR = '0563C1';
+
+// Words in a Style Manual URL slug that must keep their capitals
+const SLUG_PROPER_NOUNS = {
+    aboriginal: 'Aboriginal', torres: 'Torres', strait: 'Strait',
+    islander: 'Islander', latin: 'Latin'
+};
+
+/**
+ * Descriptive link text from a Style Manual URL, so the comment doesn't carry a
+ * wrapped 60-character address. 'Learn more' and friends are deliberately not
+ * used - they're in this engine's own link-generic-text blocklist.
+ * .../structuring-content/headings -> 'Style Manual guidance on headings'
+ */
+function linkLabel(url) {
+    const path = String(url).split(/[?#]/)[0].replace(/\/+$/, '');
+    const topic = (path.split('/').pop() || '')
+        .replace(/\.[a-z0-9]+$/i, '')
+        .replace(/[-_]+/g, ' ')
+        .trim()
+        .split(' ')
+        .map(w => SLUG_PROPER_NOUNS[w] || w)
+        .join(' ');
+    return topic ? 'Style Manual guidance on ' + topic : String(url);
+}
+
+function runXml(run) {
+    const props = [];
+    if (run.bold) props.push('<w:b/>');
+    if (run.italic) props.push('<w:i/>');
+    if (run.colour) props.push('<w:color w:val="' + run.colour + '"/>');
+    if (run.underline) props.push('<w:u w:val="single"/>');
+    const rPr = props.length ? '<w:rPr>' + props.join('') + '</w:rPr>' : '';
+    return '<w:r>' + rPr + '<w:t xml:space="preserve">' +
+        escapeXml(run.text) + '</w:t></w:r>';
+}
+
+/**
+ * Allocates a relationship id per distinct URL for word/_rels/comments.xml.rels.
+ * The 'PP' prefix keeps new ids clear of anything Word already put in the part.
+ * Annotating a document twice must not reassign an id the existing part already
+ * points somewhere else, so any relationships already there are reused as-is.
+ */
+function makeLinkTable(existingRels) {
+    const byUrl = new Map();
+    const taken = new Set();
+    const re = /<Relationship\b[^>]*\bId="([^"]+)"[^>]*\bTarget="([^"]*)"/g;
+    let m;
+    while ((m = re.exec(existingRels || '')) !== null) {
+        taken.add(m[1]);
+        const url = unescapeXml(m[2]);
+        if (!byUrl.has(url)) byUrl.set(url, m[1]);
+    }
+    const preexisting = new Set(byUrl.values());
+    let next = 1;
+    return {
+        idFor(url) {
+            if (!byUrl.has(url)) {
+                while (taken.has('rIdPP' + next)) next++;
+                byUrl.set(url, 'rIdPP' + next);
+                taken.add('rIdPP' + next);
+            }
+            return byUrl.get(url);
+        },
+        // Only relationships this run created need writing back
+        entries() {
+            return Array.from(byUrl.entries())
+                .filter(([, id]) => !preexisting.has(id));
+        },
+        get size() { return byUrl.size; }
+    };
+}
+
+function unescapeXml(s) {
+    return String(s)
+        .replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"').replace(/&apos;/g, "'")
+        .replace(/&amp;/g, '&');
+}
+
+function commentXml(id, paragraphs, author, initials, date, links) {
+    const paras = paragraphs.map(p => {
+        // Plain strings are still accepted (the 'Also flagged' separator)
+        const para = typeof p === 'string' ? { runs: [{ text: p }] } : p;
+        let body = (para.runs || []).map(runXml).join('');
+        if (para.link && links) {
+            body += '<w:hyperlink r:id="' + links.idFor(para.link.url) + '">' +
+                runXml({ text: para.link.text, colour: LINK_COLOUR, underline: true }) +
+                '</w:hyperlink>';
+        } else if (para.link) {
+            body += runXml({ text: para.link.text });
+        }
+        return '<w:p><w:pPr><w:pStyle w:val="CommentText"/></w:pPr>' + body + '</w:p>';
+    }).join('');
     return '<w:comment w:id="' + id + '" w:author="' + escapeXml(author) +
         '" w:initials="' + escapeXml(initials) + '" w:date="' + date + '">' +
         paras + '</w:comment>';
 }
 
+/**
+ * Builds the body of a comment as paragraphs of formatted runs:
+ * { runs: [{ text, bold, italic, colour, underline }], link: { text, url } }.
+ * The found text is not repeated here - the comment is anchored to it.
+ */
 export function commentTextFor(issue) {
     const rule = issue.rule || {};
-    const lines = [];
-    lines.push((rule.name || 'Style issue') + ': ' + (rule.description || ''));
+    const paras = [];
+    // Rules can override the description per issue (the 'is this a heading?'
+    // wording for bold paragraphs that have no heading style).
+    const description = issue.description || rule.description || '';
+    paras.push({ runs: [
+        { text: (rule.name || 'Style issue') + ': ', bold: true },
+        { text: description }
+    ] });
     const suggestion = issue.suggestion || issue.autoFix;
     if (suggestion && suggestion !== issue.found) {
         // Quote real replacement text; leave instructions unquoted
-        if (issue.autoFix === suggestion) {
-            lines.push("Suggested change: '" + suggestion + "'");
-        } else {
-            lines.push('Suggested change: ' + suggestion);
-        }
+        const quoted = issue.autoFix === suggestion;
+        paras.push({ runs: [
+            { text: 'Suggested change: ', bold: true },
+            { text: quoted ? "'" + suggestion + "'" : suggestion }
+        ] });
     }
-    if (issue.note) lines.push(issue.note);
-    if (rule.link) lines.push('Style Manual guidance: ' + rule.link);
-    return lines.filter(Boolean);
+    // A note can carry its own link (the 'Format a list' tool), read as one
+    // sentence with the link inline.
+    if (issue.note || issue.noteLink) {
+        paras.push({
+            runs: issue.note ? [{ text: issue.note }] : [],
+            link: issue.noteLink
+        });
+    }
+    if (rule.link) {
+        paras.push({ runs: [], link: { text: linkLabel(rule.link), url: rule.link } });
+    }
+    return paras;
 }
 
 export async function annotateDocx(loaded, issues, env, options) {
@@ -513,6 +626,8 @@ export async function annotateDocx(loaded, issues, env, options) {
     }
 
     const newComments = [];
+    const links = makeLinkTable(
+        await zipString(zip, 'word/_rels/comments.xml.rels'));
     const sortedParas = Array.from(byPara.keys()).sort((a, b) => a - b);
 
     for (const paraIndex of sortedParas) {
@@ -605,26 +720,29 @@ export async function annotateDocx(loaded, issues, env, options) {
                     }
                 }
                 newComments.push(commentXml(
-                    id, textParas, author, initials, date));
+                    id, textParas, author, initials, date, links));
             }
         }
     }
 
     if (newComments.length > 0) {
         if (existingCommentsXml) {
-            const updated = existingCommentsXml.replace(
+            const updated = withRelationshipNamespace(existingCommentsXml).replace(
                 /<\/w:comments>\s*$/,
                 newComments.join('') + '</w:comments>');
             zip.file('word/comments.xml', updated);
         } else {
             const commentsDoc =
                 '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
-                '<w:comments xmlns:w="' + W_NS + '">' +
+                '<w:comments xmlns:w="' + W_NS + '" xmlns:r="' + R_NS + '">' +
                 newComments.join('') + '</w:comments>';
             zip.file('word/comments.xml', commentsDoc);
             await ensureContentType(zip);
             await ensureRelationship(zip);
         }
+        // Hyperlinks in comments resolve against this part, so it has to be
+        // written whether or not the document already had comments.
+        await ensureCommentLinks(zip, links);
     }
 
     const serializer = new E.XMLSerializer();
@@ -653,6 +771,37 @@ async function ensureContentType(zip) {
         '<Override PartName="/word/comments.xml" ContentType="' +
         COMMENTS_CT + '"/></Types>');
     zip.file('[Content_Types].xml', ct);
+}
+
+/**
+ * A document Word wrote will already declare xmlns:r on <w:comments>, but a
+ * comments part from another producer may not, and w:hyperlink needs it.
+ */
+function withRelationshipNamespace(xml) {
+    return xml.replace(/<w:comments\b[^>]*>/, tag =>
+        tag.indexOf('xmlns:r=') !== -1
+            ? tag
+            : tag.replace(/^<w:comments/, '<w:comments xmlns:r="' + R_NS + '"'));
+}
+
+async function ensureCommentLinks(zip, links) {
+    if (!links || links.size === 0) return;
+    const path = 'word/_rels/comments.xml.rels';
+    let rels = await zipString(zip, path);
+    const added = links.entries()
+        .filter(([, id]) => !rels || rels.indexOf('Id="' + id + '"') === -1)
+        .map(([url, id]) =>
+            '<Relationship Id="' + id + '" Type="' + HYPERLINK_REL +
+            '" Target="' + escapeXml(url) + '" TargetMode="External"/>')
+        .join('');
+    if (!added) return;
+    if (rels) {
+        rels = rels.replace('</Relationships>', added + '</Relationships>');
+    } else {
+        rels = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
+            '<Relationships xmlns="' + REL_NS + '">' + added + '</Relationships>';
+    }
+    zip.file(path, rels);
 }
 
 async function ensureRelationship(zip) {
