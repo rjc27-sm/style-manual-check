@@ -58,7 +58,7 @@ Generated from the Proof Positive deterministic rule engine (102 rules). Each ru
 
 ## Headings
 
-- **Title case heading** (`heading-title-case`): Use sentence case for headings, not title case. Only capitalise the first word and proper nouns. Note: you may need to adjust the suggested fix if the heading contains proper nouns. [Guidance](https://www.stylemanual.gov.au/structuring-content/headings)
+- **Title case heading** (`heading-title-case`): Use sentence case in headings, not title case. Only capitalise the first word and proper nouns. You may need to adjust the suggested fix if the heading contains proper nouns. [Guidance](https://www.stylemanual.gov.au/structuring-content/headings)
 - **Heading too long** (`heading-too-long`): Longer headings are more difficult to read and can be confusing. They might also suggest that you have too many ideas in a section. [Guidance](https://www.stylemanual.gov.au/structuring-content/headings)
 - **Full stop at end of heading** (`heading-full-stop`): Don't use a full stop to end headings. Even if the heading is a sentence, it doesn't need a full stop at the end. [Guidance](https://www.stylemanual.gov.au/structuring-content/headings)
 - **All caps heading** (`heading-all-caps`): Don't write headings in all capital letters as users could misread words. For example, 'ACT' could be 'act' (the verb) rather than the initialism for the Australian Capital Territory. [Guidance](https://www.stylemanual.gov.au/structuring-content/headings)
