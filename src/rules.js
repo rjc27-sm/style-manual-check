@@ -27,6 +27,92 @@ const ABBREV_STOP_BEFORE = new RegExp(
     '(?:\\b(?:' + COMMON_ABBREVS.join('|') +
     ')|\\be\\.g|\\bi\\.e|\\betc|\\bcf|\\bvs|\\bviz)\\.\\s+$', 'i');
 
+// Words that mark the digits after them as a contact number or an identifier,
+// not a quantity. Tested against the 30 characters before the digits, so a
+// label with punctuation after it ('Phone: 1300 975 707') still counts.
+// Shared by 'numbers-comma-thousands' (both branches) and 'phoneSpans'.
+const IDENTIFIER_LABEL_BEFORE = new RegExp(
+    '\\b(?:phone|telephone|tel|ph|fax|mob|mobile|call|freecall|free\\s?call|' +
+    'sms|contact|ext|extension|' +
+    'abn|acn|arbn|tfn|crn|isbn|issn|doi|medicare|account|acct|invoice|' +
+    'receipt|reference|ref|purchase\\s?order|po|room|serial|licence|' +
+    'registration|permit|version)\\b[^\\w]{0,4}$', 'i');
+
+// Australian phone-number shapes, in claim order. 'chunks' holds the standard
+// grouping the Style Manual asks for; it is null when the string is clearly a
+// phone number but not in a form this engine can rewrite (an international
+// number, or a local number with no area code). Callers that reformat skip the
+// nulls; callers that only need to keep their hands off the digits use them all.
+// Shared by 'numbers-phone-format' and 'numbers-comma-thousands'.
+function phoneSpans(text) {
+    const spans = [];
+    const overlaps = (start, end) =>
+        spans.some(s => start < s.end && end > s.start);
+    const claim = (match, digits, chunks) => {
+        const start = match.index;
+        const end = start + match[0].length;
+        if (overlaps(start, end)) return;
+        spans.push({ start, end, digits, chunks });
+    };
+    const scan = (regex, handler) => {
+        let match;
+        while ((match = regex.exec(text)) !== null) {
+            handler(match, match[0].replace(/\D/g, ''));
+        }
+    };
+
+    // International: recognised so it is never touched, never reformatted.
+    scan(/\+61[\s(]*\(?0?\)?(?:[\s().-]*\d){9}\b(?!\d)/g, (match, digits) => {
+        if (digits.length >= 10) claim(match, digits, null);
+    });
+
+    // 10-digit numbers starting with 0 (landline and mobile), any separators
+    scan(/(?:\(0\d\)|\b0\d)(?:[  ().-]*\d){8}\b(?!\d)/g, (match, digits) => {
+        if (digits.length !== 10) return;
+        if (digits.startsWith('04')) {
+            // Mobile: 4 + 3 + 3
+            claim(match, digits,
+                [digits.slice(0, 4), digits.slice(4, 7), digits.slice(7)]);
+        } else if (/^0[2378]/.test(digits)) {
+            // Landline: 2 + 4 + 4
+            claim(match, digits,
+                [digits.slice(0, 2), digits.slice(2, 6), digits.slice(6)]);
+        }
+        // Other leading digits: not a known Australian format - don't claim it
+    });
+
+    // 1300 and 1800 numbers: 4 + 3 + 3
+    scan(/\b1[38]00(?:[  .-]*\d){6}\b(?!\d)/g, (match, digits) => {
+        if (digits.length !== 10) return;
+        claim(match, digits,
+            [digits.slice(0, 4), digits.slice(4, 7), digits.slice(7)]);
+    });
+
+    // 13 numbers (6 digits): 2 + 2 + 2
+    scan(/\b13(?:[  .-]*\d){4}\b(?!\d)/g, (match, digits) => {
+        if (digits.length !== 6) return;
+        claim(match, digits,
+            [digits.slice(0, 2), digits.slice(2, 4), digits.slice(4)]);
+    });
+
+    // Local 8-digit numbers with no area code ('6244 1000', '6244-1000').
+    // Two four-digit groups are otherwise an ordinary pair of numbers, so this
+    // needs evidence: a contact label, or a hyphenated pair that descends.
+    scan(/\b(\d{4})([  .-]?)(\d{4})\b(?!\d)/g, (match, digits) => {
+        if (digits.length !== 8) return;
+        const before = text.slice(Math.max(0, match.index - 30), match.index);
+        const labelled = IDENTIFIER_LABEL_BEFORE.test(before);
+        // A hyphen between two four-digit groups reads as a range, and a
+        // range ascends: '2000-2004' is years, '6244-1000' is a phone number.
+        const descending = match[2] === '-' &&
+            parseInt(match[3], 10) <= parseInt(match[1], 10);
+        if (!labelled && !descending) return;
+        claim(match, digits, null);
+    });
+
+    return spans;
+}
+
 const RULES = [
     // ==================== SPELLING RULES ====================
     {
@@ -2538,29 +2624,49 @@ const RULES = [
         link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/numbers-and-measurements/choosing-numerals-or-words',
         check: function(text) {
             const issues = [];
+            // Digits this rule must keep out of: a phone number is not a
+            // quantity, and 'numbers-phone-format' owns its formatting.
+            const phones = phoneSpans(text);
+            const insidePhone = (start, end) =>
+                phones.some(s => start < s.end && end > s.start);
             // Match 4+ digit numbers without commas
-            // Avoid: years (1900-2100), phone numbers, postcodes, ID numbers
+            // Avoid: years (1800-2100), phone numbers, postcodes, ID numbers
             const regex = /\b(\d{4,})\b/g;
             let match;
             while ((match = regex.exec(text)) !== null) {
                 const num = match[1];
+                const end = match.index + num.length;
                 const numInt = parseInt(num);
 
                 // Skip if already has commas or is clearly a year
                 if (num.includes(',')) continue;
                 if (numInt >= 1800 && numInt <= 2100 && num.length === 4) continue;
 
+                if (insidePhone(match.index, end)) continue;
+                // A leading zero is never a quantity - and parseInt drops it,
+                // which would renumber whatever it is
+                if (num.startsWith('0')) continue;
+                // Longer than any plausible written quantity: ISBNs, card and
+                // client numbers. Say nothing rather than guess.
+                if (num.length > 10) continue;
+
                 // Skip if it looks like a postcode (4 digits in Australia)
                 if (num.length === 4) {
-                    const before = text.substring(Math.max(0, match.index - 20), match.index).toLowerCase();
-                    if (/(?:postcode|post code|zip|suburb|\b[A-Z]{2,3}\s+)$/i.test(before)) continue;
+                    const before20 = text.substring(Math.max(0, match.index - 20), match.index);
+                    if (/(?:postcode|post code|zip|suburb)\W*$/i.test(before20)) continue;
+                    // A state abbreviation before the number ('ACT 2601'). Case
+                    // sensitive: matching any 2-3 letters here would swallow
+                    // ordinary quantities ('the total was 4500').
+                    if (/\b(?:ACT|NSW|NT|QLD|SA|TAS|VIC|WA)\s+$/.test(before20)) continue;
                 }
 
-                // Skip phone number patterns
-                const before = text.substring(Math.max(0, match.index - 5), match.index);
-                const after = text.substring(match.index + num.length, Math.min(text.length, match.index + num.length + 5));
-                if (/(?:tel|phone|fax|call|mobile|\d)\s*$/i.test(before)) continue;
-                if (/^\s*\d/.test(after)) continue; // Part of longer number sequence
+                // Contact numbers and identifiers ('Phone: 1300 …', 'ABN …').
+                // 30 characters, so a label with punctuation after it still counts.
+                const before = text.substring(Math.max(0, match.index - 30), match.index);
+                const after = text.substring(end, Math.min(text.length, end + 5));
+                if (IDENTIFIER_LABEL_BEFORE.test(before)) continue;
+                if (/\d\s*$/.test(before)) continue; // part of a longer number sequence
+                if (/^\s*\d/.test(after)) continue;
 
                 // Format with commas
                 const formatted = numInt.toLocaleString('en-AU');
@@ -2580,16 +2686,21 @@ const RULES = [
             while ((match = spaceRegex.exec(text)) !== null) {
                 const found = match[0];
                 const end = match.index + found.length;
-                const before = text.substring(Math.max(0, match.index - 25), match.index);
+                const before = text.substring(Math.max(0, match.index - 30), match.index);
                 const after = text.substring(end, Math.min(text.length, end + 5));
+                if (insidePhone(match.index, end)) continue;
                 // Skip if part of a longer digit sequence (phone numbers, IDs)
                 if (/\d[  ]?$/.test(before)) continue;
                 if (/^[  ]?\d/.test(after)) continue;
                 // Skip labels followed by an independent number ('Figure 1 500 people')
                 if (/(?:figure|table|section|chapter|part|page|appendix|box|step|no\.?|number)\s*$/i.test(before)) continue;
-                // Skip phone-like contexts
-                if (/(?:tel|phone|fax|call|mobile)[\s:.]*$/i.test(before)) continue;
-                const joined = parseInt(found.replace(/[  ]/g, ''), 10);
+                // Skip contact numbers and identifiers ('ABN 51 824 753 556')
+                if (IDENTIFIER_LABEL_BEFORE.test(before)) continue;
+                const digits = found.replace(/[  ]/g, '');
+                // Spaced groups running to 10 digits or more are an identifier,
+                // not a number anyone wrote out as a quantity
+                if (digits.length >= 10) continue;
+                const joined = parseInt(digits, 10);
                 const withCommas = joined.toLocaleString('en-AU');
                 issues.push({
                     found: found,
@@ -3639,62 +3750,25 @@ const RULES = [
         link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/numbers-and-measurements/telephone-numbers',
         check: function(text) {
             const issues = [];
-            const flaggedSpans = [];
-            const overlaps = (start, end) =>
-                flaggedSpans.some(([s, e]) => start < e && end > s);
-            const pushIssue = (match, digits, chunks) => {
-                const start = match.index;
-                const end = start + match[0].length;
-                if (overlaps(start, end)) return;
-                flaggedSpans.push([start, end]);
+            // Detection lives in phoneSpans so the thousands-comma rule can
+            // consult the same list and keep out of these digits.
+            for (const span of phoneSpans(text)) {
+                // No standard chunking to offer (an international number, or a
+                // local number with no area code): recognised, but not rewritten.
+                if (!span.chunks) continue;
+                const found = text.slice(span.start, span.end);
                 // Normalise the found text; skip if it already matches the standard chunking
-                const foundNorm = match[0].replace(/ /g, ' ');
-                const canonical = chunks.join(' ');
-                if (foundNorm === canonical) return;
-                const replacement = chunks.join(' ');
+                const foundNorm = found.replace(/ /g, ' ');
+                const canonical = span.chunks.join(' ');
+                if (foundNorm === canonical) continue;
+                const replacement = span.chunks.join(' ');
                 issues.push({
-                    found: match[0],
+                    found: found,
                     suggestion: replacement,
                     autoFix: replacement,
-                    position: start,
+                    position: span.start,
                     rule: this
                 });
-            };
-
-            // 10-digit numbers starting with 0 (landline and mobile), any separators
-            const tenDigit = /(?:\(0\d\)|\b0\d)(?:[  ().-]*\d){8}\b(?!\d)/g;
-            let match;
-            while ((match = tenDigit.exec(text)) !== null) {
-                const digits = match[0].replace(/\D/g, '');
-                if (digits.length !== 10) continue;
-                if (digits.startsWith('04')) {
-                    // Mobile: 4 + 3 + 3
-                    pushIssue(match, digits,
-                        [digits.slice(0, 4), digits.slice(4, 7), digits.slice(7)]);
-                } else if (/^0[2378]/.test(digits)) {
-                    // Landline: 2 + 4 + 4
-                    pushIssue(match, digits,
-                        [digits.slice(0, 2), digits.slice(2, 6), digits.slice(6)]);
-                }
-                // Other leading digits: not a known Australian format - don't flag
-            }
-
-            // 1300 and 1800 numbers: 4 + 3 + 3
-            const thirteenHundred = /\b1[38]00(?:[  .-]*\d){6}\b(?!\d)/g;
-            while ((match = thirteenHundred.exec(text)) !== null) {
-                const digits = match[0].replace(/\D/g, '');
-                if (digits.length !== 10) continue;
-                pushIssue(match, digits,
-                    [digits.slice(0, 4), digits.slice(4, 7), digits.slice(7)]);
-            }
-
-            // 13 numbers (6 digits): 2 + 2 + 2
-            const thirteen = /\b13(?:[  .-]*\d){4}\b(?!\d)/g;
-            while ((match = thirteen.exec(text)) !== null) {
-                const digits = match[0].replace(/\D/g, '');
-                if (digits.length !== 6) continue;
-                pushIssue(match, digits,
-                    [digits.slice(0, 2), digits.slice(2, 4), digits.slice(4)]);
             }
             return issues;
         }

@@ -146,6 +146,31 @@ const CASES = [
     ['numbers-comma-thousands', 'call 0491 570 159 for help', false],
     ['numbers-comma-thousands', 'see Figure 1 500 people attended', false],
 
+    // ---- numbers-comma-thousands: phone numbers and identifiers are not
+    // quantities. 'numbers-phone-format' owns the phone shapes (shared
+    // detection in phoneSpans); this rule must keep out of them entirely.
+    ['numbers-comma-thousands', 'Phone 0262162000 for details.', false],
+    ['numbers-comma-thousands', 'Mobile 0491570159 today.', false],
+    ['numbers-comma-thousands', 'Phone 6244-1000 during hours.', false],
+    ['numbers-comma-thousands', 'Call us on 02 6244 1000 or 1300 975 707.', false],
+    ['numbers-comma-thousands', '+61 2 6216 2000 is the number', false],
+    ['numbers-comma-thousands', 'ABN 51 824 753 556 applies.', false],
+    ['numbers-comma-thousands', 'ISBN 9781760542818 is listed.', false],
+    ['numbers-comma-thousands', 'Extension 4321 reaches the desk.', false],
+    ['numbers-comma-thousands', 'account 00012345 was closed', false],
+    ['numbers-comma-thousands', 'the suburb postcode 2601 applies', false],
+    ['numbers-comma-thousands', 'ACT 2601 office', false],
+    // An unlabelled four-plus-four pair: a range ascends, so a descending
+    // pair is a local phone number
+    ['numbers-comma-thousands', 'reception is on 6244-1000', false],
+    ['numbers-comma-thousands', 'growth from 2500-4500 cases', true, '2,500'],
+    ['numbers-comma-thousands', 'pages 1200-1300 of the report', true, '1,200'],
+    // ...but a short word before a real quantity must not suppress the fix
+    ['numbers-comma-thousands', 'the total was 4500 people', true, '4,500'],
+    ['numbers-comma-thousands', 'of 7500 records', true, '7,500'],
+    ['numbers-comma-thousands', 'sales hit 6200 units', true, '6,200'],
+    ['numbers-comma-thousands', '26000000 people live here', true, '26,000,000'],
+
     // ---- readability-double-negative (PL-02) ----
     ['readability-double-negative', 'such delays are not uncommon', true],
     ['readability-double-negative', 'the increase was not insignificant', true],
@@ -223,6 +248,14 @@ const CASES = [
     ['numbers-phone-format', 'call 13 24 68 now', false],
     ['numbers-phone-format', 'ABN 51 824 753 556', false],
     ['numbers-phone-format', 'the fee was $1300 this year', false],
+    // Recognised but not rewritten: no standard chunking to offer
+    ['numbers-phone-format', '+61 2 6216 2000 is the number', false],
+    ['numbers-phone-format', 'Phone 6244-1000 during hours.', false],
+    // Already carrying this engine's own non-breaking spaces. The separators
+    // below are real NBSPs, not spaces - check with charCodeAt before editing.
+    ['numbers-phone-format', 'call 02 6244 1000 today', false],
+    ['numbers-phone-format', 'mobile 0491 570159 here', true,
+        '0491 570 159'],
 
     // ---- readability-passive-voice (PL-01, by-agent only) ----
     ['readability-passive-voice', 'the report was approved by the board', true],
