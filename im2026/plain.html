@@ -287,7 +287,9 @@ function showChanges(changes) {
         .filter(Boolean)
         .map(c => {
             const s = c.charAt(0).toUpperCase() + c.slice(1);
-            return autoCorrect(/[.!?]$/.test(s) ? s : s + '.').text;
+            // A note often ends on a quoted sentence ('… into: "Do this."'), so
+            // allow a closing quote after the stop or we add a second one.
+            return autoCorrect(/[.!?]['’"”)]?$/.test(s) ? s : s + '.').text;
         });
     const section = $('plain-changed');
     $('plain-changed-list').innerHTML =
