@@ -77,7 +77,9 @@ export function aiAsk({ question, history }) {
 
 /**
  * Rewrite a passage into Style Manual plain English.
- * Returns { rewrite: string }
+ * `changes` holds short user-facing notes on what the rewrite changed; an
+ * older Worker returns none, so treat it as optional.
+ * Returns { rewrite: string, changes: string[] }
  */
 export function aiPlain({ passage }) {
     return callWorker('/api/plain', { passage });

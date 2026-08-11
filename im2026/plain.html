@@ -71,7 +71,10 @@ body{font-family:'Open Sans',Arial,sans-serif;background:var(--bg);color:var(--c
 .copy-btn:hover{border-color:var(--b4);background:#eef5f7}
 
 #plain-check{margin:14px 0 0;font-size:13px;font-weight:700;color:var(--teal)}
-#plain-check.warn{color:#7a3d18}
+#plain-changed{margin:18px 0 0;max-width:680px}
+#plain-changed h2{font-size:15px;font-weight:700;color:var(--b1);margin:0 0 6px}
+#plain-changed ul{margin:0;padding-left:20px}
+#plain-changed li{font-size:14px;color:var(--c2);line-height:1.6;margin:0 0 4px}
 .not-configured{background:#fff8e8;border:1px solid #ecd9a0;border-radius:10px;
   padding:16px 20px;font-size:14.5px;color:#574410;line-height:1.6;margin-bottom:20px}
 
@@ -153,6 +156,12 @@ body{font-family:'Open Sans',Arial,sans-serif;background:var(--bg);color:var(--c
   </div>
 
   <p id="plain-check" hidden role="status"></p>
+
+  <section id="plain-changed" hidden>
+    <h2>What changed</h2>
+    <ul id="plain-changed-list"></ul>
+  </section>
+
   <p class="ai-error" id="plain-error" hidden role="alert"></p>
   <p class="ai-disclaimer" style="max-width:680px">Claude generates the
     rewrite from the text you paste. Your text is not used to train models.
@@ -160,8 +169,7 @@ body{font-family:'Open Sans',Arial,sans-serif;background:var(--bg);color:var(--c
     before using it.</p>
   <p class="ai-disclaimer" style="max-width:680px">The rule engine
     automatically corrects style breaches that don't need editorial
-    judgement. A note below the result shows how many corrections the rule
-    engine made.</p>
+    judgement before the rewrite reaches you.</p>
 </main>
 
 <footer class="gov-footer">
@@ -266,6 +274,27 @@ function copyRich(html, text) {
 
 let lastMarkdown = '';
 
+/**
+ * Show Claude's notes on what the rewrite changed. The notes arrive without
+ * end punctuation, so each is presented as a sentence (the same treatment as
+ * the Format a list change notes). They are AI prose like any other output,
+ * so each one goes through the rule engine before it is displayed. An older
+ * Worker sends no notes at all - the block then stays hidden.
+ */
+function showChanges(changes) {
+    const notes = (changes || [])
+        .map(c => String(c).trim())
+        .filter(Boolean)
+        .map(c => {
+            const s = c.charAt(0).toUpperCase() + c.slice(1);
+            return autoCorrect(/[.!?]$/.test(s) ? s : s + '.').text;
+        });
+    const section = $('plain-changed');
+    $('plain-changed-list').innerHTML =
+        notes.map(n => '<li>' + escapeHtml(n) + '</li>').join('');
+    section.hidden = notes.length === 0;
+}
+
 if (!AI_ENABLED) {
     $('not-configured').hidden = false;
     $('plain-input').contentEditable = 'false';
@@ -277,6 +306,7 @@ $('plain-btn').addEventListener('click', async () => {
     const passage = domToMarkdown($('plain-input')).trim();
     $('plain-error').hidden = true;
     $('plain-check').hidden = true;
+    $('plain-changed').hidden = true;
     if (passage.length < 40) {
         $('plain-error').textContent = 'Paste a longer passage (a couple of sentences at least).';
         $('plain-error').hidden = false;
@@ -290,7 +320,7 @@ $('plain-btn').addEventListener('click', async () => {
     $('plain-btn').disabled = true;
     $('plain-busy').hidden = false;
     try {
-        const { rewrite } = await aiPlain({ passage });
+        const { rewrite, changes } = await aiPlain({ passage });
         const check = autoCorrect(rewrite);
         lastMarkdown = check.text;
         const out = $('plain-output');
@@ -298,20 +328,12 @@ $('plain-btn').addEventListener('click', async () => {
         out.classList.remove('empty');
         $('plain-copy-word').hidden = false;
         $('plain-copy-text').hidden = false;
-        const bits = ['✔ Checked against ' + RULE_COUNT + ' Style Manual rules'];
-        if (check.fixes) bits.push(check.fixes + ' automatic ' +
-            (check.fixes === 1 ? 'correction' : 'corrections') + ' applied');
-        const el = $('plain-check');
-        if (check.remaining.length) {
-            bits.push(check.remaining.length + ' possible ' +
-                (check.remaining.length === 1 ? 'issue' : 'issues') +
-                ' flagged: ' + [...new Set(check.remaining.slice(0, 3).map(i => i.rule.name))].join(', '));
-            el.className = 'warn';
-        } else {
-            el.className = '';
-        }
-        el.textContent = bits.join(' · ');
-        el.hidden = false;
+        // The rule engine's own corrections stay behind the scenes: what it fixed
+        // in Claude's draft is our homework, not the reader's problem. They get
+        // the reassurance that it ran, and a note on what the REWRITE changed.
+        $('plain-check').textContent = '✔ Checked against ' + RULE_COUNT + ' Style Manual rules';
+        $('plain-check').hidden = false;
+        showChanges(changes);
     } catch (err) {
         $('plain-error').textContent = err.message;
         $('plain-error').hidden = false;

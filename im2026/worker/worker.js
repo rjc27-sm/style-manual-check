@@ -320,12 +320,41 @@ Rules:
   paragraphs.
 - Use a '- ' dash list only where the input already used a list, or where a
   list genuinely helps the reader.
+- Follow the Style Manual's own list conventions in every list you write.
+  Write the lead-in as a plain line ending in a colon. If the items are
+  sentence fragments, start each with a lower-case letter (unless it is a
+  proper noun) and put a full stop after the last item only. If every item
+  is a complete sentence - including an instruction or a rule, such as
+  'Capitalise proper nouns.' - start each with a capital letter and end
+  EVERY item with a full stop. No nested lists.
 - Your output will be re-checked by a deterministic rule engine.
 - Reply with the rewritten text only, in this markdown. No preamble, no
-  explanation.`,
+  explanation.
+- Then write a line containing exactly ---WHAT CHANGED--- and, after it, 3 to
+  5 short notes on what you changed about the wording, one per line, each
+  starting '- '. Write them for the person who pasted the text: name the
+  change, not the rule. For example '- Replaced 'pursuant to' with 'under''
+  or '- Split a 42-word sentence into three'. Always put wording you are
+  quoting from the original inside single quotation marks. Keep each note to
+  one line.`,
         build(body) { return body.passage; },
         maxChars: 6000,
-        shape: r => ({ rewrite: r.trim() })
+        // The rewrite of a 900-word passage plus its change notes runs well past
+        // the 1,024-token default, which truncated long rewrites mid-sentence.
+        maxTokens: 3000,
+        // The notes come after a sentinel line rather than inside JSON: a long
+        // rewrite that outgrew a JSON envelope would fail to parse and surface as
+        // 'AI briefly unavailable' (the list-format trap, 28 July 2026). A missing
+        // sentinel just means no notes.
+        shape(r) {
+            const parts = r.split(/^\s*-{2,}\s*WHAT CHANGED\s*-{2,}\s*$/mi);
+            return {
+                rewrite: (parts[0] || r).trim(),
+                changes: (parts[1] || '').split('\n')
+                    .map(l => l.replace(/^\s*[-•*]\s*/, '').trim())
+                    .filter(Boolean).slice(0, 5)
+            };
+        }
     },
 
     ask: {
