@@ -278,27 +278,41 @@ a noun phrase where required. Never use 'e.g.', 'i.e.' or 'etc.' - write
 // a worked example, including the proper-noun case that broke the nickname
 // answer ('Blocker' keeps its capital but still takes no full stop).
 const LIST_CONVENTIONS = `- Follow the Style Manual's own list conventions in every list you write.
-  Write the lead-in as a plain line ending in a colon. Then choose ONE of the
-  two item conventions below and apply it to EVERY item in that list. Never
-  mix them.
-  1. Fragment list - the items are phrases, not complete sentences. Start
-     each item with a lower-case letter (unless it begins with a proper noun,
-     which keeps its capital) and put a full stop after the LAST item only.
-     Every other item ends with no punctuation at all.
-  2. Sentence list - every item is a complete sentence, including an
-     instruction or a rule such as 'Capitalise proper nouns.' Start each item
-     with a capital letter and end EVERY item with a full stop.
-  Putting a full stop on every item of a fragment list is the most common
-  mistake - check each list you write for it before you answer. A fragment
-  list of examples is punctuated like this:
-      - state and territory governments
-      - local councils
-      - non-government organisations.
-  An item beginning with a proper noun keeps its capital, but that does NOT
-  change the punctuation:
-      - 'Big Australia' (a population policy)
-      - 'the Lucky Country' (a book by Donald Horne)
-      - 'the Top End' (northern Australia).`;
+  Write the lead-in as a plain line ending in a colon. Before punctuating a
+  list, DECIDE which of the two kinds it is, then apply that kind to EVERY
+  item in it. Never mix them.
+  Decide like this: would each item read as a complete sentence on its own?
+  An instruction or a command counts as a complete sentence, because the
+  subject 'you' is implied. 'Start each item with a capital letter' and
+  'Capitalise proper nouns' are complete sentences, not fragments.
+  1. SENTENCE list - every item is a complete sentence, including any
+     instruction, rule or step. Start each item with a capital letter and end
+     EVERY item with a full stop:
+         - Start each item with a capital letter.
+         - End every item with a full stop.
+         - Keep the items parallel with each other.
+  2. FRAGMENT list - the items are phrases that could not stand alone as
+     sentences. Start each item with a lower-case letter and put a full stop
+     after the LAST item only, with no punctuation on any other item:
+         - state and territory governments
+         - local councils
+         - non-government organisations.
+     An item beginning with a proper noun keeps its capital, but that does
+     NOT change the punctuation:
+         - 'Big Australia' (a population policy)
+         - 'the Lucky Country' (a book by Donald Horne)
+         - 'the Top End' (northern Australia).
+  3. STAND-ALONE list - the items are words or short phrases sitting under a
+     heading or a label such as 'Examples:', and they do not complete it
+     grammatically. Start each item with a capital letter and use NO full
+     stop on any item, not even the last one:
+         - Canberra
+         - Melbourne
+         - Perth
+  Check for all three of these mistakes before you answer: a full stop on
+  every item of a fragment list; a single closing full stop on a list whose
+  items are really sentences or instructions; and a fragment list left with
+  no closing full stop at all.`;
 
 const PROMPTS = {
     fix: {
