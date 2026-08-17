@@ -514,7 +514,12 @@ ${LIST_CONVENTIONS}
   quoting from the original inside single quotation marks. Keep each note to
   one line.`,
         build(body) { return body.passage; },
-        maxChars: 6000,
+        // 900 words of dense government prose is about 7,300 characters before
+        // any markup, and pasted Word content adds links and bold on top. At
+        // 6,000 the page refused passages well inside the 900 words it
+        // advertises (reported 17 August 2026). Keep this equal to
+        // PLAIN_MAX_CHARS in plain.html.
+        maxChars: 9000,
         // The rewrite of a 900-word passage plus its change notes runs well past
         // the 1,024-token default, which truncated long rewrites mid-sentence.
         maxTokens: 3000,
