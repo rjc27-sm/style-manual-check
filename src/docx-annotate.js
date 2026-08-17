@@ -532,8 +532,12 @@ export function commentTextFor(issue) {
     ] });
     const suggestion = issue.suggestion || issue.autoFix;
     if (suggestion && suggestion !== issue.found) {
-        // Quote real replacement text; leave instructions unquoted
-        const quoted = issue.autoFix === suggestion;
+        // Quote real replacement text; leave instructions unquoted.
+        // Some fixes ARE quoted text - punct-double-quotes turns "x" into 'x' -
+        // and wrapping those again produced ''follow up in two weeks'', which a
+        // user reported as looking like doubled quote marks (17 August 2026).
+        const alreadyQuoted = /^['‘’].*['‘’]$/.test(suggestion);
+        const quoted = issue.autoFix === suggestion && !alreadyQuoted;
         paras.push({ runs: [
             { text: 'Suggested change: ', bold: true },
             { text: quoted ? "'" + suggestion + "'" : suggestion }

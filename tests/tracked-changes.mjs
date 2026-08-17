@@ -188,6 +188,26 @@ assert(elems(againXml, 'w:del').length === dels.length &&
     elems(againXml, 'w:ins').length === inses.length,
     'existing revisions left untouched');
 
+// ---- comment wording: a fix that is itself quoted text is not re-quoted ----
+// punct-double-quotes turns "x" into 'x', and commentTextFor used to wrap every
+// replacement in quotes regardless, so the comment read ''follow up in two
+// weeks'' - reported 17 August 2026 as looking like doubled quote marks.
+const { commentTextFor } = await import(new URL('../src/docx-annotate.js', import.meta.url));
+const commentLine = (issue) => commentTextFor(issue)
+    .map(p => p.runs.map(r => r.text).join('')).join(' | ');
+
+const quoteRule = RULES.find(r => r.id === 'punct-double-quotes');
+const quoteIssue = quoteRule.check('Please "follow up in two weeks" now.')[0];
+const quoteText = commentLine(quoteIssue);
+assert(quoteText.includes("Suggested change: 'follow up in two weeks'") &&
+    !quoteText.includes("''"),
+    'a quoted fix is not wrapped in a second pair of quotes');
+
+const dashRule = RULES.find(r => r.id === 'punct-em-dash');
+const dashIssue = dashRule.check('the report — a long one was late')[0];
+assert(commentLine(dashIssue).includes("Suggested change: '"),
+    'an unquoted fix is still quoted in the comment');
+
 console.log(failures === 0 ? 'ALL TRACKED-CHANGES TESTS PASSED'
     : failures + ' TEST(S) FAILED');
 process.exit(failures === 0 ? 0 : 1);
