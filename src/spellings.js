@@ -377,9 +377,19 @@ function generateVerbForms(baseSpellings) {
             expanded[us + 's'] = au + 's';
             // -izing → -ising
             expanded[usBase + 'ing'] = auBase + 'ing';
-            // -ization → -isation
-            expanded[usBase.slice(0, -2) + 'ization'] = auBase.slice(0, -2) + 'isation';
-            expanded[usBase.slice(0, -2) + 'izations'] = auBase.slice(0, -2) + 'isations';
+            // -izer → -iser (organizer, fertilizer, appetizer)
+            expanded[usBase + 'er'] = auBase + 'er';
+            expanded[usBase + 'ers'] = auBase + 'ers';
+            // -ization → -isation, and the adjective and adverb built on it.
+            // A user reported 'organizational' slipping through (17 Aug 2026):
+            // the noun was covered but nothing derived from it was, so the
+            // whole -izational class was invisible.
+            const usStem = usBase.slice(0, -2);
+            const auStem = auBase.slice(0, -2);
+            expanded[usStem + 'ization'] = auStem + 'isation';
+            expanded[usStem + 'izations'] = auStem + 'isations';
+            expanded[usStem + 'izational'] = auStem + 'isational';
+            expanded[usStem + 'izationally'] = auStem + 'isationally';
         }
 
         // -yze → -yse conversions
@@ -390,6 +400,9 @@ function generateVerbForms(baseSpellings) {
             expanded[usBase + 'ed'] = auBase + 'ed';
             expanded[us + 's'] = au + 's';
             expanded[usBase + 'ing'] = auBase + 'ing';
+            // -yzer → -yser (analyzer), matching the -izer forms above
+            expanded[usBase + 'er'] = auBase + 'er';
+            expanded[usBase + 'ers'] = auBase + 'ers';
             expanded[us.slice(0, -3) + 'ysis'] = au.slice(0, -3) + 'ysis';
             expanded[us.slice(0, -3) + 'yses'] = au.slice(0, -3) + 'yses';
         }

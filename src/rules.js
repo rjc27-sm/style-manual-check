@@ -123,8 +123,13 @@ const RULES = [
         link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/spelling',
         check: function(text) {
             const issues = [];
-            // Match words ending in -ize, -ized, -izes, -izing, -ization
-            const regex = /\b([A-Za-z]+(?:iz(?:e|ed|es|ing|ation|ations)))\b/gi;
+            // Match words ending in -ize, -ized, -izes, -izing, -izer, -izers,
+            // -ization, -izations, -izational, -izationally. This suffix list
+            // has to stay in step with the derived forms generateVerbForms()
+            // puts in SPELLINGS - a form missing HERE is invisible even when
+            // the dictionary knows it, which is how 'organizational' slipped
+            // through (reported 17 August 2026). Longest alternatives first.
+            const regex = /\b([A-Za-z]+(?:iz(?:ationally|ational|ations|ation|ers|er|ing|ed|es|e)))\b/gi;
             let match;
             while ((match = regex.exec(text)) !== null) {
                 const word = match[1];
@@ -147,7 +152,9 @@ const RULES = [
         link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/spelling',
         check: function(text) {
             const issues = [];
-            const regex = /\b([A-Za-z]+(?:yz(?:e|ed|es|ing)))\b/gi;
+            // Keep in step with generateVerbForms() - see the note on the
+            // -ize regex above.
+            const regex = /\b([A-Za-z]+(?:yz(?:ers|er|ing|ed|es|e)))\b/gi;
             let match;
             while ((match = regex.exec(text)) !== null) {
                 const word = match[1];

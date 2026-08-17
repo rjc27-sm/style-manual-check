@@ -59,6 +59,35 @@ const CASES = [
     ['latin-ie', 'the main one (i.e., lithium)', true, 'that is,'],
     ['latin-ie', 'the main one (i.e. lithium)', true, 'that is,'],
 
+    // ---- spelling-ize derived forms (17 Aug 2026) ----
+    // A user reported 'organizational' passing the check. The dictionary had
+    // 'organize' and 'organization' but nothing built on them, AND the rule's
+    // own suffix regex stopped at -ization, so both had to be widened.
+    ['spelling-ize', 'we will organize the files', true, 'organise'],
+    ['spelling-ize', 'the organization is changing', true, 'organisation'],
+    ['spelling-ize', 'our organizational structure is changing', true, 'organisational'],
+    ['spelling-ize', 'we work organizationally across teams', true, 'organisationally'],
+    ['spelling-ize', 'speak to the event organizer today', true, 'organiser'],
+    ['spelling-ize', 'the organizers met on Tuesday', true, 'organisers'],
+    ['spelling-ize', 'apply fertilizer to the beds', true, 'fertiliser'],
+    ['spelling-ize', 'Organizational change is hard', true, 'Organisational'],
+    // already correct Australian spelling - must not fire
+    ['spelling-ize', 'our organisational structure is changing', false],
+    ['spelling-ize', 'the organiser met the team', false],
+    ['spelling-ize', 'we work organisationally across teams', false],
+    // legitimate -ize words that are correct in Australian English
+    ['spelling-ize', 'she won a prize for the design', false],
+    ['spelling-ize', 'the sample size is small', false],
+    ['spelling-ize', 'resize the image before upload', false],
+    ['spelling-ize', 'the boat could capsize in that swell', false],
+
+    // ---- spelling-yze derived forms ----
+    ['spelling-yze', 'we will analyze the data', true, 'analyse'],
+    ['spelling-yze', 'connect the analyzer to the port', true, 'analyser'],
+    ['spelling-yze', 'the analyzers were calibrated', true, 'analysers'],
+    ['spelling-yze', 'we will analyse the data', false],
+    ['spelling-yze', 'the analyser was calibrated', false],
+
     // ---- spelling-other (US words that are correct AU words elsewhere) ----
     ['spelling-other', 'we will draft a message to staff', false],
     ['spelling-other', 'measures to curb spending growth', false],
