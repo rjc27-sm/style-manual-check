@@ -176,10 +176,36 @@ function styleManualLink(u, sources) {
 function renderAnswer(text, sources) {
     let s = escapeHtml(text);
     s = s.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
+    // Italics matter here: the Style Manual italicises publication titles, so a
+    // referencing answer is full of '*Title of report*'. Without this the reader
+    // saw the asterisks (reported 17 August 2026). Bold runs first, so only
+    // single-asterisk pairs are left for this pass. plain.html's renderInline
+    // has done bold, italics and links for a while - ask.html never caught up,
+    // even though renderInline says it was modelled on this function.
+    s = s.replace(/\*([^*\n]+)\*/g, '<em>$1</em>');
+    // Markdown links are pulled out to tokens BEFORE the bare-URL pass at the
+    // end, which would otherwise rewrite the href inside an anchor it had just
+    // built. Same rule as bare URLs: only link a page the bot actually read.
+    // An example citation's URL may be illustrative or invented, so its text is
+    // kept and the dead href dropped rather than offered as a link.
+    const linkTokens = [];
+    s = s.replace(/\[([^\]\n]+)\]\((https?:\/\/[^)\s]+)\)/g, (m, label, url) => {
+        const clean = url.replace(/\/+$/, '');
+        const known = clean === 'https://www.stylemanual.gov.au' ||
+            (sources && sources[clean]);
+        linkTokens.push(known
+            ? '<a href="' + clean + '" target="_blank" rel="noopener">' + label + '</a>'
+            : label);
+        return '\u0000L' + (linkTokens.length - 1) + '\u0000';
+    });
     const out = [];
     let inList = false;
     for (const rawLine of s.split('\n')) {
-        const line = rawLine.replace(/^#{1,4}\s+/, '');   // strip stray headings
+        // Strip stray headings and blockquote markers. The prompt asks for
+        // paragraphs and '- ' items only, but the model sometimes sets an
+        // example off with '> ', which showed up as a literal angle bracket.
+        // escapeHtml has already run, so the marker is '&gt;' by this point.
+        const line = rawLine.replace(/^#{1,4}\s+/, '').replace(/^\s*(?:&gt;|>)\s?/, '');
         const item = line.match(/^\s*[-•*]\s+(.*)$/);
         if (item) {
             if (!inList) { out.push('<ul>'); inList = true; }
@@ -190,7 +216,7 @@ function renderAnswer(text, sources) {
         }
     }
     if (inList) out.push('</ul>');
-    return out.join('').replace(
+    const html = out.join('').replace(
         /https:\/\/www\.stylemanual\.gov\.au[\w\-\/]*/g,
         u => {
             // Only link pages the bot actually retrieved for this question
@@ -201,6 +227,9 @@ function renderAnswer(text, sources) {
                 (sources && sources[clean]);
             return ok ? styleManualLink(clean, sources) : '';
         });
+    // Put the markdown links back, now the bare-URL pass can no longer chew
+    // the hrefs they contain.
+    return html.replace(/\u0000L(\d+)\u0000/g, (m, i) => linkTokens[i]);
 }
 
 function addMsg(role, text, sources, check) {
