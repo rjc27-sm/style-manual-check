@@ -75,7 +75,18 @@ const EXPANSIONS = [
     [/\b(e\.?g\.?|i\.?e\.?|etc\.?|et al|latin)\b/i, 'latin shortened forms'],
     [/\b(minister|senator|premier|title of|dr|professor|honourable|excellency)\b/i, 'titles honours forms address'],
     [/\bampersands?\b|\s&\s/i, 'ampersands'],
-    [/\bitalics?\b|\bitalicis/i, 'italics']
+    [/\bitalics?\b|\bitalicis/i, 'italics'],
+    // 'that' versus 'which'. Both words are STOPWORDS, and so are 'when', 'do',
+    // 'i', 'use' and 'and' - so 'When do I use which and when do I use that?'
+    // tokenised to NOTHING, scored nothing, and Ask said the guidance did not
+    // exist (reported 17 August 2026). The expansion runs on the raw question,
+    // before tokenising, so it can still see the words the tokeniser drops.
+    [/\bthat\b(?=[\s\S]*\bwhich\b)|\bwhich\b(?=[\s\S]*\bthat\b)|\b(?:non-?essential|restrictive|defining) clause/i,
+        'commas essential non-essential clauses relative pronouns'],
+    // Ordinals: a question phrased as '1st' or 'first' never contains the word
+    // the pages actually use, and 'first' on its own ranks First Nations and
+    // 'family name first' far above it.
+    [/\b\d+(?:st|nd|rd|th)\b|\bordinals?\b/i, 'ordinal numbers']
 ];
 
 function tokenise(s) {
@@ -150,8 +161,14 @@ function scoreSections(question) {
     for (const w of tokenise(expandQuery(question))) {
         if (!asked.has(w)) hinted.add(w);
     }
+    // Hints are normally kept subordinate so they cannot bury the asked words.
+    // When the question tokenises to NOTHING - every word a stopword, as in
+    // 'When do I use which and when do I use that?' - there are no asked words
+    // to bury, and holding the hints at 0.4 just leaves the question scoring
+    // nothing at all. So they carry full weight in that case.
+    const hintWeight = asked.size ? RETRIEVAL.HINT_WEIGHT : 1;
     const terms = [...[...asked].map(w => [w, 1]),
-                   ...[...hinted].map(w => [w, RETRIEVAL.HINT_WEIGHT])]
+                   ...[...hinted].map(w => [w, hintWeight])]
         .map(([w, weight]) => [w, weight * Math.max(idf(w), 0.2)]);
 
     const scored = [];

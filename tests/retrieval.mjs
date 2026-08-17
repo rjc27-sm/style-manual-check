@@ -90,7 +90,18 @@ const CASES = [
     ['How do I style a nickname?', /nicknames/i],
     ['How do I reference a book?', /particulars for books/i],
     ['How do I show an act of parliament?', /Act titles is title case/i],
-    ['What is plain language?', /plain language/i]
+    ['What is plain language?', /plain language/i],
+    // Second bug report, 17 August 2026. Both of these said the guidance did
+    // not exist while the pages sat in the corpus. 'that' and 'which' are both
+    // stopwords, and so is every other word in the question, so it tokenised to
+    // nothing at all; '1st or first' contains none of the words the ordinals
+    // page uses, and bare 'first' ranks First Nations far above it. Fixed with
+    // query expansions, plus full weight for hints when there are no asked
+    // words to bury.
+    ["When do I use 'which' and when do I use 'that'?", /relative pronouns|non.essential/i],
+    ['that versus which', /relative pronouns|non.essential/i],
+    ["Do I use '1st' or 'first'?", /ordinals/i],
+    ['Should I write 25th or twenty-fifth?', /ordinals/i]
 ];
 for (const [question, want] of CASES) {
     const picked = worker.retrieveSections(question);
