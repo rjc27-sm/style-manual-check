@@ -60,3 +60,7 @@ im2026/worker/.wrangler/
 /build_rules_doc.mjs
 /build_user_facing_doc.mjs
 /build_timeline_deck.cjs
+# Regenerates the TRACKED skill reference im2026/skill/.../spellings.md from
+# the live dictionary. Added 17 Aug 2026 - the count had been hand-maintained
+# and drifted. Run it after any src/spellings.js change.
+/build_spellings_md.mjs

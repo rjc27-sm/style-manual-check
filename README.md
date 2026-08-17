@@ -9,9 +9,9 @@ deterministic rules verify.**
 
 **Live site:** https://rjc27-sm.github.io/style-manual-check/im2026/
 
-Proof Positive is an entry in the APS Innovation Month 2026 'Build a
-Bureaucrat Bot' challenge (IM2026). It is a personal project by Jen
-Robertson, not an official government service.
+Proof Positive was entered in the APS Innovation Month 2026 'Build a
+Bureaucrat Bot' challenge (IM2026) and is now in wider APS testing. It is a
+personal project by Jen Robertson, not an official government service.
 
 ## The five tools
 
@@ -33,12 +33,14 @@ for the full bot card, limitations and accessibility statement.
 - **Static site** (`im2026/`): plain HTML + vanilla JavaScript ES modules,
   no framework, no build step. Published by GitHub Pages from the repo root.
 - **Rule engine** (`src/rules.js`, `src/list-analysis.js`,
-  `src/spellings.js`): 105 rules across 12 categories, 1,181 US→AU spelling
+  `src/spellings.js`): 102 rules across 12 categories, 1,829 US→AU spelling
   mappings. Runs in the browser; documents never leave the user's device.
 - **Cloudflare Worker** (`im2026/worker/`): the only server component. Holds
-  the Claude API key, enforces per-IP and global daily limits, and serves
-  the Ask retrieval index over 160+ saved Style Manual pages
-  (`im2026/pages/`). See [im2026/DEPLOY.md](im2026/DEPLOY.md).
+  the Claude API key, enforces per-IP and global daily limits, and answers Ask
+  from a section-level retrieval index over 171 Style Manual pages. The page
+  text and index are bundled into the Worker and deployed straight to
+  Cloudflare – they are deliberately not in this repository. See
+  [im2026/DEPLOY.md](im2026/DEPLOY.md).
 - **Word add-in** (`StyleManualCheck/`, Office.js): the original Style
   Manual Check tool the rule engine grew from; shares the same rules.
 
@@ -56,9 +58,8 @@ im2026/                 Proof Positive – the current tool (published site)
   lists.html            Format a list
   citations.html        Create a citation
   about.html            How it works, bot card, accessibility statement
-  pages/                Saved Style Manual pages used by Ask (CC BY 4.0)
   src/                  Page logic + AI client + verification (autoCorrect)
-  worker/               Cloudflare Worker proxy + retrieval index
+  worker/               Cloudflare Worker proxy + bundled Ask corpus and index
   skill/                Claude skill mirroring the rule engine
 src/                    Canonical shared rule engine
   rules.js              The rules (id, name, category, description, link, check)
@@ -67,7 +68,8 @@ src/                    Canonical shared rule engine
   docx-annotate.js      .docx reading, Word comments and tracked changes
 StyleManualCheck/       Word add-in (Office.js)
 style-manual-check/     Pre-2026 browser checker (superseded)
-tests/                  End-to-end test for the annotator (npm test)
+tests/                  Annotator, tracked changes and retrieval (npm test),
+                        plus rule-cases.mjs (run separately)
 ```
 
 ## Running locally
@@ -95,7 +97,21 @@ The second (`tests/tracked-changes.mjs`) runs the tracked-changes path on the
 Proof Positive sample briefing and verifies the revision XML: rejecting every
 change reconstructs the original text exactly, accepting them applies every
 fix, and documents that already contain revisions fall back to comments.
+The third (`tests/retrieval.mjs`) checks that the Ask index and the bundled
+page text agree on every section boundary, and that known questions retrieve
+the section that answers them; it skips rather than fails when the bundled
+corpus is absent, since that file is not in the repository.
 Always open annotated output in Word as a final check.
+
+Per-rule trigger and non-trigger cases live in `tests/rule-cases.mjs` and are
+**not** part of `npm test`:
+
+```
+node tests/rule-cases.mjs
+```
+
+Note that `npm test` rewrites `tests/sample - annotated.docx`, which is
+tracked – commit it after a test run to keep the tree clean.
 
 ## Updating rules
 
@@ -121,9 +137,14 @@ AI-answer verifiers apply it automatically, so a wrong fix corrupts text.
 ## Licensing
 
 - Code: CC BY-NC 4.0 (see `LICENSE`).
-- Style Manual content (rules' source guidance and the saved pages used by
-  Ask): © Commonwealth of Australia, used under
-  [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
+- Style Manual content: © Commonwealth of Australia, published by the
+  Australian Public Service Commission. The Style Manual carries **no open
+  licence** – stylemanual.gov.au asserts copyright without granting one, and
+  the APSC's CC BY 4.0 grant covers material on apsc.gov.au, a different site.
+  Earlier versions of this file and the site claimed CC BY 4.0; that was
+  wrong and was corrected on 17 August 2026. The tool reads Style Manual page
+  text to ground an answer and does not republish it: the text is bundled into
+  the Cloudflare Worker and is not served from this repository.
 
 ## History
 
