@@ -253,6 +253,36 @@ serial comma unless needed for clarity; '%' with no space; 'per cent' only as
 a noun phrase where required. Never use 'e.g.', 'i.e.' or 'etc.' - write
 'for example', 'that is' and 'and so on'. Never use emojis.`;
 
+// Shared by the 'plain' and 'ask' prompts, which both write lists in their
+// answers. It was duplicated in both and drifted; one constant keeps them
+// in step. Expanded 17 August 2026 after a user reported fragment lists
+// coming back with a full stop on every item - the rule was already stated
+// and the model was not following it, so it now names the mistake and shows
+// a worked example, including the proper-noun case that broke the nickname
+// answer ('Blocker' keeps its capital but still takes no full stop).
+const LIST_CONVENTIONS = `- Follow the Style Manual's own list conventions in every list you write.
+  Write the lead-in as a plain line ending in a colon. Then choose ONE of the
+  two item conventions below and apply it to EVERY item in that list. Never
+  mix them.
+  1. Fragment list - the items are phrases, not complete sentences. Start
+     each item with a lower-case letter (unless it begins with a proper noun,
+     which keeps its capital) and put a full stop after the LAST item only.
+     Every other item ends with no punctuation at all.
+  2. Sentence list - every item is a complete sentence, including an
+     instruction or a rule such as 'Capitalise proper nouns.' Start each item
+     with a capital letter and end EVERY item with a full stop.
+  Putting a full stop on every item of a fragment list is the most common
+  mistake - check each list you write for it before you answer. A fragment
+  list of examples is punctuated like this:
+      - state and territory governments
+      - local councils
+      - non-government organisations.
+  An item beginning with a proper noun keeps its capital, but that does NOT
+  change the punctuation:
+      - 'Big Australia' (a population policy)
+      - 'the Lucky Country' (a book by Donald Horne)
+      - 'the Top End' (northern Australia).`;
+
 const PROMPTS = {
     fix: {
         system: `You are the rewrite assistant inside 'Proof Positive', a rule-based
@@ -284,6 +314,16 @@ end punctuation yourself.
 ${AU_STYLE_CORE}
 
 DECIDE THE TYPE - look at the ITEMS first, then the lead-in:
+- Decide the type from the items AS THE USER TYPED THEM, before you rewrite
+  anything. Then rewrite the items to suit the type you chose. Never rewrite
+  items into a different grammatical form in order to justify a different
+  type, and never level a list DOWN to phrases to match its least complete
+  item - bring the weaker items UP instead. If one item is a bare noun phrase
+  ('Budget review') among commands, add the verb it is missing.
+- The first line's punctuation decides NOTHING about the type. A first line
+  with no colon and no full stop is usually just a lead-in whose colon the
+  user did not type. Never read it as a heading in order to choose
+  "standAlone".
 - If each item is (or should be) a complete sentence, the type is "sentence" -
   whether the first line is a sentence lead-in, a phrase lead-in or just a
   plain heading. Complete sentences are always a sentence list.
@@ -302,8 +342,10 @@ DECIDE THE TYPE - look at the ITEMS first, then the lead-in:
     type is "fragment".
   - If there is only a heading and nothing for the fragments to complete, the
     type is "standAlone".
-- Use "standAlone" ONLY for a heading followed by words or short phrases. Never
-  use it for items that are complete sentences.
+- Use "standAlone" ONLY when the items AS TYPED are all words or short noun
+  phrases with no verb doing work - a list of names, places, categories,
+  documents or reference types. If any item as typed is a sentence or a
+  command, the list is not "standAlone".
 
 REWRITE THE ITEMS:
 - Make every item follow the same grammatical pattern: the same word type to
@@ -459,13 +501,8 @@ Rules:
   paragraphs.
 - Use a '- ' dash list only where the input already used a list, or where a
   list genuinely helps the reader.
-- Follow the Style Manual's own list conventions in every list you write.
-  Write the lead-in as a plain line ending in a colon. If the items are
-  sentence fragments, start each with a lower-case letter (unless it is a
-  proper noun) and put a full stop after the last item only. If every item
-  is a complete sentence - including an instruction or a rule, such as
-  'Capitalise proper nouns.' - start each with a capital letter and end
-  EVERY item with a full stop. No nested lists.
+${LIST_CONVENTIONS}
+  No nested lists.
 - Your output will be re-checked by a deterministic rule engine.
 - Reply with the rewritten text only, in this markdown. No preamble, no
   explanation.
@@ -514,13 +551,7 @@ Rules for answers:
 - Format simply: short paragraphs and '- ' for list items. No headings, no
   tables, no nested lists. Use **bold** only for the key term or correct
   form - never bold a list lead-in, a label or a whole line.
-- Follow the Style Manual's own list conventions in every list you write.
-  Write the lead-in as a plain line ending in a colon. If the items are
-  sentence fragments, start each with a lower-case letter (unless it is a
-  proper noun) and put a full stop after the last item only. If every item
-  is a complete sentence - including an instruction or a rule, such as
-  'Capitalise proper nouns.' - start each with a capital letter and end
-  EVERY item with a full stop.
+${LIST_CONVENTIONS}
 - Prefer one simple list with a colon lead-in. Do not split an answer into
   several sub-headed groups of bullets; if grouping is unavoidable, each
   group is a complete list in its own right - punctuate its items by the

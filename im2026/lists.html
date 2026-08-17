@@ -172,9 +172,9 @@ pre#output.is-placeholder{color:#9c9fa0}
 
   <div class="grid">
     <section>
-      <div class="step-h"><span class="num">1</span><h2>Your content</h2><span class="step-hint">lead-in, then items</span></div>
+      <div class="step-h"><span class="num">1</span><h2>Your content</h2><span class="step-hint">lead-in or heading, then items</span></div>
       <div class="card">
-        <textarea id="input" aria-label="Your content" placeholder="Enter your lead-in on the first line, then your list items below. For a second level, indent the sub-items or mark them with a dash."></textarea>
+        <textarea id="input" aria-label="Your content" placeholder="Enter your lead-in or heading on the first line, then your list items below. For a second level, indent the sub-items or mark them with a dash."></textarea>
         <div class="card-foot card-foot--start">
           <button class="btn btn-primary" type="button" id="formatBtn" onclick="formatWithAI()"><span class="ai-star" aria-hidden="true">✦</span>Format with AI</button>
           <span class="ai-busy hidden" id="formatBusy" role="status"><span class="ai-busy-star" aria-hidden="true">✦</span> Formatting…</span>
@@ -867,7 +867,7 @@ function analyseMultilevel(rawLeadIn, h, forcedType, forceNumbered) {
 
 function analyse(input, forcedType /* optional: 'sentence'|'fragment'|'standAlone' */, forceNumbered) {
   if (!input || !input.trim()) {
-    return { status: 'empty', message: 'Enter a lead-in on the first line, then your list items below.' };
+    return { status: 'empty', message: 'Enter a lead-in or heading on the first line, then your list items below.' };
   }
   const lines = input.trim().split('\n');
   const rawLeadIn = lines[0];
@@ -880,7 +880,7 @@ function analyse(input, forcedType /* optional: 'sentence'|'fragment'|'standAlon
   }
 
   if (rawItems.length === 0) {
-    return { status: 'error', message: 'Add a lead-in on the first line and at least 2 list items below it.' };
+    return { status: 'error', message: 'Add a lead-in or heading on the first line and at least 2 list items below it.' };
   }
   if (rawItems.length === 1) {
     return { status: 'error', message: 'A list needs 2 or more items. If you only have a single item, write it as a normal sentence instead.' };
@@ -1646,7 +1646,14 @@ function collectFixes(cleaned) {
     const userRaw = (rawLeadIn || '').trim();
     const noEnd = s => s.replace(/[.!?:]+\s*$/, '');
     const src = (userRaw && noEnd(raw) === noEnd(userRaw)) ? userRaw : raw;
-    if (classifyLeadIn(src) === 'heading') return noEnd(src);
+    // classifyLeadIn calls ANY unpunctuated line a heading, so a real lead-in
+    // whose colon the user simply did not type came back bare above a sentence
+    // list - 'These items are on the agenda' with no colon and no full stop
+    // (reported 17 August 2026). A line that reads as a complete statement is
+    // a lead-in, not a heading; only a label with no finite verb stays bare.
+    if (classifyLeadIn(src) === 'heading' && classifyItem(src) !== 'clause') {
+      return noEnd(src);
+    }
     if (/[.!?]\s*$/.test(src)) return src;             // sentence lead-in ending in a full stop
     return buildLeadIn(src, true);                     // sentence/phrase lead-in with a colon
   }
@@ -1827,13 +1834,13 @@ function collectFixes(cleaned) {
     const lines = document.getElementById('input').value.split('\n');
     const firstIdx = lines.findIndex(l => l.trim());
     if (firstIdx === -1) {
-      showError('Nothing to format yet', 'Enter a lead-in on the first line, then your list items below.');
+      showError('Nothing to format yet', 'Enter a lead-in or heading on the first line, then your list items below.');
       return;
     }
     const leadIn = lines[firstIdx].trim();
     const rawItemLines = lines.slice(firstIdx + 1).filter(l => l.trim());
     if (rawItemLines.length < 2) {
-      showError('This list needs a small change', 'Add a lead-in on the first line and at least 2 list items below it.');
+      showError('This list needs a small change', 'Add a lead-in or heading on the first line and at least 2 list items below it.');
       return;
     }
 
