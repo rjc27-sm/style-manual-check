@@ -49,6 +49,13 @@ im2026/_s2_tmp.mjs
 im2026/worker/pages-content.js
 im2026/worker/pages-index.js
 
+# Wrangler's local cache. `wrangler dev` and `wrangler deploy` write a fully
+# BUNDLED copy of the Worker here - pages-content.js inlined and all - so
+# without this rule the !im2026/** negation above would commit the whole
+# Style Manual corpus back into the public repo under a new path. Caught
+# 17 August 2026 while using `wrangler dev --remote` to test a prompt change.
+im2026/worker/.wrangler/
+
 # Local build scripts (source of truth for generated Word docs)
 /build_rules_doc.mjs
 /build_user_facing_doc.mjs
