@@ -18,7 +18,8 @@
  *   GLOBAL_DAILY_LIMIT - requests across all users per day (default 500)
  */
 
-import { PAGE_INDEX } from './pages-index.js';
+import { SECTION_INDEX } from './pages-index.js';
+import { PAGES } from './pages-content.js';
 
 const DEFAULTS = {
     MODEL: 'claude-haiku-4-5',
@@ -27,7 +28,6 @@ const DEFAULTS = {
     // a backward-compatible alias.
     STRONG_MODEL: 'claude-sonnet-5',
     ASK_MODEL: 'claude-sonnet-5',
-    PAGES_BASE_URL: 'https://rjc27-sm.github.io/style-manual-check/im2026/pages/',
     IP_DAILY_LIMIT: 40,
     GLOBAL_DAILY_LIMIT: 500,
     MAX_TOKENS: 1024
@@ -35,9 +35,24 @@ const DEFAULTS = {
 
 // ---------------- retrieval over the scraped Style Manual ----------------
 // The Ask feature answers from the actual scraped page content, not model
-// memory. pages-index.js holds a keyword index of the 146 scraped pages; the
-// page text itself is served as static files alongside the site and fetched
-// (with edge caching) per question.
+// memory. pages-index.js holds a keyword index of SECTIONS (H2 blocks) of the
+// scraped pages; the page text itself is served as static files alongside the
+// site and fetched (with edge caching) per question, then sliced.
+//
+// This was page-level until 17 August 2026. Two user-reported faults came from
+// that: asked how to reference a book, the model read the whole Author-date
+// page and said it held no book example (it has a section of them); and 'how
+// do I style a nickname?' retrieved nothing, because a word that appeared only
+// in a page's body scored 1 against a threshold of 3 and could never pull the
+// page in on its own. Sections are small enough to send several, and a section
+// heading is a much sharper match than a page title.
+
+const RETRIEVAL = {
+    MAX_SECTIONS: 10,     // most sections sent for one question
+    CHAR_BUDGET: 45000,   // total extract characters per question
+    MIN_SCORE: 8,         // below this, a section is not relevant enough to send
+    HINT_WEIGHT: 0.4      // weight of query-expansion terms against the asked words
+};
 
 const STOPWORDS = new Set(('a an and are as at be but by for from has have how in is it its of on or ' +
     'that the this to was we what when where which who will with you your not do does don can i use ' +
@@ -69,39 +84,163 @@ function tokenise(s) {
         .filter(w => (w.length > 2 || KEEP_SHORT.has(w)) && !STOPWORDS.has(w));
 }
 
+// The expansion terms are a hint about the topic, not part of the question, so
+// they are returned separately and scored lower. Mixing them in at full weight
+// buried the answer: 'How do I reference a book?' expands to 'author date
+// referencing', and every section with 'author' or 'date' in its heading then
+// outranked 'Give particulars for books ...', which is the section holding the
+// book examples. It came 16th.
 function expandQuery(question) {
     let extra = '';
     for (const [pattern, terms] of EXPANSIONS) {
         if (pattern.test(question)) extra += ' ' + terms;
     }
-    return question + extra;
+    return extra.trim();
 }
 
-function retrievePages(question, n) {
-    const q = [...new Set(tokenise(expandQuery(question)))];
-    const scored = [];
-    for (const p of PAGE_INDEX) {
-        const title = p.t.toLowerCase();
-        let score = 0;
-        for (const w of q) {
-            if (title.includes(w)) score += 4;
-            if (p.u.includes(w)) score += 2;
-            if (p.k.includes(w)) score += 1;
+// Match whole words, not substrings. Substring matching made 'act' hit
+// 'practice', 'contact' and 'characters', so the word was everywhere, counted
+// for nothing, and a question about Acts of parliament was answered from the
+// forms-of-address pages. Simple plurals still match, so 'book' finds 'books'.
+function matches(tokens, word) {
+    return tokens.has(word) || tokens.has(word + 's') || tokens.has(word + 'es') ||
+        (word.endsWith('s') && tokens.has(word.slice(0, -1)));
+}
+
+const tokenCache = new WeakMap();
+function fieldTokens(sec) {
+    let fields = tokenCache.get(sec);
+    if (!fields) {
+        fields = {
+            h: new Set(tokenise(sec.h)),
+            t: new Set(tokenise(sec.t)),
+            k: new Set(sec.k.split(' '))
+        };
+        tokenCache.set(sec, fields);
+    }
+    return fields;
+}
+
+// How discriminating a word is, measured over the index we already hold in
+// memory. Without this, a question's common words drown its rare ones: 'How do
+// I reference a book?' put 'reference' (in 43 section headings) on equal terms
+// with 'book' (in 7), and the section of book examples came 11th - just outside
+// the cut, which is exactly the answer the user was told did not exist.
+const dfCache = new Map();
+function docFreq(word) {
+    let df = dfCache.get(word);
+    if (df === undefined) {
+        df = 0;
+        for (const sec of SECTION_INDEX) {
+            const fields = fieldTokens(sec);
+            if (matches(fields.h, word) || matches(fields.k, word)) df++;
         }
-        if (score >= 3) scored.push([score, p]);
+        dfCache.set(word, df);
+    }
+    return df;
+}
+
+function idf(word) {
+    return Math.log(SECTION_INDEX.length / (1 + docFreq(word)));
+}
+
+function scoreSections(question) {
+    const asked = new Set(tokenise(question));
+    const hinted = new Set();
+    for (const w of tokenise(expandQuery(question))) {
+        if (!asked.has(w)) hinted.add(w);
+    }
+    const terms = [...[...asked].map(w => [w, 1]),
+                   ...[...hinted].map(w => [w, RETRIEVAL.HINT_WEIGHT])]
+        .map(([w, weight]) => [w, weight * Math.max(idf(w), 0.2)]);
+
+    const scored = [];
+    for (const sec of SECTION_INDEX) {
+        const fields = fieldTokens(sec);
+        let score = 0;
+        for (const [w, weight] of terms) {
+            // The keyword blob now holds only terms that are rare across the
+            // corpus, so a keyword hit is real evidence rather than noise.
+            let field = 0;
+            if (matches(fields.h, w)) field += 5;
+            if (matches(fields.k, w)) field += 3;
+            if (matches(fields.t, w)) field += 2;
+            if (sec.u.includes(w)) field += 1;
+            score += field * weight;
+        }
+        if (score >= RETRIEVAL.MIN_SCORE) scored.push([score, sec]);
     }
     scored.sort((a, b) => b[0] - a[0]);
-    return scored.slice(0, n).map(x => x[1]);
+    return scored;
 }
 
-async function fetchPageText(env, slug) {
-    const base = env.PAGES_BASE_URL || DEFAULTS.PAGES_BASE_URL;
-    try {
-        const res = await fetch(base + slug + '.md',
-            { cf: { cacheTtl: 86400, cacheEverything: true } });
-        if (!res.ok) return null;
-        return await res.text();
-    } catch { return null; }
+// Known limit: an off-topic question still retrieves its least-bad matches,
+// because its filler words hit something ('best' appears in 18 headings). A
+// score threshold was tried and dropped - genuine questions score 38 to 107 and
+// off-topic ones 27 to 33, too close to separate without refusing real
+// questions. The Ask prompt already handles it: it answers only style questions
+// and says plainly when the extracts do not cover what was asked.
+function retrieveSections(question) {
+    const scored = scoreSections(question);
+    const picked = [];
+    let used = 0;
+    for (const [, sec] of scored) {
+        if (picked.length >= RETRIEVAL.MAX_SECTIONS) break;
+        if (used + sec.n > RETRIEVAL.CHAR_BUDGET && picked.length) continue;
+        picked.push(sec);
+        used += sec.n;
+    }
+    return picked;
+}
+
+// The page text is bundled into the Worker (pages-content.js). It used to be
+// fetched from the published im2026/pages/ folder, which made the public repo
+// a browsable copy of the Style Manual. The manual carries no open licence, so
+// on 17 August 2026 the corpus moved in here: still used to answer questions,
+// no longer republished. It also removes a failure mode, since the index and
+// the text it numbers can no longer be deployed out of step.
+function pageText(slug) {
+    return PAGES[slug] || null;
+}
+
+// Cut a page into the same flat list of chunks that build_pages_index.py
+// numbered: chunk 0 is the preamble, then each H2 block, with any H2 block over
+// SPLIT_LIMIT split again at its H3 headings. The two must agree exactly - the
+// index stores only a chunk number, so a mismatch silently serves the wrong
+// text. tests/retrieval.test.mjs checks them against each other.
+const SPLIT_LIMIT = 6000;
+
+function chunkPage(md) {
+    const start = md.indexOf('\n# ');
+    const body = start === -1 ? md : md.slice(start + 3);
+    const parts = body.split(/^## /m);
+    const chunks = [parts[0]];
+    for (let i = 1; i < parts.length; i++) {
+        const text = '## ' + parts[i];
+        if (text.length <= SPLIT_LIMIT) { chunks.push(text); continue; }
+        const subs = text.split(/^### /m);
+        chunks.push(subs[0]);
+        for (let j = 1; j < subs.length; j++) chunks.push('### ' + subs[j]);
+    }
+    return chunks;
+}
+
+function sliceSection(md, i) {
+    const chunk = chunkPage(md)[i];
+    return chunk ? chunk.trim() : null;
+}
+
+function buildExtracts(sections) {
+    const out = [];
+    for (const sec of sections) {
+        const md = pageText(sec.s);
+        if (!md) continue;
+        const text = sliceSection(md, sec.i);
+        if (!text) continue;
+        out.push(`Page: ${sec.t}\nSection: ${sec.h || '(introduction)'}\n` +
+            `Source: ${sec.u}\n\n${text}`);
+    }
+    return out;
 }
 
 const AU_STYLE_CORE = `You write in Australian Government Style Manual style:
@@ -507,11 +646,10 @@ export default {
             : (env.MODEL || DEFAULTS.MODEL);
         let sources = null;
         if (spec.retrieval) {
-            const pages = retrievePages(userMsg, 4);
+            const sections = retrieveSections(userMsg);
             sources = {};
-            for (const p of pages) sources[p.u] = p.t;
-            const texts = await Promise.all(pages.map(p => fetchPageText(env, p.s)));
-            const extracts = texts.filter(Boolean);
+            for (const s of sections) sources[s.u] = s.t;
+            const extracts = buildExtracts(sections);
             if (extracts.length > 0) {
                 system += '\n\n==== STYLE MANUAL EXTRACTS ====\n\n' +
                     extracts.join('\n\n==== NEXT EXTRACT ====\n\n');

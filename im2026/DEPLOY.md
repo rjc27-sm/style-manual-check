@@ -8,7 +8,7 @@ There is no build step: plain HTML and vanilla JavaScript ES modules.
 | Surface | What lives there | How to deploy |
 |---|---|---|
 | GitHub Pages | Every file in the repo (master branch, repo root publishes) | `git push` |
-| Cloudflare Worker `im2026-proof-positive` | API proxy: holds the Claude API key, rate limits, retrieval index | `npx wrangler deploy` from `im2026/worker/` |
+| Cloudflare Worker `im2026-proof-positive` | API proxy: holds the Claude API key, rate limits, the retrieval index and the Style Manual page text | `npx wrangler deploy` from `im2026/worker/` |
 
 The site works without the worker: rule-based tools (document check, citation
 form) keep working; AI features show as unavailable.
@@ -36,28 +36,61 @@ form) keep working; AI features show as unavailable.
 - `GLOBAL_DAILY_LIMIT` – shared daily cap across all users; the cost
   safety-net. Raised to 1000 for the IM2026 judging window (July 2026) –
   consider dropping back afterwards.
-- `PAGES_BASE_URL` – where the worker fetches Style Manual page extracts
-  (the published `im2026/pages/` folder).
+- `PAGES_BASE_URL` – removed 17 August 2026. The page text is bundled into the
+  Worker; there is nothing to fetch.
 
-## Adding or updating an Ask source page
+## Refreshing the Ask source pages
 
-Ask retrieval has TWO parts that must both be updated:
+The Style Manual page text lives INSIDE the Worker, not on the public site.
+Two generated files, both bundled by `npx wrangler deploy`:
 
-1. The page content: add or edit the `.md` file in `im2026/pages/`
-   (format: `Title:` and `Source:` header lines, then `# Title` and the body;
-   `*italics*`, `**bold**`, `[text](url)` links, `- ` list items).
-   Published by `git push`.
-2. The retrieval index: add a matching `{s, u, t, k}` entry (slug, URL,
-   title, keywords) to `im2026/worker/pages-index.js`. The index is BUNDLED
-   INTO THE WORKER, so this needs `npx wrangler deploy` as well.
+- `im2026/worker/pages-content.js` - the page markdown, keyed by slug.
+- `im2026/worker/pages-index.js` - the retrieval index over SECTIONS of it.
 
-If a page is missing from the index it can never be retrieved; if it is in
-the index but the `.md` was not pushed, the worker fetch returns nothing and
-Ask answers without that extract.
+**Both are gitignored and must stay that way.** They hold Style Manual content
+(the index carries every section heading), and the manual is Crown copyright
+with no open licence. They go from your machine to Cloudflare via
+`wrangler deploy` without passing through the repository. A fresh clone will
+not have them: run the two scripts below before deploying. `npm test` skips the
+retrieval tests when they are absent rather than failing.
 
-Source pages are converted from manual Word copies of stylemanual.gov.au
-pages (paste into Word to preserve italics and links, then convert with the
-run-walker script). Content is © Commonwealth of Australia, CC BY 4.0.
+Both come from one script in one pass, which is what keeps them consistent:
+the index stores a chunk NUMBER and the worker re-derives chunks from the text,
+so a mismatch would silently serve the wrong text under the right heading.
+Never regenerate one without the other.
+
+```
+python scrape_stylemanual.py    # stylemanual.gov.au -> scraped_pages/ (gitignored)
+python build_pages_index.py     # scraped_pages/ -> both worker files
+node tests/retrieval.mjs        # checks they agree, and the known questions
+cd im2026/worker && npx wrangler deploy
+```
+
+`scrape_stylemanual.py` reads `style_manual_urls.txt` and writes complete
+markdown - `*italics*`, `**bold**`, tables, and the Example / Correct /
+Incorrect cards with their labels. Both scripts are at the repo root and are
+gitignored, like the other build scripts.
+
+This is a Worker-only change now: no `git push` needed for a source refresh,
+and no deploy-order trap, because the index and the text it numbers ship
+together.
+
+### Why the pages are not published
+
+Until 17 August 2026 the page text was served as static files from
+`im2026/pages/` and fetched by the Worker over HTTP. That made this public
+repository a browsable copy of the Style Manual.
+
+The Style Manual carries no open licence. Its disclaimer and copyright page
+asserts Crown copyright and has said nothing about Creative Commons since the
+site went live in 2020. The APSC's CC BY 4.0 grant is worded to cover material
+on `apsc.gov.au`, a different site. An earlier version of this file, and the
+site footer, claimed the content was used under CC BY 4.0. That was wrong and
+has been corrected.
+
+The content is © Commonwealth of Australia, Australian Government Style Manual,
+published by the Australian Public Service Commission. It is used to produce an
+answer and is not republished. Every answer links back to the source page.
 
 ## The sample briefing
 

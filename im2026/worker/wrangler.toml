@@ -25,8 +25,9 @@ MODEL = "claude-sonnet-5"
 # path and backward compatibility; harmless while every endpoint uses Sonnet).
 STRONG_MODEL = "claude-sonnet-5"
 ASK_MODEL = "claude-sonnet-5"
-# Where the scraped page extracts are hosted (the im2026/pages/ folder).
-PAGES_BASE_URL = "https://rjc27-sm.github.io/style-manual-check/im2026/pages/"
+# PAGES_BASE_URL is gone (17 Aug 2026). The Style Manual page text is bundled
+# into the Worker as pages-content.js instead of being served from the public
+# im2026/pages/ folder, so there is nothing to fetch and nothing published.
 IP_DAILY_LIMIT = "150"
 # Raised from 500 for the IM2026 judging window (Jul 2026) so a judge can
 # never hit "daily limit reached" mid-demo. Consider dropping back after.
