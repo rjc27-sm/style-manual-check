@@ -287,10 +287,13 @@ const LIST_CONVENTIONS = `- Follow the Style Manual's own list conventions in ev
   'Capitalise proper nouns' are complete sentences, not fragments.
   1. SENTENCE list - every item is a complete sentence, including any
      instruction, rule or step. Start each item with a capital letter and end
-     EVERY item with a full stop:
+     EVERY item with a full stop. That capital is sentence capitalisation, so
+     it applies whatever the first word is - an ordinary noun, a term you are
+     defining, or a term you are putting in bold. The 'minimal capitals' rule
+     governs words INSIDE a sentence, never the first letter of one:
          - Start each item with a capital letter.
          - End every item with a full stop.
-         - Keep the items parallel with each other.
+         - **Essential** information still takes a capital, despite the bold.
   2. FRAGMENT list - the items are phrases that could not stand alone as
      sentences. Start each item with a lower-case letter and put a full stop
      after the LAST item only, with no punctuation on any other item:
