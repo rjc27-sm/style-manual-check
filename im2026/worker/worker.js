@@ -20,6 +20,7 @@
 
 import { SECTION_INDEX } from './pages-index.js';
 import { PAGES } from './pages-content.js';
+import { applyListConventions } from '../src/list-convention.js';
 
 const DEFAULTS = {
     MODEL: 'claude-haiku-4-5',
@@ -315,7 +316,15 @@ const LIST_CONVENTIONS = `- Follow the Style Manual's own list conventions in ev
   Check for all three of these mistakes before you answer: a full stop on
   every item of a fragment list; a single closing full stop on a list whose
   items are really sentences or instructions; and a fragment list left with
-  no closing full stop at all.`;
+  no closing full stop at all.
+  On its own line immediately before each list's first item (after any
+  lead-in), write exactly [[list:sentence]], [[list:fragment]] or
+  [[list:standalone]], naming the type you decided. The marker is
+  machine-read and removed before the reader sees the answer; deterministic
+  code then imposes that type's punctuation. Still punctuate the items
+  yourself as described above. If a list deliberately shows WRONG
+  formatting as an example of a mistake, leave the marker off so the
+  example is not corrected.`;
 
 const PROMPTS = {
     fix: {
@@ -564,7 +573,10 @@ ${LIST_CONVENTIONS}
         shape(r) {
             const parts = r.split(/^\s*-{2,}\s*WHAT CHANGED\s*-{2,}\s*$/mi);
             return {
-                rewrite: (parts[0] || r).trim(),
+                // Impose the model-declared list types and strip the
+                // [[list:...]] markers before anything leaves the Worker.
+                // The change notes are prose, so they are left alone.
+                rewrite: applyListConventions((parts[0] || r).trim()),
                 changes: (parts[1] || '').split('\n')
                     .map(l => l.replace(/^\s*[-•*]\s*/, '').trim())
                     .filter(Boolean).slice(0, 5)
@@ -608,7 +620,10 @@ ${LIST_CONVENTIONS}
         history: true,
         retrieval: true,
         strong: true,
-        shape: r => ({ answer: r.trim() })
+        // The declared-type pass runs here in the Worker so [[list:...]]
+        // markers never reach a browser (an old cached page would render
+        // them raw). The client's autoCorrect still runs afterwards.
+        shape: r => ({ answer: applyListConventions(r.trim()) })
     }
 };
 
