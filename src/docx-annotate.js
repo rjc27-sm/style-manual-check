@@ -430,7 +430,7 @@ const SLUG_PROPER_NOUNS = {
  * used - they're in this engine's own link-generic-text blocklist.
  * .../structuring-content/headings -> 'Style Manual guidance on headings'
  */
-function linkLabel(url) {
+export function linkLabel(url) {
     const path = String(url).split(/[?#]/)[0].replace(/\/+$/, '');
     const topic = (path.split('/').pop() || '')
         .replace(/\.[a-z0-9]+$/i, '')

@@ -33,7 +33,7 @@ for the full bot card, limitations and accessibility statement.
 - **Static site** (`im2026/`): plain HTML + vanilla JavaScript ES modules,
   no framework, no build step. Published by GitHub Pages from the repo root.
 - **Rule engine** (`src/rules.js`, `src/list-analysis.js`,
-  `src/spellings.js`): 102 rules across 12 categories, 1,829 US→AU spelling
+  `src/spellings.js`): 107 rules across 12 categories, 1,829 US→AU spelling
   mappings. Runs in the browser; documents never leave the user's device.
 - **Cloudflare Worker** (`im2026/worker/`): the only server component. Holds
   the Claude API key, enforces per-IP and global daily limits, and answers Ask
@@ -60,7 +60,6 @@ im2026/                 Proof Positive – the current tool (published site)
   about.html            How it works, bot card, accessibility statement
   src/                  Page logic + AI client + verification (autoCorrect)
   worker/               Cloudflare Worker proxy + bundled Ask corpus and index
-  skill/                Claude skill mirroring the rule engine
 src/                    Canonical shared rule engine
   rules.js              The rules (id, name, category, description, link, check)
   list-analysis.js      List-type detection and list rules

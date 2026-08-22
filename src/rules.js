@@ -4,7 +4,26 @@
  * Batch 1 triage-register rules added July 2026.
  */
 
-import { SPELLINGS, COMMON_ERRORS, ERRORS_WITH_NOTES, WATCH_WORDS, WORDY_PHRASES, PREFIX_SPELLINGS } from './spellings.js';
+import { SPELLINGS, COMMON_ERRORS, ERRORS_WITH_NOTES, WATCH_WORDS, WORDY_PHRASES, PREFIX_SPELLINGS,
+    GENDERED_TERMS, DISABILITY_TERMS, AGE_TERMS } from './spellings.js';
+
+/**
+ * Switches the calling tool can set before running the rules.
+ *
+ * The three advisory inclusive-language term rules are the reason this
+ * exists. Departments differ on these terms, so a tool sharing this engine
+ * needs a way to turn them off without editing a rule.
+ *
+ * The rules read this object themselves rather than relying on checkText to
+ * filter, because every tool iterates RULES directly instead of calling
+ * checkText. Set it before checking; it is read on every run.
+ */
+const RULE_OPTIONS = {
+    // Gendered, disability and age term lists (advisory, never autofixed).
+    // The four First Nations and 'Christian name' rules are NOT covered by
+    // this switch - those are settled Style Manual guidance, not preference.
+    inclusiveTerms: true
+};
 
 // Abbreviations written without full stops. Shared by
 // 'abbrev-common-full-stop' and the sentence-start guard in
@@ -37,6 +56,50 @@ const IDENTIFIER_LABEL_BEFORE = new RegExp(
     'abn|acn|arbn|tfn|crn|isbn|issn|doi|medicare|account|acct|invoice|' +
     'receipt|reference|ref|purchase\\s?order|po|room|serial|licence|' +
     'registration|permit|version)\\b[^\\w]{0,4}$', 'i');
+
+// Small words ignored when matching an expansion against its short form.
+// 'Australian Institute of Health and Welfare (AIHW)' has no O and no A in
+// it, but 'Return on Investment (ROI)' needs the 'on'. A small word counts
+// only when the token asks for that letter next.
+const EXPANSION_SMALL_WORDS = new Set(
+    ['of', 'and', 'for', 'the', 'in', 'on', 'to', 'a', 'an', 'at', 'with', 'or']);
+
+// Short forms that never need expanding on first use. Two groups:
+//  - strings that are not acronyms at all (states and territories, eras,
+//    Roman numerals, all-caps unit symbols)
+//  - short forms nobody spells out in practice
+// Agreed with Jen, 21 August 2026: exempt the universally known ones, but
+// not agency names - ABS and AIHW mean nothing to a reader outside the APS.
+// Edit this list rather than the rule.
+const EXPANSION_EXEMPT = new Set([
+    // States and territories
+    'NSW', 'VIC', 'QLD', 'SA', 'WA', 'TAS', 'NT', 'ACT',
+    // Times, eras and Roman numerals
+    'AM', 'PM', 'AD', 'BC', 'BCE', 'CE', 'WWI', 'WWII',
+    'II', 'III', 'IV', 'VI', 'VII', 'VIII', 'IX',
+    'XI', 'XII', 'XIII', 'XIV', 'XV', 'XVI', 'XVII', 'XVIII', 'XIX', 'XX',
+    // All-caps unit symbols
+    'ML', 'KL', 'GL', 'KB', 'MB', 'GB', 'TB', 'KW', 'MW', 'GW', 'KJ', 'MJ',
+    'HZ', 'KHZ', 'MHZ', 'GHZ',
+    // Widely known short forms
+    'PDF', 'HTML', 'URL', 'TV', 'DNA', 'GST', 'ABN', 'TFN', 'OK',
+    'COVID', 'AI', 'IT', 'FAQ', 'PIN'
+]);
+
+// Job titles that can be formal or quoted rather than a description of a
+// person. 'the Chairman of the Board' is a title; 'the chairman said' is not.
+const ADVISORY_TITLE_TERMS = new Set(['chairman', 'chairwoman', 'foreman']);
+
+// Subjects that make 'suffers from' ordinary English rather than the
+// disability usage: 'the sector suffers from underfunding'.
+const NON_PERSON_SUBJECT_BEFORE = new RegExp(
+    '\\b(?:sector|sectors|system|systems|industry|economy|market|markets|' +
+    'program|programme|project|department|agency|agencies|organisation|' +
+    'organisations|service|services|scheme|schemes|region|network|process|' +
+    'model|framework|plan|policy|report|website|database|building|town|city|' +
+    'state|country|government|council|committee|board|business|company|site|' +
+    'facility|infrastructure|team|branch|office|area|areas|budget|fund|' +
+    'funding|portfolio|response|approach|design|proposal)\\s+$', 'i');
 
 // Australian phone-number shapes, in claim order. 'chunks' holds the standard
 // grouping the Style Manual asks for; it is null when the string is clearly a
@@ -3978,15 +4041,295 @@ const RULES = [
             }
             return issues;
         }
+    },
+
+    // ==================== BATCH 4 - INCLUSIVE LANGUAGE TERMS AND ACRONYMS (August 2026) ====================
+    // The three term rules below are ADVISORY: they never carry an autoFix,
+    // because some people prefer the exact term the list suggests replacing.
+    // They are switched off together by RULE_OPTIONS.inclusiveTerms.
+    {
+        id: 'inclusive-gendered-term',
+        name: 'Gendered term',
+        category: 'inclusive-language',
+        description: 'Use a gender-neutral term unless a person\'s gender is relevant and known.',
+        link: 'https://www.stylemanual.gov.au/accessible-and-inclusive-content/inclusive-language/gender-and-sexual-diversity',
+        advisory: true,
+        check: function(text) {
+            return advisoryTermIssues(text, GENDERED_TERMS, this);
+        }
+    },
+    {
+        id: 'inclusive-disability-term',
+        name: 'Disability term',
+        category: 'inclusive-language',
+        description: 'Use person-first language and avoid words that imply suffering or limitation. Community preference varies, so check with the people you are writing about.',
+        link: 'https://www.stylemanual.gov.au/accessible-and-inclusive-content/inclusive-language/disability-and-neurodiversity',
+        advisory: true,
+        check: function(text) {
+            return advisoryTermIssues(text, DISABILITY_TERMS, this);
+        }
+    },
+    {
+        id: 'inclusive-age-term',
+        name: 'Age term',
+        category: 'inclusive-language',
+        description: 'Describe people by age without treating older people as a single group. Write \'older people\' rather than \'the elderly\'.',
+        link: 'https://www.stylemanual.gov.au/accessible-and-inclusive-content/inclusive-language/age-diversity',
+        advisory: true,
+        check: function(text) {
+            return advisoryTermIssues(text, AGE_TERMS, this);
+        }
+    },
+    {
+        id: 'abbrev-first-use-not-expanded',
+        name: 'Short form not expanded on first use',
+        category: 'abbreviations',
+        description: 'Spell the name out in full the first time it appears, then put the short form in brackets. Use the short form after that.',
+        link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/shortened-words-and-phrases/acronyms-and-initialisms',
+        // The engine does not know what the letters stand for, so there is no
+        // autoFix - and no AI draft either. A guess is worse than a flag.
+        aiExempt: true,
+        check: function(text) {
+            const issues = [];
+            const seen = new Set();
+            const regex = /\b([A-Z]{2,6})(s?)\b/g;
+            let match;
+            while ((match = regex.exec(text)) !== null) {
+                const token = match[1];
+                // An all-caps heading and a web address are not uses of a
+                // short form, so they do not consume the first use either.
+                if (inAllCapsRun(text, match.index)) continue;
+                if (inUrlOrEmail(text, match.index)) continue;
+                if (seen.has(token)) continue;
+                seen.add(token);
+                if (EXPANSION_EXEMPT.has(token)) continue;
+                if (NOT_ACRONYM_WORDS.includes(token.toLowerCase())) continue;
+                if (expansionStartBefore(text, match.index, token) !== -1) continue;
+                if (expansionAfter(text, match.index + match[0].length, token)) continue;
+                issues.push({
+                    found: match[0],
+                    suggestion: 'Give the full name first, then \'' + match[0] + '\' in brackets',
+                    position: match.index,
+                    matchWholeWord: true,
+                    rule: this
+                });
+            }
+            return issues;
+        }
+    },
+    {
+        id: 'abbrev-expanded-after-first-use',
+        name: 'Full name repeated after the short form is defined',
+        category: 'abbreviations',
+        description: 'Once you have given the full name and its short form, use the short form on its own. Repeating the full name with the short form in brackets makes the text longer to read.',
+        link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/shortened-words-and-phrases/acronyms-and-initialisms',
+        check: function(text) {
+            const issues = [];
+            const defined = new Set();
+            const regex = /\(([A-Z]{2,6})(s?)\)/g;
+            let match;
+            while ((match = regex.exec(text)) !== null) {
+                const token = match[1];
+                const start = expansionStartBefore(text, match.index, token);
+                if (start === -1) continue;
+                if (!defined.has(token)) {
+                    defined.add(token);
+                    continue;
+                }
+                const short = token + match[2];
+                issues.push({
+                    found: text.slice(start, match.index + match[0].length),
+                    suggestion: short,
+                    autoFix: short,
+                    position: start,
+                    rule: this
+                });
+            }
+            return issues;
+        }
     }
 ];
 
+/**
+ * Shared matcher for the three advisory inclusive-language term lists.
+ * Advisory means no autoFix, ever - the stored values are already phrased as
+ * 'Consider using ...' and that phrasing is carried straight through.
+ *
+ * Longest term first, first claim wins, so 'the elderly' produces one issue
+ * rather than two ('elderly' is a separate entry in the same list).
+ */
+function advisoryTermIssues(text, terms, rule) {
+    if (!RULE_OPTIONS.inclusiveTerms) return [];
+    const issues = [];
+    const claimed = [];
+    const entries = Object.entries(terms).sort((a, b) => b[0].length - a[0].length);
+    for (const [term, suggestion] of entries) {
+        const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const regex = new RegExp('\\b' + escaped + '\\b', 'gi');
+        let match;
+        while ((match = regex.exec(text)) !== null) {
+            const start = match.index;
+            const end = start + match[0].length;
+            if (claimed.some(c => start < c.end && end > c.start)) continue;
+            if (advisoryFalsePositive(text, match[0], start, term)) continue;
+            claimed.push({ start, end });
+            const replacementMatches = suggestion.match(/'([^']+)'/g);
+            issues.push({
+                found: match[0],
+                suggestion: suggestion,
+                replacements: replacementMatches
+                    ? replacementMatches.map(m => m.replace(/'/g, ''))
+                    : [],
+                position: start,
+                matchWholeWord: true,
+                groupId: rule.id + ':' + match[0].toLowerCase(),
+                rule: rule
+            });
+        }
+    }
+    issues.sort((a, b) => a.position - b.position);
+    return issues;
+}
+
+/**
+ * Known false positives for the advisory term lists. Each one is a real
+ * reading of the term, not a hypothetical.
+ */
+function advisoryFalsePositive(text, found, position, term) {
+    // 'Manning' is a surname. Only the lower-case verb is the gendered use.
+    if (term === 'manning' && /^[A-Z]/.test(found)) return true;
+    // A formal or quoted job title stands as written.
+    if (ADVISORY_TITLE_TERMS.has(term)) {
+        if (properNounGuard(text, position, found) === 'name') return true;
+        if (insideQuotes(text, position)) return true;
+    }
+    // 'suffers from' is only the disability usage when a person suffers.
+    if (term === 'suffers from') {
+        const from = Math.max(0, position - 40);
+        if (NON_PERSON_SUBJECT_BEFORE.test(text.slice(from, position))) return true;
+    }
+    return false;
+}
+
+/**
+ * True when the position sits inside a quoted span on its own line. A quoted
+ * job title is being reported, not used, so the advisory lists leave it
+ * alone. Straight single quotes are deliberately not handled - an apostrophe
+ * looks identical and would suppress real findings.
+ */
+function insideQuotes(text, position) {
+    const lineStart = text.lastIndexOf('\n', position - 1) + 1;
+    let lineEnd = text.indexOf('\n', position);
+    if (lineEnd === -1) lineEnd = text.length;
+    const line = text.slice(lineStart, lineEnd);
+    const offset = position - lineStart;
+    const pairs = [['‘', '’'], ['“', '”'], ['"', '"']];
+    for (const [open, close] of pairs) {
+        let i = 0;
+        while (i < line.length) {
+            const openAt = line.indexOf(open, i);
+            if (openAt === -1 || openAt >= offset) break;
+            const closeAt = line.indexOf(close, openAt + 1);
+            if (closeAt === -1) break;
+            if (offset > openAt && offset < closeAt) return true;
+            i = closeAt + 1;
+        }
+    }
+    return false;
+}
+
+/**
+ * An all-caps heading or banner is not a set of acronyms. The test is the
+ * proportion of the line, not a raw count: 'The AIHW, ABS and ATO agreed'
+ * has three all-caps words and is ordinary prose.
+ */
+function inAllCapsRun(text, position) {
+    const lineStart = text.lastIndexOf('\n', position - 1) + 1;
+    let lineEnd = text.indexOf('\n', position);
+    if (lineEnd === -1) lineEnd = text.length;
+    const words = text.slice(lineStart, lineEnd).match(/[A-Za-z][A-Za-z'’-]*/g) || [];
+    if (words.length < 3) return false;
+    const caps = words.filter(w => /^[A-Z]+$/.test(w));
+    return caps.length >= 3 && caps.length / words.length >= 0.7;
+}
+
+/** True when the position sits inside a web address or an email address. */
+function inUrlOrEmail(text, position) {
+    let start = position;
+    while (start > 0 && !/\s/.test(text[start - 1])) start--;
+    let end = position;
+    while (end < text.length && !/\s/.test(text[end])) end++;
+    return /:\/\/|@|^www\./.test(text.slice(start, end));
+}
+
+/**
+ * Walk back from 'position' over the words of the current sentence, matching
+ * their initials against 'token' from right to left. A small word is ignored
+ * unless it supplies the letter the token needs next, so both 'Australian
+ * Institute of Health and Welfare (AIHW)' and 'Return on Investment (ROI)'
+ * match. Returns the index where the matching phrase starts, or -1.
+ */
+function expansionStartBefore(text, position, token) {
+    let sentenceStart = 0;
+    for (let i = position - 1; i >= 0; i--) {
+        const ch = text[i];
+        if (ch === '\n' || '.!?;:'.includes(ch)) {
+            sentenceStart = i + 1;
+            break;
+        }
+    }
+    const before = text.slice(sentenceStart, position);
+    const words = [];
+    const wordRegex = /[A-Za-z][A-Za-z'’]*/g;
+    let m;
+    while ((m = wordRegex.exec(before)) !== null) {
+        words.push({ text: m[0], index: sentenceStart + m.index });
+    }
+    let ti = token.length - 1;
+    let start = -1;
+    for (let i = words.length - 1; i >= 0 && ti >= 0; i--) {
+        const word = words[i].text;
+        const small = EXPANSION_SMALL_WORDS.has(word.toLowerCase());
+        if (word[0].toUpperCase() === token[ti] && (/^[A-Z]/.test(word) || small)) {
+            ti--;
+            start = words[i].index;
+            continue;
+        }
+        if (small) continue;
+        break;
+    }
+    return ti < 0 ? start : -1;
+}
+
+/**
+ * The reversed form - short form first, full name in brackets after it - is
+ * still an expansion. Flagging it as unexpanded would be plainly wrong.
+ */
+function expansionAfter(text, position, token) {
+    const m = /^\s*\(([^)]{2,180})\)/.exec(text.slice(position, position + 200));
+    if (!m) return false;
+    const words = m[1].match(/[A-Za-z][A-Za-z'’]*/g) || [];
+    let ti = 0;
+    for (let i = 0; i < words.length && ti < token.length; i++) {
+        const word = words[i];
+        const small = EXPANSION_SMALL_WORDS.has(word.toLowerCase());
+        if (word[0].toUpperCase() === token[ti] && (/^[A-Z]/.test(word) || small)) {
+            ti++;
+            continue;
+        }
+        if (small) continue;
+        break;
+    }
+    return ti === token.length;
+}
+
 // Helper: preserve case when replacing
-// Helper: convert text to sentence case (first letter caps, rest lowercase)
-// Preserves all-caps words that are likely acronyms (2-5 chars) but not common words
-function toSentenceCase(text) {
-    // Common words that should not be treated as acronyms even when all caps
-    const commonWords = ['a', 'an', 'the', 'and', 'but', 'or', 'for', 'nor', 'so', 'yet',
+
+// Words that are still ordinary words when they appear in capitals, so a run
+// of them is emphasis or a heading rather than a set of acronyms. Shared by
+// 'toSentenceCase' (which preserves real acronyms when it sentence-cases a
+// heading) and 'abbrev-first-use-not-expanded'.
+const NOT_ACRONYM_WORDS = ['a', 'an', 'the', 'and', 'but', 'or', 'for', 'nor', 'so', 'yet',
                         'on', 'at', 'to', 'by', 'of', 'in', 'is', 'it', 'as', 'if', 'be',
                         'am', 'are', 'was', 'were', 'been', 'has', 'have', 'had', 'do', 'does',
                         'did', 'will', 'would', 'could', 'should', 'may', 'might', 'must',
@@ -3998,6 +4341,11 @@ function toSentenceCase(text) {
                         'long', 'great', 'little', 'own', 'other', 'old', 'right', 'big',
                         'high', 'different', 'small', 'large', 'next', 'early', 'young',
                         'important', 'public', 'bad', 'same', 'able'];
+
+// Helper: convert text to sentence case (first letter caps, rest lowercase)
+// Preserves all-caps words that are likely acronyms (2-5 chars) but not common words
+function toSentenceCase(text) {
+    const commonWords = NOT_ACRONYM_WORDS;
     const words = text.split(/\s+/);
     return words.map((word, index) => {
         const wordLower = word.toLowerCase();
@@ -4137,4 +4485,4 @@ function getCategories() {
 }
 
 // Export for use in add-in
-export { RULES, checkText, getCategories, preserveCase };
+export { RULES, RULE_OPTIONS, checkText, getCategories, preserveCase };

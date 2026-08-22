@@ -64,3 +64,9 @@ im2026/worker/.wrangler/
 # the live dictionary. Added 17 Aug 2026 - the count had been hand-maintained
 # and drifted. Run it after any src/spellings.js change.
 /build_spellings_md.mjs
+# Regenerates skills/au-style-manual-review/references/*.md from the engine.
+# Added 21 Aug 2026. Run it after any change to src/rules.js,
+# src/list-analysis.js or src/spellings.js, or the skill drifts from the tool.
+# (The skill folder itself is already excluded by the *.md rule above.
+# Publishing it is a separate decision - see the brief's open question 3.)
+/build_skill.mjs

@@ -8,7 +8,7 @@
  * - shouldFlag false -> the rule must report no issues on the text
  * - expectedFix (optional) -> the first issue's autoFix must equal this
  */
-import { RULES } from '../src/rules.js';
+import { RULES, RULE_OPTIONS } from '../src/rules.js';
 
 const CASES = [
     // ---- punct-and-or (PU-01) ----
@@ -293,7 +293,61 @@ const CASES = [
     ['readability-passive-voice', 'the board approved the report', false],
     ['readability-passive-voice', 'data were collected in 2024', false],
     ['readability-passive-voice', 'the venue is located by the river', false],
-    ['readability-passive-voice', 'people aged by decade groupings', false]
+    ['readability-passive-voice', 'people aged by decade groupings', false],
+
+    // ---- inclusive-gendered-term (advisory: never an autoFix) ----
+    ['inclusive-gendered-term', 'The chairman opened the meeting.', true],
+    ['inclusive-gendered-term', 'We are manning the front desk.', true],
+    ['inclusive-gendered-term', 'Manpower planning starts in July.', true],
+    ['inclusive-gendered-term', 'The spokeswoman confirmed the date.', true],
+    // Known false positives (brief, section 5.1)
+    ['inclusive-gendered-term', 'Peggy Manning chaired the review.', false],
+    ['inclusive-gendered-term', 'She met the Chairman of the Board on Tuesday.', false],
+    ['inclusive-gendered-term', 'His title was “Chairman” until 2019.', false],
+    ['inclusive-gendered-term', 'The panel appointed a chair.', false],
+
+    // ---- inclusive-disability-term ----
+    ['inclusive-disability-term', 'He suffers from asthma.', true],
+    ['inclusive-disability-term', 'Services for the disabled are funded.', true],
+    ['inclusive-disability-term', 'The centre supports hearing impaired students.', true],
+    // 'suffers from' outside any disability context
+    ['inclusive-disability-term', 'The sector suffers from underfunding.', false],
+    ['inclusive-disability-term', 'The system suffers from long delays.', false],
+    ['inclusive-disability-term', 'People with disability use the service.', false],
+
+    // ---- inclusive-age-term ----
+    ['inclusive-age-term', 'Support for the elderly is increasing.', true],
+    ['inclusive-age-term', 'Elderly patients wait longer.', true],
+    ['inclusive-age-term', 'Older Australians wait longer.', false],
+
+    // ---- abbrev-first-use-not-expanded (judgement: never an autoFix) ----
+    ['abbrev-first-use-not-expanded', 'The AIHW reported a rise.', true],
+    ['abbrev-first-use-not-expanded', 'Two NDIS participants joined.', true],
+    ['abbrev-first-use-not-expanded', 'The AIHW, ABS and ATO agreed.', true],
+    // Expanded before the short form, small words ignored
+    ['abbrev-first-use-not-expanded',
+        'The Australian Institute of Health and Welfare (AIHW) reported a rise. ' +
+        'The AIHW also noted a fall.', false],
+    ['abbrev-first-use-not-expanded', 'Return on Investment (ROI) was low.', false],
+    // Expanded after the short form - still an expansion
+    ['abbrev-first-use-not-expanded',
+        'AIHW (Australian Institute of Health and Welfare) reported a rise.', false],
+    // Stoplisted: states, universally known short forms, all-caps headings, URLs
+    ['abbrev-first-use-not-expanded', 'The report covers NSW and the ACT.', false],
+    ['abbrev-first-use-not-expanded', 'Send the PDF before 5 pm.', false],
+    ['abbrev-first-use-not-expanded', 'PDFs and URLs are fine.', false],
+    ['abbrev-first-use-not-expanded', 'EXECUTIVE SUMMARY OF FINDINGS', false],
+    ['abbrev-first-use-not-expanded', 'See https://example.gov.au/ABC/page for detail.', false],
+
+    // ---- abbrev-expanded-after-first-use (autofixable) ----
+    ['abbrev-expanded-after-first-use',
+        'The Australian Institute of Health and Welfare (AIHW) reported a rise. ' +
+        'The Australian Institute of Health and Welfare (AIHW) also noted a fall.',
+        true, 'AIHW'],
+    ['abbrev-expanded-after-first-use',
+        'The Australian Institute of Health and Welfare (AIHW) reported a rise.', false],
+    ['abbrev-expanded-after-first-use',
+        'A total of 5 mg (MGT) was recorded.', false]
 ];
 
 // Batch 3 structure rules: [ruleId, text, docCtx, shouldFlag, expectedFix?]
@@ -455,6 +509,51 @@ for (const [ruleId, text, docCtx, shouldFlag, expectedFix] of CTX_CASES) {
     ok ? pass++ : fail++;
 }
 
+// Issue-count cases: [ruleId, text, expectedCount, options?]
+// Some behaviour is only visible in the count - overlapping term-list entries
+// must produce one issue, not two, and the advisory switch must produce none.
+const COUNT_CASES = [
+    // 'the elderly' and 'elderly' are both AGE_TERMS entries; longest wins.
+    ['inclusive-age-term', 'Support for the elderly is increasing.', 1],
+    // 'wheelchair-bound' must not also match as a bare 'wheelchair bound'.
+    ['inclusive-disability-term', 'A wheelchair-bound resident applied.', 1],
+    // The switch turns all three advisory rules off, and nothing else.
+    ['inclusive-age-term', 'Support for the elderly is increasing.', 0,
+        { inclusiveTerms: false }],
+    ['inclusive-gendered-term', 'The chairman opened the meeting.', 0,
+        { inclusiveTerms: false }],
+    ['inclusive-disability-term', 'He suffers from asthma.', 0,
+        { inclusiveTerms: false }],
+    ['inclusive-atsi', 'The ATSI population grew.', 1, { inclusiveTerms: false }],
+    // Only the FIRST use of a short form is flagged.
+    ['abbrev-first-use-not-expanded', 'The NDIS funds it. The NDIS also reports on it.', 1]
+];
+
+for (const [ruleId, text, expected, options] of COUNT_CASES) {
+    const rule = ruleById.get(ruleId);
+    if (!rule) {
+        console.log('FAIL - unknown rule id: ' + ruleId);
+        fail++;
+        continue;
+    }
+    const saved = RULE_OPTIONS.inclusiveTerms;
+    if (options) Object.assign(RULE_OPTIONS, options);
+    let issues = [];
+    let threw = null;
+    try { issues = rule.check(text); } catch (err) { threw = err; }
+    RULE_OPTIONS.inclusiveTerms = saved;
+    if (threw) {
+        console.log('FAIL - ' + ruleId + ' threw :: ' + threw.message);
+        fail++;
+        continue;
+    }
+    const ok = issues.length === expected;
+    console.log((ok ? 'PASS' : 'FAIL') + ' - ' + ruleId + ' (count) :: ' +
+        JSON.stringify(text) +
+        (ok ? '' : ' :: expected ' + expected + ', got ' + issues.length));
+    ok ? pass++ : fail++;
+}
+
 // Position integrity: every reported position must match the found text
 let posErrors = 0;
 for (const [ruleId, text] of CASES) {
@@ -473,5 +572,5 @@ for (const [ruleId, text] of CASES) {
 }
 if (posErrors === 0) console.log('PASS - all issue positions match their found text');
 
-console.log('\n' + pass + ' passed, ' + (fail + posErrors) + ' failed, ' + (CASES.length + CTX_CASES.length) + ' cases');
+console.log('\n' + pass + ' passed, ' + (fail + posErrors) + ' failed, ' + (CASES.length + CTX_CASES.length + COUNT_CASES.length) + ' cases');
 process.exit(fail + posErrors ? 1 : 0);

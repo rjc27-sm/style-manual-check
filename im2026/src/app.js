@@ -246,8 +246,11 @@ function passageFor(issue) {
 function aiEligible(issue) {
     // List issues are excluded: the comment points at the Format a list tool,
     // and a prose rewrite of one item would contradict that advice.
+    // A rule marked aiExempt is excluded because the AI has nothing to work
+    // from - 'abbrev-first-use-not-expanded' would have to invent the full
+    // name the letters stand for, and a guess is worse than a flag.
     return AI_ENABLED && !issue.autoFix && issue.rule.category !== 'lists' &&
-        passageFor(issue).length >= 20;
+        !issue.rule.aiExempt && passageFor(issue).length >= 20;
 }
 
 function renderResults() {
@@ -370,8 +373,11 @@ async function handleAiFix(idx, extraGuidance) {
         });
         const reviseBtn = slot.querySelector('[data-ai-revise]');
         if (reviseBtn) reviseBtn.addEventListener('click', () => {
-            const flagged = check.issues.slice(0, 5).map(i =>
-                i.rule.name + ' (found: "' + i.found + '")').join('; ');
+            // aiExempt rules are left out here for the same reason they get no
+            // 'Fix with AI' button: asking the model to expand a short form it
+            // cannot know the meaning of invites an invented full name.
+            const flagged = check.issues.filter(i => !i.rule.aiExempt).slice(0, 5)
+                .map(i => i.rule.name + ' (found: "' + i.found + '")').join('; ');
             handleAiFix(idx, 'Your previous rewrite was: "' + rewriteText +
                 '". The rule engine flagged these remaining issues - fix them as well: ' + flagged);
         });
