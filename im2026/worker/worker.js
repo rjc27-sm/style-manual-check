@@ -16,6 +16,11 @@
  *   MODEL              - Claude model id
  *   IP_DAILY_LIMIT     - requests per IP per day (default 40)
  *   GLOBAL_DAILY_LIMIT - requests across all users per day (default 500)
+ *   RATE_KEY_PREFIX    - prefix for every rate-counter key (default none).
+ *                        Set it when testing so a `wrangler dev` session keeps
+ *                        its own counters and cannot exhaust the real users'
+ *                        budget:
+ *                          npx wrangler dev --remote --var RATE_KEY_PREFIX:dev-
  */
 
 import { SECTION_INDEX } from './pages-index.js';
@@ -356,7 +361,8 @@ the markers, capitals and full stops - so you must NOT add bullets, numbers or
 end punctuation yourself.
 ${AU_STYLE_CORE}
 
-DECIDE THE TYPE - look at the ITEMS first, then the lead-in:
+DECIDE THE TYPE - the items decide sentence versus fragment; the first line
+decides whether the list can be stand-alone at all:
 - Decide the type from the items AS THE USER TYPED THEM, before you rewrite
   anything. Then rewrite the items to suit the type you chose. Never rewrite
   items into a different grammatical form in order to justify a different
@@ -379,15 +385,24 @@ DECIDE THE TYPE - look at the ITEMS first, then the lead-in:
   a list of steps, instructions or rules is a sentence list; do NOT apply the
   fragment test to it. EXCEPTION: if the lead-in names who acts ("Participants
   will:", "You must:"), the items complete that lead-in and are fragments.
-- If the items are fragments (phrases that are not complete sentences):
-  - If there is a lead-in they complete, apply the fragment test: attach each
-    item to the lead-in; if the result is a complete, grammatical sentence, the
-    type is "fragment".
-  - If there is only a heading and nothing for the fragments to complete, the
-    type is "standAlone".
-- Use "standAlone" ONLY when the items AS TYPED are all words or short noun
-  phrases with no verb doing work - a list of names, places, categories,
-  documents or reference types. If any item as typed is a sentence or a
+- If the items are fragments (phrases that are not complete sentences), apply
+  the fragment test: attach one item to the first line; if the result reads as
+  a complete, grammatical sentence, the type is "fragment".
+- "standAlone" is decided by the FIRST LINE, not by the items. It is only for a
+  list under a HEADING: a short label with no verb, which does not read on into
+  the items - "Report sections", "Key contacts", "Document status", "Available
+  templates".
+- A first line containing a verb the items complete is a LEAD-IN, not a
+  heading - "The kit includes", "Applicants must provide", "The induction pack
+  contains", "The rollout will involve". A list under a lead-in is a fragment
+  list (or a sentence list) however short and noun-like its items are. Items
+  like "a laptop", "proof of identity" or "age at diagnosis" do NOT make a list
+  stand-alone; only a heading above them does.
+- A first line that is a complete sentence is a lead-in too, never a heading.
+- NEVER delete words from the first line to make it read as a heading. Keep the
+  writer's wording; the formatter fixes the punctuation.
+- Additionally, "standAlone" needs items that are all words or short noun
+  phrases with no verb doing work. If any item as typed is a sentence or a
   command, the list is not "standAlone".
 
 REWRITE THE ITEMS:
@@ -404,6 +419,13 @@ REWRITE THE ITEMS:
   "standAlone" lists the formatter will capitalise the first letter, so case
   does not matter there.
 - Do not add a full stop, semicolon, comma, bullet or number to any item.
+- If the last item trails off with "etc.", "and so on" or "and the like", drop
+  those words. Never keep them and never turn them into an item of their own.
+  If the first line does not already show that the list is a sample (with
+  "including", "such as", "for example" or "some of"), move that signal into
+  the first line instead - "Standard equipment" becomes "Standard equipment
+  includes:", which makes it a fragment list. Leave a first line that already
+  signals it alone.
 
 MULTILEVEL LISTS:
 - The user message may mark each item with its level: "0:" for a first-level
@@ -659,6 +681,29 @@ async function bumpCounter(env, key, limit) {
     return true;
 }
 
+/**
+ * Count refusals, so a cap nobody is hitting can be told apart from a cap
+ * everybody is hitting quietly.
+ *
+ * A user who runs out sees 'try AI again tomorrow' and usually just closes the
+ * tab - there is nothing that looks like a bug to report. 'Nobody has reported
+ * hitting the cap' is therefore not evidence that nobody has. These counters
+ * make that a question with an answer (22 August 2026). Read them with:
+ *   npx wrangler kv key get --namespace-id <id> --remote "blocked:ip:YYYY-MM-DD"
+ *
+ * Kept for 30 days, not the counters' 25 hours, so a fortnightly look back
+ * still sees them. Never allowed to fail a request: this is diagnostics.
+ */
+async function noteBlocked(env, key) {
+    try {
+        const raw = await env.RATE_KV.get(key);
+        const count = raw ? parseInt(raw, 10) : 0;
+        await env.RATE_KV.put(key, String(count + 1), { expirationTtl: 2592000 });
+    } catch {
+        // A diagnostic counter must never turn a 429 into a 500.
+    }
+}
+
 // ---------------- main ----------------
 
 export default {
@@ -683,13 +728,18 @@ export default {
         const day = new Date().toISOString().slice(0, 10);
         const ipLimit = parseInt(env.IP_DAILY_LIMIT || DEFAULTS.IP_DAILY_LIMIT, 10);
         const globalLimit = parseInt(env.GLOBAL_DAILY_LIMIT || DEFAULTS.GLOBAL_DAILY_LIMIT, 10);
+        // Everything a test session writes is namespaced away from the real
+        // counters, so measuring the prompts cannot lock users out.
+        const kp = env.RATE_KEY_PREFIX || '';
 
         // Check the per-IP cap FIRST: a caller who is over their own limit
         // must not keep draining the shared global budget with refused requests.
-        if (!(await bumpCounter(env, `ip:${ip}:${day}`, ipLimit))) {
+        if (!(await bumpCounter(env, `${kp}ip:${ip}:${day}`, ipLimit))) {
+            await noteBlocked(env, `${kp}blocked:ip:${day}`);
             return json({ error: 'You have reached today’s AI usage limit (' + ipLimit + ' requests). The rule-based features still work; try AI again tomorrow.' }, 429, cors);
         }
-        if (!(await bumpCounter(env, `g:${day}`, globalLimit))) {
+        if (!(await bumpCounter(env, `${kp}g:${day}`, globalLimit))) {
+            await noteBlocked(env, `${kp}blocked:global:${day}`);
             return json({ error: 'The daily AI usage limit for this tool has been reached. The rule-based features still work; try AI again tomorrow.' }, 429, cors);
         }
 

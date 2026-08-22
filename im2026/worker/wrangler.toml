@@ -28,10 +28,23 @@ ASK_MODEL = "claude-sonnet-5"
 # PAGES_BASE_URL is gone (17 Aug 2026). The Style Manual page text is bundled
 # into the Worker as pages-content.js instead of being served from the public
 # im2026/pages/ folder, so there is nothing to fetch and nothing published.
-IP_DAILY_LIMIT = "150"
+# 150 -> 400 on 22 Aug 2026. The per-IP cap had never stopped anything real -
+# the only callers ever to hit it were us, testing - while testers who share an
+# agency gateway all count as ONE IP, so a dozen active people behind one
+# address could be refused silently. GLOBAL_DAILY_LIMIT is the actual cost
+# ceiling and stays where it is: at the measured ~1.9c a call it caps a day at
+# roughly $19, and the busiest day so far was 165 calls ($3.10, 17 Aug).
+IP_DAILY_LIMIT = "400"
 # Raised from 500 for the IM2026 judging window (Jul 2026) so a judge can
 # never hit "daily limit reached" mid-demo. Consider dropping back after.
 GLOBAL_DAILY_LIMIT = "1000"
+# Prefix for the rate-counter keys. EMPTY IN PRODUCTION - do not set it here.
+# Pass it on the command line so a test session writes its own counters and
+# cannot spend the real users' budget:
+#   npx wrangler dev --remote --var RATE_KEY_PREFIX:dev- --var IP_DAILY_LIMIT:100000
+# A separate [env.dev] with its own KV namespace was considered and rejected:
+# it makes a second Worker script, which needs its OWN copy of the API key
+# secret. One fewer place the key lives is worth more than the tidier config.
 
 # The API key is a SECRET, never a var. Set it with:
 #   npx wrangler secret put ANTHROPIC_API_KEY

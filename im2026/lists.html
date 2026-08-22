@@ -474,6 +474,59 @@ function classifyLeadIn(rawLeadIn) {
   return 'phrase';
 }
 
+// Common lead-in verbs that VERB_LIST deliberately leaves out, because as the
+// FIRST word of an item they read as nouns ('cover letter', 'feature article').
+// In a lead-in they are unambiguously verbs, so they get their own list.
+const LEAD_IN_VERBS = ['contain','cover','involve','comprise','consist','outline',
+  'describe','feature','list','set','present','detail','state','summarise','summarize'];
+
+const HEADING_DETERMINERS = ['the','this','these','those','a','an','our','your','their'];
+
+// Does this word do the work of a verb in a lead-in? Base form, or its -s/-es
+// third-person form ('includes', 'contains'). Deliberately no generic -ed or
+// -ing test: 'Related publications' and 'Meeting attendees' are headings.
+function leadInVerbWord(word) {
+  const w = word.toLowerCase().replace(/[^a-z'-]/g, '');
+  if (!w) return false;
+  if (FINITE_VERBS.includes(w)) return true;
+  const bases = [w, w.replace(/es$/, ''), w.replace(/s$/, '')];
+  return bases.some(b => VERB_LIST.includes(b) || LEAD_IN_VERBS.includes(b));
+}
+
+/**
+ * Is the first line a HEADING (a self-contained label) rather than a LEAD-IN
+ * (an incomplete stem the items finish)? Only a heading can carry a stand-alone
+ * list, so this is the gate on the AI's 'standAlone' answer.
+ *
+ * Added 22 August 2026 after the 50-list test set: seven fragment lists came
+ * back as stand-alone lists, the first line's colon stripped, every item
+ * capitalised and the closing full stop gone ('The kit includes' + 'A laptop').
+ * The model was following the prompt, which gated stand-alone on the ITEMS -
+ * and 'a laptop', 'age at diagnosis' and 'proof of identity' all pass an
+ * items-only test. The first line is what actually decides it.
+ *
+ * classifyLeadIn is not enough on its own: it calls 'Document status:' a
+ * phrase, and that IS a heading over a genuine stand-alone list.
+ */
+function looksLikeHeading(rawLeadIn) {
+  const trimmed = (rawLeadIn || '').trim();
+  if (!trimmed) return true;                          // no first line at all
+  if (/[.!?]\s*$/.test(trimmed)) return false;        // a complete sentence above the list
+  const noEnd = trimmed.replace(/[.!?:]+\s*$/, '').trim();
+  const words = noEnd.split(/\s+/);
+  if (words.some(leadInVerbWord)) return false;       // 'The kit includes', 'Applicants must provide'
+  if (classifyLeadIn(trimmed) === 'phrase' &&
+      DANGLING_WORDS.includes(words[words.length - 1].toLowerCase().replace(/[^a-z'-]/g, ''))) {
+    return false;                                     // dangles into the items ('famous for its:')
+  }
+  // A determiner-led line long enough to be a clause is a lead-in, not a label.
+  // The 5-word floor keeps short determiner-led headings ('The Style Manual')
+  // safe; every genuine heading in the test set is two words.
+  const first = words[0].toLowerCase().replace(/[^a-z'-]/g, '');
+  if (HEADING_DETERMINERS.includes(first) && words.length >= 5) return false;
+  return true;
+}
+
 // True when the lead-in states the grammatical subject of the items
 // ('My cousin has a bucket list:', 'The participants will:'). The Style Manual
 // uses this to settle command-verb items: with no stated subject the items are
@@ -580,6 +633,40 @@ function buildLeadIn(rawLeadIn, withColon) {
   return withColon ? base + ':' : base;
 }
 
+/**
+ * Mark the AI's homework on the TYPE, not just the wording.
+ *
+ * A stand-alone list belongs under a HEADING. When the writer's first line is
+ * really a lead-in the items complete, stand-alone formatting strips its colon,
+ * capitalises every item and drops the closing full stop - three wrong answers
+ * at once. Seven of the 50 lists in the 21 August 2026 test set failed exactly
+ * that way ('The kit includes:' + 'a laptop' came back as 'The kit includes' +
+ * 'A laptop'), so the model's stand-alone answer is now re-checked against the
+ * first line. No other type is second-guessed.
+ */
+function resolveAiListType(modelType, itemTexts, rawLeadIn) {
+  if (modelType !== 'standAlone' || looksLikeHeading(rawLeadIn)) {
+    return { type: modelType, downgraded: false };
+  }
+  const type = itemTexts.length && itemTexts.every(t => classifyItem(t) === 'clause')
+    ? 'sentence' : 'fragment';
+  return { type, downgraded: true };
+}
+
+// The model sometimes DELETES words from the first line to make it read as a
+// heading ('The checklist below covers the following items.' came back as
+// 'The checklist below covers the following', 22 August 2026). When its
+// version is a strict prefix of the writer's, the writer's line is restored.
+// Anything else is a genuine rewrite - moving a repeated word up into the
+// lead-in is behaviour the prompt asks for - and is left alone.
+function restoreTruncatedLeadIn(modelLeadIn, rawLeadIn) {
+  const model = (modelLeadIn || '').trim().replace(/[.!?:]+\s*$/, '').trim();
+  const raw = (rawLeadIn || '').trim();
+  const rawBare = raw.replace(/[.!?:]+\s*$/, '').trim();
+  if (!model || !rawBare) return modelLeadIn;
+  return rawBare.toLowerCase().startsWith(model.toLowerCase() + ' ') ? raw : modelLeadIn;
+}
+
 function marker(numbered, i) {
   return numbered ? `${i + 1}.` : '\u2022';
 }
@@ -624,6 +711,37 @@ function lowerFirstUnlessProper(t) {
   return t.charAt(0).toLowerCase() + t.slice(1);
 }
 
+// Articles carry no proper-noun information: a writer who typed 'A staff
+// handbook' capitalised the sentence, not the noun.
+const LEADING_ARTICLES = ['a', 'an', 'the'];
+
+/**
+ * Lower-case a fragment item's first letter on the stand-alone downgrade path.
+ *
+ * lowerFirstUnlessProper alone is not safe here: its narrow PROPER_HINT list is
+ * exactly the heuristic that used to lower-case real names, and it reads a
+ * single capital 'A' as an acronym, so 'A laptop' would keep its capital. The
+ * AI's own capitals carry no information either - the prompt tells it case does
+ * not matter for a stand-alone list, which is what it thought it was writing.
+ *
+ * So the WRITER's casing is the second signal: their capital is respected
+ * unless the word is an article. Measured against the six downgrade cases in
+ * the 21 August test set, this gets all six right where either signal alone
+ * gets two wrong ('A laptop' stays capitalised, or 'Communications and
+ * Engagement' loses its capital).
+ */
+function lowerFirstForDowngrade(aiText, userText) {
+  const first = (aiText || '').split(/\s+/)[0];
+  if (!first) return aiText;
+  if (/\d/.test(first)) return aiText;               // codes/labels e.g. T1, M365
+  if (/^[A-Z]{2,}$/.test(first)) return aiText;      // acronym: AIHW, NSW, APSC
+  if (PROPER_HINT.test(first)) return aiText;
+  const userFirst = (userText || '').trim().split(/\s+/)[0] || '';
+  const isArticle = LEADING_ARTICLES.includes(first.toLowerCase().replace(/[^a-z]/g, ''));
+  if (/^[A-Z]/.test(userFirst) && !isArticle) return aiText;   // the writer capitalised it
+  return aiText.charAt(0).toLowerCase() + aiText.slice(1);
+}
+
 // Return first words that will be lowercased, so the explanation can flag them.
 function lowercasedFirstWords(cleanedItems) {
   return cleanedItems
@@ -653,6 +771,48 @@ function markerKind(noIndent) {
   return 'none';
 }
 
+/**
+ * Faults that live in the MARKERS rather than the words: bullets that disagree
+ * with each other, or numbering that does not read 1, 2, 3, 4.
+ *
+ * These are invisible to the already-correct check, which strips the writer's
+ * markers and re-emits canonical ones on both sides of the comparison - so a
+ * list numbered 1, 2, 1, 2 normalises to 1, 2, 3, 4 either way and the tool
+ * answered 'Your list is correctly formatted' over plainly broken input
+ * (3 of the 50 test lists, 22 August 2026). Reported separately so that
+ * message can be suppressed.
+ */
+function markerFaults(rawItemLines) {
+  const kinds = rawItemLines.map(l => markerKind(l.replace(/^[ \t]+/, '')));
+  const seen = [...new Set(kinds.filter(k => k !== 'none'))];
+  // 'bullet' covers •, *, · and ‣ - all plain bullets, but a list that mixes
+  // them is still inconsistent, so compare the characters too.
+  const bulletChars = [...new Set(rawItemLines
+    .map(l => (l.replace(/^[ \t]+/, '').match(/^([•·*‣–—-])\s/) || [])[1])
+    .filter(Boolean))];
+  const mixedMarkers = seen.length > 1 || bulletChars.length > 1;
+
+  const numbers = rawItemLines
+    .map(l => (l.replace(/^[ \t]+/, '').match(/^(\d+)[.)]\s/) || [])[1])
+    .filter(Boolean)
+    .map(Number);
+  const badSequence = numbers.length >= 2 &&
+    numbers.length === rawItemLines.length &&
+    numbers.some((n, i) => n !== i + 1);
+
+  return { mixedMarkers, badSequence };
+}
+
+// Plain-English note for a marker fault, or '' when there is nothing to say.
+// Both the AI path and the deterministic path use it, so the wording matches.
+function markerFaultNote(faults) {
+  if (!faults) return '';
+  const parts = [];
+  if (faults.mixedMarkers) parts.push(' Your list used more than one kind of marker, so they now all match.');
+  if (faults.badSequence) parts.push(' The numbering did not run in order, so the items are renumbered from 1.');
+  return parts.join('');
+}
+
 // Work out whether the items form a 2- or 3-level hierarchy, and assign each a level.
 function parseHierarchy(rawItems) {
   const rows = rawItems.map(line => {
@@ -669,9 +829,20 @@ function parseHierarchy(rawItems) {
   // When items carry explicit child/grandchild markers (hollow bullets, dashes, squares),
   // use those to assign levels regardless of indentation. This correctly handles Word
   // pastes where 'o' items share indent=0 with '•' items but are visually sub-items.
+  // A hollow bullet or filled square is Word's own sub-item marker, so it means
+  // level 1 (or 2) wherever it sits - a Word paste gives 'o' items the same
+  // indent as their '•' parents. A dash or a lettered marker does NOT carry that
+  // meaning on its own: a writer who bullets a flat list with '-' (or mixes
+  // '*', '-' and '•' by accident) is not nesting anything. Those two only count
+  // as a child level when they are indented deeper than the shallowest item.
+  // Without this a flat list of mixed markers was read as a 2-level hierarchy,
+  // round-tripped unchanged and reported as already correct (22 August 2026).
   const level1Kinds = new Set(['dash', 'hollow', 'lowerLetter']);
   const level2Kinds = new Set(['square']);
-  const hasL1Marker = rows.some(r => level1Kinds.has(r.marker));
+  const needsIndent = new Set(['dash', 'lowerLetter']);
+  const isL1 = r => level1Kinds.has(r.marker) &&
+    (!needsIndent.has(r.marker) || r.indent > base);
+  const hasL1Marker = rows.some(isL1);
   const hasL2Marker = rows.some(r => level2Kinds.has(r.marker));
 
   if (hasL1Marker || hasL2Marker) {
@@ -680,7 +851,7 @@ function parseHierarchy(rawItems) {
     rows.forEach((r, idx) => {
       if (level2Kinds.has(r.marker)) {
         r.level = 2;
-      } else if (level1Kinds.has(r.marker)) {
+      } else if (isL1(r)) {
         r.level = 1;
       } else if (r.marker === 'none' && r.indent > base) {
         // An unmarked item indented deeper than the base nests one level
@@ -1019,9 +1190,15 @@ function analyse(input, forcedType /* optional: 'sentence'|'fragment'|'standAlon
   const rawNorm = [expectedFirstLine].concat(
     rawItems.map((item, i) => `${marker(numbered, i)} ${stripMarker(item).trim()}`)
   ).join('\n');
-  const alreadyCorrect = rawNorm === formatted;
+  // A marker fault has to be reported separately: rawNorm re-emits canonical
+  // markers, so mixed bullets and out-of-order numbering compare equal here and
+  // would be declared already correct (22 August 2026).
+  const markerNote = markerFaultNote(markerFaults(rawItems));
+  const alreadyCorrect = rawNorm === formatted && !markerNote;
   if (alreadyCorrect) {
     explanation = 'Your list is correctly formatted. ' + explanation;
+  } else if (markerNote) {
+    explanation += markerNote;
   }
 
   return { status: 'ok', listType, formatted, explanation, alreadyCorrect, detail: d };
@@ -1658,7 +1835,7 @@ function collectFixes(cleaned) {
     return buildLeadIn(src, true);                     // sentence/phrase lead-in with a colon
   }
 
-  function renderAiResult(res, numbered, rawNorm, rawLeadIn) {
+  function renderAiResult(res, numbered, rawNorm, rawLeadIn, faults, srcItems) {
     // Mark the AI's homework on the item wording: run the deterministic rule
     // engine's mechanical fixes (spaced en dashes for parenthetical hyphens,
     // US-to-AU spelling, and so on) over each item, the same pass the change
@@ -1682,19 +1859,35 @@ function collectFixes(cleaned) {
       ? res.levels : null;
     const multilevel = !!(levels && levels.some(l => l > 0));
 
+    const decided = resolveAiListType(res.type, cleaned.map(c => c.text), rawLeadIn);
+    const type = decided.type;
+    let leadInText = res.leadIn;
+    if (decided.downgraded) {
+      // The model capitalised the items for a stand-alone list, so a fragment
+      // list needs them lowered again - the same pass the deterministic
+      // fragment formatter uses, proper nouns and acronyms kept.
+      if (type === 'fragment') {
+        // Only pair items with the writer's own when the model returned one
+        // rewritten item per input item, which the prompt requires.
+        const src = (Array.isArray(srcItems) && srcItems.length === cleaned.length) ? srcItems : [];
+        cleaned.forEach((c, i) => { c.text = lowerFirstForDowngrade(c.text, src[i]); });
+      }
+      leadInText = restoreTruncatedLeadIn(res.leadIn, rawLeadIn);
+    }
+
     let formatted;
     if (multilevel) {
       const rows = cleaned.map((c, i) => ({ text: c.text, level: levels[i] }));
-      const leadLine = res.type === 'standAlone' ? aiLeadIn('standAlone', res.leadIn)
-        : res.type === 'sentence' ? aiLeadIn('sentence', res.leadIn, rawLeadIn)
-        : buildLeadIn(res.leadIn, true);
-      formatted = formatMultilevelAI(leadLine, rows, res.type, numbered);
+      const leadLine = type === 'standAlone' ? aiLeadIn('standAlone', leadInText)
+        : type === 'sentence' ? aiLeadIn('sentence', leadInText, rawLeadIn)
+        : buildLeadIn(leadInText, true);
+      formatted = formatMultilevelAI(leadLine, rows, type, numbered);
     }
-    else if (res.type === 'standAlone') formatted = formatStandAlone(aiLeadIn('standAlone', res.leadIn), cleaned, numbered);
-    else if (res.type === 'sentence') formatted = formatSentence(aiLeadIn('sentence', res.leadIn, rawLeadIn), cleaned, numbered, true);
-    else formatted = formatFragmentAI(res.leadIn, cleaned, numbered);
+    else if (type === 'standAlone') formatted = formatStandAlone(aiLeadIn('standAlone', leadInText), cleaned, numbered);
+    else if (type === 'sentence') formatted = formatSentence(aiLeadIn('sentence', leadInText, rawLeadIn), cleaned, numbered, true);
+    else formatted = formatFragmentAI(leadInText, cleaned, numbered);
 
-    const typeWord = (multilevel ? 'multilevel ' : '') + (AI_TYPE_WORD[res.type] || 'list');
+    const typeWord = (multilevel ? 'multilevel ' : '') + (AI_TYPE_WORD[type] || 'list');
     const levelNote = multilevel
       ? (numbered
           ? ' It uses numbers for the first level and lower-case letters for the second, as the Style Manual requires.'
@@ -1704,15 +1897,18 @@ function collectFixes(cleaned) {
           : ' Keep multilevel lists to 2 levels and use them sparingly, since they are harder to follow.')
       : '';
 
-    lastResult = { formatted, listType: res.type };
+    lastResult = { formatted, listType: type };
     document.getElementById('errorPanel').classList.add('hidden');
 
     const outputEl = document.getElementById('output');
     outputEl.classList.remove('is-placeholder');
 
     // The final output matches the input, so nothing needed to change.
-    // Mirror the deterministic path's already-correct presentation.
-    if (rawNorm === formatted) {
+    // Mirror the deterministic path's already-correct presentation. A marker
+    // fault is exempt: rawNorm re-emits canonical markers, so mixed bullets
+    // and broken numbering compare equal and would be declared correct.
+    const markerNote = markerFaultNote(faults);
+    if (rawNorm === formatted && !markerNote) {
       outputEl.textContent = 'Your list is correctly formatted.';
       document.getElementById('copyBtn').classList.add('hidden');
       document.getElementById('copyWordBtn').classList.add('hidden');
@@ -1723,7 +1919,7 @@ function collectFixes(cleaned) {
       document.getElementById('coherenceNotice').classList.add('hidden');
       return;
     }
-    if (res.type === 'standAlone') {
+    if (type === 'standAlone') {
       const lines = formatted.split('\n');
       const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
       outputEl.innerHTML = '<strong>' + esc(lines[0]) + '</strong>' +
@@ -1746,7 +1942,7 @@ function collectFixes(cleaned) {
         }).join(' ')
       : 'Your items already followed a consistent pattern, so the wording is unchanged.';
     document.getElementById('explanationText').textContent =
-      'AI set this up as a ' + typeWord + '. ' + changeText + levelNote +
+      'AI set this up as a ' + typeWord + '. ' + changeText + markerNote + levelNote +
       ' The rule engine then applied the Style Manual markers, capitals and full stops and re-checked the result. Review the wording, as AI can change meaning.';
     document.getElementById('explanation').classList.remove('hidden');
 
@@ -1866,8 +2062,16 @@ function collectFixes(cleaned) {
       try {
         const res = await aiListFormatWithRetry(
           { leadIn, items, levels, forcedType: getForcedType() }, 2);
-        if (Array.isArray(res.levels) && res.levels.length === res.items.length) {
-          renderAiResult(res, ordered, rawNorm, leadIn);
+        // The length check alone is not enough: an answer of the right length
+        // but all zeros satisfies it and then fails renderAiResult's
+        // `levels.some(l => l > 0)` test, so the hierarchy is silently
+        // flattened and the notice below never appears (22 August 2026).
+        if (Array.isArray(res.levels) && res.levels.length === res.items.length &&
+            res.levels.some(l => l > 0)) {
+          // No marker faults for a multilevel list: each level uses a
+          // different marker by design, so comparing them across the whole
+          // list would flag every correct 2-level list.
+          renderAiResult(res, ordered, rawNorm, leadIn, null, items);
         } else {
           // The AI answered without levels (or they don't line up) - never
           // flatten the user's hierarchy; show the deterministic multilevel
@@ -1900,7 +2104,7 @@ function collectFixes(cleaned) {
     try {
       const res = await aiListFormatWithRetry(
         { leadIn, items, forcedType: getForcedType() }, 2);
-      renderAiResult(res, numbered, rawNorm, leadIn);
+      renderAiResult(res, numbered, rawNorm, leadIn, markerFaults(rawItemLines), items);
     } catch (err) {
       handleAiFailure(err);
     } finally {

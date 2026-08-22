@@ -31,11 +31,47 @@ form) keep working; AI features show as unavailable.
   (`claude-sonnet-5`) as of 26 July 2026; `STRONG_MODEL` / `ASK_MODEL` are kept
   equal to `MODEL` for the `spec.strong` code path but no longer select a
   different model. To change the model, edit the var and redeploy the worker.
-- `IP_DAILY_LIMIT` – AI requests per IP per day. Note that an office NAT
-  shares one IP across everyone in the building.
+- `IP_DAILY_LIMIT` – AI requests per IP per day; **400** as of 22 August 2026
+  (was 150). An office NAT shares one IP across everyone in the building, so
+  this is not really ‘per person’ – that, not any single heavy user, is what
+  the number has to cover.
 - `GLOBAL_DAILY_LIMIT` – shared daily cap across all users; the cost
-  safety-net. Raised to 1000 for the IM2026 judging window (July 2026) –
-  consider dropping back afterwards.
+  safety-net, and the one that actually matters. Raised to 1000 for the IM2026
+  judging window (July 2026) – consider dropping back afterwards. At the
+  measured ~1.9c a call that caps a day at roughly $19; the busiest day so far
+  was 165 calls ($3.10, 17 August 2026), and a whole month runs about $10.
+- `RATE_KEY_PREFIX` – leave EMPTY in production. Prefixes every rate-counter
+  key so a test session keeps its own counters (see ‘Testing without spending
+  the users’ budget’ below).
+
+### Reading the counters
+
+Refusals are counted as well as requests, because a user who runs out sees
+‘try AI again tomorrow’ and usually just closes the tab – nothing that looks
+like a bug to report. So ‘nobody has reported hitting the cap’ is not evidence
+that nobody has. Check it:
+
+```
+npx wrangler kv key get --namespace-id 3cace9b99cdd430ba1a873add185c670 --remote "g:$(date -u +%F)"
+npx wrangler kv key get --namespace-id 3cace9b99cdd430ba1a873add185c670 --remote "blocked:ip:$(date -u +%F)"
+npx wrangler kv key get --namespace-id 3cace9b99cdd430ba1a873add185c670 --remote "blocked:global:$(date -u +%F)"
+```
+
+Request counters expire after 25 hours; the `blocked:` counters are kept for
+30 days so a fortnightly look back still finds them. A missing key means zero.
+
+### Testing without spending the users’ budget
+
+`wrangler dev --remote` uses the REAL KV, so an ordinary test round eats the
+same daily budget as the users – which is how the cap was exhausted twice.
+Namespace the counters away instead, and lift your own limit while you are
+there:
+
+```
+npx wrangler dev --remote --var RATE_KEY_PREFIX:dev- --var IP_DAILY_LIMIT:100000
+```
+
+Both are command-line overrides; neither touches the deployed Worker.
 - `PAGES_BASE_URL` – removed 17 August 2026. The page text is bundled into the
   Worker; there is nothing to fetch.
 
