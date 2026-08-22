@@ -70,3 +70,10 @@ im2026/worker/.wrangler/
 # (The skill folder itself is already excluded by the *.md rule above.
 # Publishing it is a separate decision - see the brief's open question 3.)
 /build_skill.mjs
+# Usage measurement (22 August 2026). Reads the Analytics Engine SQL API and
+# writes monthly summaries. The output carries agency NETWORK NAMES, and the
+# script holds an account id, so neither may ever reach this public repo.
+# Note .mjs has no general rule here - every local script needs its own line.
+/read_analytics.mjs
+/analytics/
+/.env

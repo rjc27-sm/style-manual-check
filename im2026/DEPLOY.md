@@ -20,7 +20,16 @@ form) keep working; AI features show as unavailable.
    `npx wrangler kv namespace create RATE_KV`
 3. Set the API key as a secret (never a var, never in the repo):
    `npx wrangler secret put ANTHROPIC_API_KEY`
-4. Deploy: `npx wrangler deploy`
+4. Set the salt that turns a visitor's address into a one-way daily code for
+   the rate limiter (any long random string):
+   `npx wrangler secret put IP_HASH_SALT`
+5. Switch on Analytics Engine for the account, once, in the Cloudflare
+   dashboard under Workers -> Analytics Engine. Until it is on, `wrangler
+   dev` and `wrangler deploy` both fail with `code: 10089` and the message
+   'You need to enable Analytics Engine'. It is an account toggle, not a paid
+   plan: the free tier allows 100,000 writes a day against a busiest day so
+   far of 165 AI calls.
+6. Deploy: `npx wrangler deploy`
 
 ## Configuration (wrangler.toml `[vars]`)
 
@@ -59,6 +68,65 @@ npx wrangler kv key get --namespace-id 3cace9b99cdd430ba1a873add185c670 --remote
 
 Request counters expire after 25 hours; the `blocked:` counters are kept for
 30 days so a fortnightly look back still finds them. A missing key means zero.
+
+The per-IP key holds a one-way daily code, not an address (22 August 2026).
+`dailyId()` in `worker.js` hashes the address with the `IP_HASH_SALT` secret and
+the date, so the limiter still recognises a caller within a day but nothing that
+identifies anyone is ever written. Before that change the key was
+`ip:<the actual address>:<day>`, which meant a list of the day's visitors sat in
+KV for 25 hours. If `IP_HASH_SALT` is unset every caller shares one bucket, so a
+missing secret throttles hard rather than failing open.
+
+### Reading the usage data
+
+The counters above say how much. Analytics Engine says who, roughly: which
+feature, which country and state, and the NAME OF THE NETWORK the request came
+from, which is the only thing that distinguishes one agency from another when
+everyone in a building shares an address. Page loads are counted too - Check a
+document runs entirely in the browser, so without the beacon the main feature
+would not appear in any figure. Written by `record()` in `worker.js`; nothing
+but the counts listed on the About page is recorded.
+
+```
+node read_analytics.mjs
+node read_analytics.mjs --days 7
+node read_analytics.mjs --month 2026-08
+```
+
+`read_analytics.mjs` lives at the repo root and is **gitignored, permanently**:
+its output carries agency network names and this repo is public. It needs a
+`.env` beside it holding `CF_ACCOUNT_ID` and a `CF_ANALYTICS_TOKEN` with the
+`Account | Account Analytics | Read` permission. Without the script:
+
+```
+curl -X POST "https://api.cloudflare.com/client/v4/accounts/<account-id>/analytics_engine/sql" \
+  -H "Authorization: Bearer <token>" \
+  -d "SELECT blob3 AS network, SUM(double1) AS requests FROM pp_usage
+      WHERE timestamp > NOW() - INTERVAL '30' DAY GROUP BY network ORDER BY requests DESC"
+```
+
+**The counts are estimates, and you must count with `SUM(_sample_interval)`.**
+Analytics Engine SAMPLES per index, keeping a fraction of rows and giving each
+survivor a weight in `_sample_interval`. `COUNT()` and `SUM(double1)` both ignore
+that weight and undercount badly. Measured 22 August 2026: 20 beacons sent to the
+deployed Worker came back as 10 raw rows whose `_sample_interval` summed to 22 -
+so the corrected figure was right to within about 10%, and the naive one was half.
+`read_analytics.mjs` uses the corrected form everywhere. Two consequences:
+`COUNT(DISTINCT blob6)` for 'people' CANNOT be sample-corrected and reads low, and
+no figure here is exact. That is fine for the question being asked - reach, and
+which networks - but do not quote these as precise counts.
+
+**Analytics Engine keeps three months.** That is why there is a monthly summary
+task; without it the record simply falls off the back. The dataset has to be
+switched on for the account before any of this works - the Worker degrades to
+writing nothing at all if it is not, silently and by design, because a usage
+counter must never break a request.
+
+Two numbers worth remembering when quoting any of this. Everyone behind an
+agency gateway shares one address, so the 'people' column is a floor and the
+network breakdown is the trustworthy figure. And a page count is not a person:
+somebody who opens four tools counts four times.
+
 
 ### Testing without spending the users’ budget
 

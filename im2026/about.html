@@ -8,6 +8,8 @@
 <link rel="icon" type="image/png" sizes="32x32" href="assets/style-check-32x32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="assets/style-check-16x16.png">
 <link rel="stylesheet" href="assets/site.css?v=4">
+<!-- Counts one anonymous page view. See src/beacon.js and the About page. -->
+<script type="module" src="src/beacon.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700;800&display=swap');
 :root{
@@ -204,10 +206,21 @@ the rules re-checking the AI's output before it reaches you.">
           published by the Australian Public Service Commission.
           The Ask tool answers from over 170 saved Style Manual pages, and
           links to the source page for every answer.
-          There are no user accounts and no database. Word documents are
+          There are no user accounts and no sign-in. Word documents are
           processed in your browser and never sent anywhere else. Sections of
           text sent to AI features are not stored by the tool or used to
           train models.</dd>
+
+        <dt>Measuring use</dt>
+        <dd>Each page you open and each AI request adds one anonymous count,
+          so the reach of the tool can be reported. The count records which
+          page or feature was used. It also records the country and state,
+          the name of the network the request came from and the site that
+          linked you here.
+          No text, no file names and no document contents are recorded.
+          IP addresses are not stored. A one-way daily code stands in for an
+          address so that visitors can be counted. It cannot be reversed and
+          it does not connect one day to the next.</dd>
 
         <dt>Tools used</dt>
         <dd>
@@ -221,8 +234,8 @@ the rules re-checking the AI's output before it reaches you.">
             <li>Claude Design, which generated 3 ‘look and feel’ options for
               the original Style Manual Check (web version). Proof Positive
               uses the same design.</li>
-            <li>GitHub Pages for hosting (no analytics, cookies or
-              trackers).</li>
+            <li>GitHub Pages for hosting. There are no cookies, no
+              third-party trackers and nothing is stored on your device.</li>
           </ul>
         </dd>
 

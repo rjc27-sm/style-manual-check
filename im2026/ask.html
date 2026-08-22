@@ -8,6 +8,8 @@
 <link rel="icon" type="image/png" sizes="32x32" href="assets/style-check-32x32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="assets/style-check-16x16.png">
 <link rel="stylesheet" href="assets/site.css?v=4">
+<!-- Counts one anonymous page view. See src/beacon.js and the About page. -->
+<script type="module" src="src/beacon.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700;800&display=swap');
 :root{
@@ -137,6 +139,9 @@ body{font-family:'Open Sans',Arial,sans-serif;background:var(--bg);color:var(--c
     <p>This page sends questions to the Claude API (Anthropic) to generate
       an answer. Your questions are not used to train models. Don't enter
       classified, sensitive or personal information.</p>
+    <p>Page visits and AI requests are counted anonymously, so the reach of
+      the tool can be reported. No text is recorded and nothing is stored on
+      your device. <a href="about.html">What is counted</a>.</p>
     <p class="gov-footer-meta">Answers are drawn from extracts of the actual
       Style Manual pages, not the AI's general knowledge. The bot provides
       links to the pages it read.</p>

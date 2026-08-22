@@ -704,6 +704,77 @@ async function noteBlocked(env, key) {
     }
 }
 
+// Characters allowed in a page name, and the scheme on our own origin.
+// Module scope so they are compiled once, not per request.
+const NON_NAME = /[^a-z0-9_-]/gi;
+const SCHEME = /^https?:\/\//;
+const HOSTNAME_ONLY = /^[a-z0-9.-]{1,64}$/;
+
+/**
+ * A one-way daily code standing in for one visitor.
+ *
+ * The rate limiter has to recognise the same caller twice in a day. It does not
+ * have to know their address. Folding the DAY into the hash means the code
+ * changes at midnight UTC, so nobody is linkable from one day to the next, and
+ * the address itself is never written anywhere. Added 22 August 2026, replacing
+ * a KV key that embedded the raw address for 25 hours.
+ *
+ * With no salt set every caller collapses into one bucket. That throttles hard
+ * rather than failing open, which is the safe direction for a cost control.
+ */
+async function dailyId(ip, day, salt) {
+    if (!salt) return 'nosalt';
+    const data = new TextEncoder().encode(salt + '|' + ip + '|' + day);
+    const buf = await crypto.subtle.digest('SHA-256', data);
+    return [...new Uint8Array(buf)].slice(0, 8)
+        .map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+/**
+ * The referring site, as a bare hostname.
+ *
+ * Sent by the page from document.referrer, because the Referer header on these
+ * requests is our own page and cannot answer 'what linked them here'. Only a
+ * hostname is accepted: a full referrer URL can carry a query string, and that
+ * is somebody else's data.
+ */
+function refHost(value, self) {
+    const v = (value || '').toLowerCase();
+    if (!HOSTNAME_ONLY.test(v)) return '';
+    return v === self ? '' : v;
+}
+
+/**
+ * Count one use of the tool, so its reach can be reported (22 August 2026).
+ *
+ * Aggregate only: which feature, and where the request came from. No text, no
+ * file names, no addresses. `asOrganization` is the name of the network the
+ * request arrived on, and is the whole point of this: it is what tells one
+ * agency from another when everyone behind a gateway shares an address.
+ *
+ * Analytics Engine writes do not touch the KV write budget - 1,000 a day on the
+ * free plan, and each AI call already spends two - which is the only reason
+ * page loads can be counted at all.
+ *
+ * Never allowed to fail a request: this is diagnostics, not the service.
+ */
+function record(env, request, kind, name, outcome, uid, ref) {
+    try {
+        const cf = request.cf || {};
+        // Cloudflare caps the index at 96 bytes. Do not assume an organisation
+        // name is short.
+        const org = (cf.asOrganization || '').slice(0, 96);
+        env.PP_ANALYTICS && env.PP_ANALYTICS.writeDataPoint({
+            blobs: [kind, name, org, cf.country || '', cf.region || '',
+                    uid || '', ref || '', outcome],
+            doubles: [1, cf.asn || 0],
+            indexes: [org || 'unknown']
+        });
+    } catch {
+        // A usage counter must never turn a working answer into an error.
+    }
+}
+
 // ---------------- main ----------------
 
 export default {
@@ -720,12 +791,34 @@ export default {
 
         const url = new URL(request.url);
         const endpoint = url.pathname.replace(/^\/api\//, '');
+
+        const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
+        const day = new Date().toISOString().slice(0, 10);
+        const uid = await dailyId(ip, day, env.IP_HASH_SALT);
+
+        // ---- page beacon ----
+        // Handled BEFORE the endpoint lookup and the rate limits, deliberately.
+        // Check a document runs entirely in the browser, so without this the
+        // tool's main feature would be invisible - but a page load must never
+        // spend any part of the AI budget, and it writes no KV at all.
+        if (endpoint === 'beacon') {
+            const permitted = (env.ALLOWED_ORIGINS || '')
+                .split(',').map(s => s.trim()).filter(Boolean);
+            // A REAL origin check. corsHeaders() only shapes a response header,
+            // which stops a browser reading an answer, not sending a request.
+            if (!permitted.length || permitted.includes(origin)) {
+                const page = (url.searchParams.get('p') || '')
+                    .replace(NON_NAME, '').slice(0, 32);
+                record(env, request, 'page', page || 'unknown', 'ok', uid,
+                       refHost(url.searchParams.get('r'), origin.replace(SCHEME, '')));
+            }
+            return new Response(null, { status: 204, headers: cors });
+        }
+
         const spec = PROMPTS[endpoint];
         if (!spec) return json({ error: 'Unknown endpoint.' }, 404, cors);
 
         // ---- rate limits ----
-        const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
-        const day = new Date().toISOString().slice(0, 10);
         const ipLimit = parseInt(env.IP_DAILY_LIMIT || DEFAULTS.IP_DAILY_LIMIT, 10);
         const globalLimit = parseInt(env.GLOBAL_DAILY_LIMIT || DEFAULTS.GLOBAL_DAILY_LIMIT, 10);
         // Everything a test session writes is namespaced away from the real
@@ -734,12 +827,14 @@ export default {
 
         // Check the per-IP cap FIRST: a caller who is over their own limit
         // must not keep draining the shared global budget with refused requests.
-        if (!(await bumpCounter(env, `${kp}ip:${ip}:${day}`, ipLimit))) {
+        if (!(await bumpCounter(env, `${kp}ip:${uid}:${day}`, ipLimit))) {
             await noteBlocked(env, `${kp}blocked:ip:${day}`);
+            record(env, request, 'ai', endpoint, 'blocked-ip', uid, '');
             return json({ error: 'You have reached today’s AI usage limit (' + ipLimit + ' requests). The rule-based features still work; try AI again tomorrow.' }, 429, cors);
         }
         if (!(await bumpCounter(env, `${kp}g:${day}`, globalLimit))) {
             await noteBlocked(env, `${kp}blocked:global:${day}`);
+            record(env, request, 'ai', endpoint, 'blocked-global', uid, '');
             return json({ error: 'The daily AI usage limit for this tool has been reached. The rule-based features still work; try AI again tomorrow.' }, 429, cors);
         }
 
@@ -814,26 +909,34 @@ export default {
                 })
             });
         } catch {
+            record(env, request, 'ai', endpoint, 'error', uid, '');
             return json({ error: 'Could not reach the AI service.' }, 502, cors);
         }
 
         if (apiRes.status === 429 || apiRes.status === 529) {
+            record(env, request, 'ai', endpoint, 'error', uid, '');
             return json({ error: 'The AI service is busy. Try again in a minute.' }, 429, cors);
         }
         if (!apiRes.ok) {
+            record(env, request, 'ai', endpoint, 'error', uid, '');
             return json({ error: 'AI service error (' + apiRes.status + ').' }, 502, cors);
         }
 
         const data = await apiRes.json();
         const text = (data.content || [])
             .filter(b => b.type === 'text').map(b => b.text).join('');
-        if (!text) return json({ error: 'The AI returned an empty answer. Try again.' }, 502, cors);
+        if (!text) {
+            record(env, request, 'ai', endpoint, 'error', uid, '');
+            return json({ error: 'The AI returned an empty answer. Try again.' }, 502, cors);
+        }
 
         try {
             const result = spec.shape(text);
             if (sources) result.sources = sources;
+            record(env, request, 'ai', endpoint, 'ok', uid, '');
             return json(result, 200, cors);
         } catch {
+            record(env, request, 'ai', endpoint, 'error', uid, '');
             return json({ error: 'The AI answer could not be processed. Try again.' }, 502, cors);
         }
     }

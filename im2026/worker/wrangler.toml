@@ -13,6 +13,15 @@ compatibility_date = "2026-06-01"
 binding = "RATE_KV"
 id = "3cace9b99cdd430ba1a873add185c670"
 
+# Analytics Engine dataset for usage measurement (22 August 2026). Aggregate
+# counts only: the feature used, and the country/state/network the request came
+# from. No text and no addresses - see the record() helper in worker.js.
+# Writes here do NOT count against the KV write budget, which matters: the free
+# KV plan allows 1,000 writes a day and each AI call already spends two.
+[[analytics_engine_datasets]]
+binding = "PP_ANALYTICS"
+dataset = "pp_usage"
+
 [vars]
 # Locked to the GitHub Pages origin (3 July 2026). Browser calls from any
 # other website are refused. To allow local testing temporarily, set this
@@ -49,3 +58,9 @@ GLOBAL_DAILY_LIMIT = "1000"
 # The API key is a SECRET, never a var. Set it with:
 #   npx wrangler secret put ANTHROPIC_API_KEY
 # (it will prompt you to paste the key - nothing is stored in this file)
+#
+# IP_HASH_SALT is also a secret. It turns a visitor address into a one-way daily
+# code, so the rate limiter can count a caller without the address ever being
+# stored. Any long random string will do; changing it only resets that day's
+# counters. Set it with:
+#   npx wrangler secret put IP_HASH_SALT
