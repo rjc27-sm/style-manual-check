@@ -5,17 +5,15 @@
  *      document marked up: mechanical fixes as tracked changes, everything
  *      else as Word review comments (formatting preserved).
  *   2. Quick text check - paste plain text for an instant check.
- * Rule checks happen entirely in the browser.
- * New here: 'Fix with AI' on judgement-call issues. Claude drafts a rewrite,
- * then the deterministic rule engine verifies it before it is shown as clean.
+ * Everything on this page runs entirely in the browser against the
+ * deterministic rule engine - no model, no network, no calls to any AI
+ * service. The document never leaves the browser.
  */
 
 import { RULES } from '../../src/rules.js';
 import { LIST_RULES } from '../../src/list-analysis.js';
 import { loadDocx, annotateDocx } from '../../src/docx-annotate.js';
 import { planTrackedChanges } from './track-plan.js';
-import { aiFix, AI_ENABLED, AI_NOTICE } from './ai.js';
-import { verifyText, verifySummary, autoCorrect } from './verify.js';
 
 const state = {
     mode: 'document',        // 'document' | 'text'
@@ -23,8 +21,7 @@ const state = {
     fileName: '',
     fileBuffer: null,
     issues: [],
-    categoryFilter: 'all',
-    rendered: []             // issues currently rendered, index-aligned with cards
+    categoryFilter: 'all'
 };
 
 const $ = id => document.getElementById(id);
@@ -224,41 +221,11 @@ function sourceText() {
         : $('text-input').value;
 }
 
-/** The paragraph (line) containing an issue - context for the AI rewrite. */
-function passageFor(issue) {
-    const text = sourceText();
-    const start = text.lastIndexOf('\n', Math.max(0, issue.position - 1)) + 1;
-    let end = text.indexOf('\n', issue.position);
-    if (end === -1) end = text.length;
-    let passage = text.slice(start, end).trim();
-    if (passage.length > 800) {
-        // Cap very long paragraphs around the issue itself
-        const rel = issue.position - start;
-        const from = Math.max(0, rel - 300);
-        passage = (from > 0 ? '…' : '') +
-            passage.slice(from, Math.min(passage.length, rel + 500)) +
-            (rel + 500 < passage.length ? '…' : '');
-    }
-    return passage;
-}
-
-/** AI help is offered where there is no mechanical fix - the judgement calls. */
-function aiEligible(issue) {
-    // List issues are excluded: the comment points at the Format a list tool,
-    // and a prose rewrite of one item would contradict that advice.
-    // A rule marked aiExempt is excluded because the AI has nothing to work
-    // from - 'abbrev-first-use-not-expanded' would have to invent the full
-    // name the letters stand for, and a guess is worse than a flag.
-    return AI_ENABLED && !issue.autoFix && issue.rule.category !== 'lists' &&
-        !issue.rule.aiExempt && passageFor(issue).length >= 20;
-}
-
 function renderResults() {
     const section = $('results-section');
     const list = $('issue-list');
     const filtered = state.issues.filter(i =>
         state.categoryFilter === 'all' || i.rule.category === state.categoryFilter);
-    state.rendered = filtered;
 
     const counts = {};
     for (const i of state.issues) {
@@ -289,7 +256,6 @@ function renderResults() {
             '<div class="issue-head">' +
             '<span class="badge">' + escapeHtml(categoryLabel(rule.category)) + '</span>' +
             '<span class="para-ref">paragraph ' + para + '</span>' +
-            (aiEligible(issue) ? '<span class="ai-tag">✦ AI can draft a fix</span>' : '') +
             '</div>' +
             '<p class="issue-found">‘' + escapeHtml(truncate(issue.found, 120)) + '’</p>' +
             (suggestion && suggestion !== issue.found
@@ -305,11 +271,7 @@ function renderResults() {
                 escapeHtml(rule.name) + ' (opens in a new tab)</span></a>' : '') +
             (rule.category === 'lists'
                 ? '<a class="learn-more" href="lists.html">Fix it with the ‘Format a list’ tool</a>' : '') +
-            (aiEligible(issue)
-                ? '<button type="button" class="ai-ghost-btn" data-ai-fix="' + idx +
-                  '">✦ Fix with AI</button>' : '') +
             '</div>' +
-            '<div class="ai-slot" data-ai-slot="' + idx + '"></div>' +
             '</article>';
     }).join('');
 
@@ -317,78 +279,6 @@ function renderResults() {
     $('results-num').textContent = hasDownload ? '3' : '2';
 
     section.hidden = false;
-}
-
-// ---------------- Fix with AI ----------------
-
-async function handleAiFix(idx, extraGuidance) {
-    const issue = state.rendered[idx];
-    const slot = document.querySelector('[data-ai-slot="' + idx + '"]');
-    const btn = document.querySelector('[data-ai-fix="' + idx + '"]');
-    if (!issue || !slot) return;
-    if (btn) btn.disabled = true;
-    slot.innerHTML = '<p class="ai-busy" role="status"><span class="ai-busy-star" aria-hidden="true">✦</span> Asking Claude for a rewrite…</p>';
-    try {
-        const { rewrite } = await aiFix({
-            passage: passageFor(issue),
-            ruleName: issue.rule.name,
-            ruleDescription: issue.description || issue.rule.description,
-            guidance: extraGuidance || ''
-        });
-        // Mark the AI's homework: apply the rule engine's mechanical fixes to
-        // the rewrite (the same pass the other AI tools use), then re-check what
-        // remains. The corrected text is what we show and copy.
-        const corrected = autoCorrect(rewrite);
-        const rewriteText = corrected.text;
-        const check = verifyText(rewriteText);
-        const fixNote = corrected.fixes
-            ? escapeHtml(corrected.fixes + ' automatic ' +
-                (corrected.fixes === 1 ? 'correction' : 'corrections') + ' applied. ')
-            : '';
-        slot.innerHTML =
-            '<div class="ai-panel">' +
-            '<p class="ai-panel-head">✦ AI-drafted rewrite, checked by the rule engine</p>' +
-            '<div class="ai-result-text">' + escapeHtml(rewriteText) + '</div>' +
-            (check.clean
-                ? '<p class="ai-verified" role="status">✔ ' + fixNote + escapeHtml(verifySummary(check)) + '</p>'
-                : '<p class="ai-reflagged" role="status">⚠ ' + fixNote + escapeHtml(verifySummary(check)) + '</p>' +
-                  '<ul style="margin:6px 0 0 18px;font-size:13px;color:#555a5e">' +
-                  check.issues.slice(0, 5).map(i =>
-                      '<li>' + escapeHtml(i.rule.name) + ': ‘' +
-                      escapeHtml(truncate(i.found, 60)) + '’</li>').join('') +
-                  '</ul>') +
-            '<div class="ai-actions">' +
-            '<button type="button" class="ai-ghost-btn" data-ai-copy="' + idx + '">Copy rewrite</button>' +
-            (!check.clean
-                ? '<button type="button" class="ai-ghost-btn" data-ai-revise="' + idx + '">✦ Ask AI to fix the flagged issues too</button>'
-                : '<button type="button" class="ai-ghost-btn" data-ai-retry="' + idx + '">✦ Try another version</button>') +
-            '</div>' +
-            '<p class="ai-disclaimer">' + escapeHtml(AI_NOTICE) + '</p>' +
-            '</div>';
-        const copyBtn = slot.querySelector('[data-ai-copy]');
-        if (copyBtn) copyBtn.addEventListener('click', async () => {
-            await navigator.clipboard.writeText(rewriteText);
-            copyBtn.textContent = 'Copied';
-            setTimeout(() => { copyBtn.textContent = 'Copy rewrite'; }, 1600);
-        });
-        const reviseBtn = slot.querySelector('[data-ai-revise]');
-        if (reviseBtn) reviseBtn.addEventListener('click', () => {
-            // aiExempt rules are left out here for the same reason they get no
-            // 'Fix with AI' button: asking the model to expand a short form it
-            // cannot know the meaning of invites an invented full name.
-            const flagged = check.issues.filter(i => !i.rule.aiExempt).slice(0, 5)
-                .map(i => i.rule.name + ' (found: "' + i.found + '")').join('; ');
-            handleAiFix(idx, 'Your previous rewrite was: "' + rewriteText +
-                '". The rule engine flagged these remaining issues - fix them as well: ' + flagged);
-        });
-        const retryBtn = slot.querySelector('[data-ai-retry]');
-        if (retryBtn) retryBtn.addEventListener('click', () =>
-            handleAiFix(idx, 'Offer a different rewrite from: "' + rewriteText + '".'));
-    } catch (err) {
-        slot.innerHTML = '<p class="ai-error" role="alert">' + escapeHtml(err.message) + '</p>';
-    } finally {
-        if (btn) btn.disabled = false;
-    }
 }
 
 function categoryLabel(c) {
@@ -479,12 +369,6 @@ function init() {
     $('category-filter').addEventListener('change', e => {
         state.categoryFilter = e.target.value;
         renderResults();
-    });
-
-    // Delegated handler for the per-issue 'Fix with AI' buttons
-    $('issue-list').addEventListener('click', e => {
-        const btn = e.target.closest('[data-ai-fix]');
-        if (btn) handleAiFix(Number(btn.getAttribute('data-ai-fix')));
     });
 
     // ?sample in the URL runs the sample briefing check on arrival

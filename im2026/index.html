@@ -3,16 +3,31 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- This page runs entirely in the browser: no AI, and no third-party
+     resources. The only network call is the anonymous page-view beacon to the
+     Worker (connect-src), so everything else is locked to same-origin. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self'; font-src 'self'; connect-src 'self' https://im2026-proof-positive.jcr27.workers.dev; base-uri 'none'; form-action 'none'; object-src 'none'">
 <title>Check a document – Proof Positive (IM2026)</title>
-<meta name="description" content="Proof Positive, an IM2026 Bureaucrat Bot: check Word documents and text against the Australian Government Style Manual. A rule engine verifies any AI-drafted fixes.">
+<meta name="description" content="Proof Positive, an IM2026 Bureaucrat Bot: check Word documents and text against the Australian Government Style Manual entirely in your browser. Deterministic rules, no AI.">
 <link rel="icon" type="image/png" sizes="32x32" href="assets/style-check-32x32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="assets/style-check-16x16.png">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="assets/vendor/jszip-3.10.1.min.js"></script>
 <link rel="stylesheet" href="assets/site.css?v=4">
 <!-- Counts one anonymous page view. See src/beacon.js and the About page. -->
 <script type="module" src="src/beacon.js"></script>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700;800&display=swap');
+/* Open Sans, self-hosted (no Google Fonts). Variable woff2 covers 300-800, so
+   one file per subset serves every weight the page uses (400/600/700/800). */
+@font-face{font-family:'Open Sans';font-style:normal;font-weight:300 800;
+  font-display:swap;src:url('assets/fonts/opensans-latin.woff2') format('woff2');
+  unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,
+  U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,
+  U+FEFF,U+FFFD}
+@font-face{font-family:'Open Sans';font-style:normal;font-weight:300 800;
+  font-display:swap;src:url('assets/fonts/opensans-latinext.woff2') format('woff2');
+  unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,
+  U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,
+  U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
 :root{
   --blue:#2d7e98;--b1:#192f38;--b2:#295665;--b4:#61a9be;--b5:#b7d6df;
   --teal:#27854e;--orange:#f36f21;
@@ -147,12 +162,10 @@ textarea#text-input:focus{outline:none;box-shadow:inset 0 0 0 2px var(--b5)}
     <p class="lede">Proof Positive checks your writing against the
       <a href="https://www.stylemanual.gov.au" rel="noopener">Australian Government Style Manual</a>
       using a deterministic rule engine. The same check gives the same answer
-      every time. Where fixing an issue takes judgement, generative AI drafts a
-      rewrite and the rule engine checks the output before you see it.</p>
-    <p class="privacy">Rule checks run entirely in your browser – your document
-      never leaves your browser. AI features (marked ✦) send only the text you
-      choose to the Claude API. Don't enter classified, sensitive or personal
-      information.</p>
+      every time. There is no AI on this page – every check is a fixed rule.</p>
+    <p class="privacy">The check runs entirely in your browser. Your document
+      never leaves your browser and is never sent anywhere. Nothing is stored on
+      your device.</p>
   </header>
 
   <section>
@@ -233,17 +246,15 @@ textarea#text-input:focus{outline:none;box-shadow:inset 0 0 0 2px var(--b5)}
       or the <a href="https://www.stylemanual.gov.au" rel="noopener">Australian
       Government Style Manual</a>.</p>
     <h2>Your data</h2>
-    <p>Rule engine checks run entirely in your browser. Features marked with
-      ✦ send the text you choose to the Claude API (Anthropic) to generate a
-      suggestion; it is not used to train models. Don't enter classified,
-      sensitive or personal information.</p>
-    <p>Page visits and AI requests are counted anonymously, so the reach of
-      the tool can be reported. No text is recorded and nothing is stored on
-      your device. <a href="about.html">What is counted</a>.</p>
+    <p>This page runs entirely in your browser. Your document never leaves your
+      browser and is never sent to any service. There is no AI on this page.</p>
+    <p>Page visits are counted anonymously, so the reach of the tool can be
+      reported. No text is recorded and nothing is stored on your device.
+      <a href="about.html">What is counted</a>.</p>
     <p class="gov-footer-meta">Rules based on the Australian Government Style
       Manual, © Commonwealth of Australia.
-      Deterministic rule engine – AI is only used where judgement is needed,
-      and its output is re-checked against the rules.</p>
+      A deterministic rule engine – the same check gives the same answer every
+      time.</p>
   </div>
 </footer>
 
