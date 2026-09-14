@@ -16,10 +16,12 @@
  *   MODEL              - Claude model id
  *   IP_DAILY_LIMIT     - requests per IP per day (default 40)
  *   GLOBAL_DAILY_LIMIT - requests across all users per day (default 500)
- *   RATE_KEY_PREFIX    - prefix for every rate-counter key (default none).
- *                        Set it when testing so a `wrangler dev` session keeps
- *                        its own counters and cannot exhaust the real users'
- *                        budget:
+ *   RATE_KEY_PREFIX    - marks the whole session as a TEST session (default
+ *                        none, i.e. production). It prefixes every rate-counter
+ *                        key, so a `wrangler dev` session keeps its own counters
+ *                        and cannot exhaust the real users' budget, AND it tags
+ *                        every analytics row `zz-` so measurement traffic stays
+ *                        out of the usage figures. Set it whenever testing:
  *                          npx wrangler dev --remote --var RATE_KEY_PREFIX:dev-
  */
 
@@ -757,6 +759,18 @@ function refHost(value, self) {
  * page loads can be counted at all.
  *
  * Never allowed to fail a request: this is diagnostics, not the service.
+ *
+ * A TEST SESSION IS TAGGED, not separated (1 September 2026). `RATE_KEY_PREFIX`
+ * already keeps a `wrangler dev --remote` session off the real rate counters,
+ * but it did nothing here, so every measurement round landed in the production
+ * figures: the August summary carried 75 list-format calls, most of them from
+ * the 22 August 50-list measurement, indistinguishable from real use. The same
+ * one variable now also prefixes the recorded name with `zz-`, which is the
+ * tag both read_analytics.mjs and build_dashboard.mjs already exclude
+ * (`blob2 NOT LIKE 'zz%'`, the convention the loss-test beacons set). Reusing
+ * the existing variable is deliberate - a second flag is a second thing to
+ * remember, and nobody who namespaces the counters wants the analytics.
+ * Analytics Engine is append-only, so this only fixes it going forward.
  */
 function record(env, request, kind, name, outcome, uid, ref) {
     try {
@@ -764,8 +778,9 @@ function record(env, request, kind, name, outcome, uid, ref) {
         // Cloudflare caps the index at 96 bytes. Do not assume an organisation
         // name is short.
         const org = (cf.asOrganization || '').slice(0, 96);
+        const tagged = env.RATE_KEY_PREFIX ? 'zz-' + name : name;
         env.PP_ANALYTICS && env.PP_ANALYTICS.writeDataPoint({
-            blobs: [kind, name, org, cf.country || '', cf.region || '',
+            blobs: [kind, tagged, org, cf.country || '', cf.region || '',
                     uid || '', ref || '', outcome],
             doubles: [1, cf.asn || 0],
             indexes: [org || 'unknown']

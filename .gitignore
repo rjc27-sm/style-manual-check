@@ -75,5 +75,6 @@ im2026/worker/.wrangler/
 # script holds an account id, so neither may ever reach this public repo.
 # Note .mjs has no general rule here - every local script needs its own line.
 /read_analytics.mjs
+/build_dashboard.mjs
 /analytics/
 /.env

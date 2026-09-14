@@ -49,9 +49,11 @@ form) keep working; AI features show as unavailable.
   judging window (July 2026) – consider dropping back afterwards. At the
   measured ~1.9c a call that caps a day at roughly $19; the busiest day so far
   was 165 calls ($3.10, 17 August 2026), and a whole month runs about $10.
-- `RATE_KEY_PREFIX` – leave EMPTY in production. Prefixes every rate-counter
-  key so a test session keeps its own counters (see ‘Testing without spending
-  the users’ budget’ below).
+- `RATE_KEY_PREFIX` – leave EMPTY in production. It marks the whole session as
+  a TEST session and does two things: it prefixes every rate-counter key, so a
+  test session keeps its own counters (see ‘Testing without spending the users’
+  budget’ below), and from 1 September 2026 it also tags every analytics row
+  `zz-`, so measurement traffic stays out of the usage figures.
 
 ### Reading the counters
 
@@ -93,6 +95,18 @@ node read_analytics.mjs --days 7
 node read_analytics.mjs --month 2026-08
 ```
 
+```
+node build_dashboard.mjs
+node build_dashboard.mjs --days 7
+node build_dashboard.mjs --month 2026-08
+```
+
+`build_dashboard.mjs` runs the same queries and writes a self-contained HTML
+page to `analytics/dashboard-<period>.html` - charts, tables and the caveats,
+no server and no login. Gitignored for the same reason as the reader: the
+output carries agency network names. A saved dashboard also outlives the
+three-month retention window, so keep the ones that matter.
+
 `read_analytics.mjs` lives at the repo root and is **gitignored, permanently**:
 its output carries agency network names and this repo is public. It needs a
 `.env` beside it holding `CF_ACCOUNT_ID` and a `CF_ANALYTICS_TOKEN` with the
@@ -115,6 +129,19 @@ so the corrected figure was right to within about 10%, and the naive one was hal
 `COUNT(DISTINCT blob6)` for 'people' CANNOT be sample-corrected and reads low, and
 no figure here is exact. That is fine for the question being asked - reach, and
 which networks - but do not quote these as precise counts.
+
+**Test traffic is excluded by name.** Both scripts share a `REAL` filter with two
+parts. Anything named `zz…` is test traffic: from 1 September 2026 a session run
+with `RATE_KEY_PREFIX` set tags itself that way automatically, so measurement
+rounds no longer land in the real figures. Second, a LEGACY list (`losstest`,
+`warmup`, `t01`–`t20`) covers the 22 August 2026 rounds that ran before that
+tagging existed; Analytics Engine is append-only so those rows cannot be deleted,
+and the clause can go once they age out of the window in late November 2026.
+The filter is DUPLICATED in `read_analytics.mjs` and `build_dashboard.mjs` –
+change one and you must change the other, or the summary and the dashboard will
+disagree. Note this only ever cleaned the page beacons: the AI calls from the
+22 August round were recorded as plain `list-format`, indistinguishable from real
+use, which is why August's AI totals read high. See `analytics/2026-08.md`.
 
 **Analytics Engine keeps three months.** That is why there is a monthly summary
 task; without it the record simply falls off the back. The dataset has to be
@@ -214,3 +241,25 @@ extra care with rules that carry an `autoFix` – every AI-output verifier
 applies those automatically (Make-it-plain, Ask, Format-a-list items and
 Check-a-document rewrites), so a wrong `autoFix` silently corrupts text.
 Create-a-citation is the one exemption: it preserves source wording verbatim.
+
+### The cumulative workbook
+
+```
+python update_workbook.py --month 2026-08
+python update_workbook.py --month 2026-08 --note "why a figure is odd"
+```
+
+Upserts one month into `analytics/PP_usage.xlsx` – one row per month per thing,
+across `Monthly`, `Networks`, `Pages`, `Features`, `Referrers`, `Regions`,
+`Daily`, `Refusals` and `Notes`, behind a `Read me first` sheet carrying the
+caveats. Gitignored like everything else here.
+
+It does **not** query the API. It shells out to `node read_analytics.mjs --month
+YYYY-MM --json`, so the queries and the test-traffic filter live in one place;
+`--json` also adds a month-wide `totals` section, because summing the daily
+`people` column double-counts a returning visitor and taking its max understates.
+
+Re-running a month **replaces** that month rather than appending a second copy,
+so a backfill or a re-run after a failure is always safe. Since Analytics Engine
+keeps only three months, this workbook is eventually the only surviving record of
+an old month – it is the one file here worth backing up.
