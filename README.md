@@ -17,7 +17,7 @@ personal project by Jen Robertson, not an official government service.
 
 | Tool | What it does | AI |
 |---|---|---|
-| Check a document | Upload a .docx, get it back with mechanical fixes as tracked changes and a comment on every other style issue. Runs entirely in the browser – nothing is uploaded. | Optional ✦ rewrites |
+| Check a document | Upload a .docx, get it back with mechanical fixes as tracked changes and a comment on every other style issue. Runs entirely in the browser with no AI and no third-party resources – nothing is uploaded. | None – rules only |
 | Ask the Style Manual | Ask a style question; the answer is grounded in retrieved extracts of the actual Style Manual pages and links only to pages it read. | ✦ |
 | Make it plain | Plain English rewrite of a dense passage, auto-corrected by the rule engine. | ✦ |
 | Format a list | Rewrites rough bullets into a parallel, correctly punctuated Style Manual list. | ✦ |
