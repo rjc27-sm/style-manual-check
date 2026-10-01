@@ -137,7 +137,8 @@ AI-answer verifiers apply it automatically, so a wrong fix corrupts text.
 
 - Code: CC BY-NC 4.0 (see `LICENSE`).
 - Style Manual content: © Commonwealth of Australia, published by the
-  Australian Public Service Commission. The Style Manual carries **no open
+  Australian Public Service Commission. Used with permission, granted by the
+  Style Manual team in September 2026. The Style Manual carries **no open
   licence** – stylemanual.gov.au asserts copyright without granting one, and
   the APSC's CC BY 4.0 grant covers material on apsc.gov.au, a different site.
   Earlier versions of this file and the site claimed CC BY 4.0; that was

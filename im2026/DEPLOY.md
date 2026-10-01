@@ -229,7 +229,9 @@ site footer, claimed the content was used under CC BY 4.0. That was wrong and
 has been corrected.
 
 The content is © Commonwealth of Australia, Australian Government Style Manual,
-published by the Australian Public Service Commission. It is used to produce an
+published by the Australian Public Service Commission. Used with permission:
+the Style Manual team granted it in September 2026, and the site has said
+'Used with permission' since 1 October 2026. It is used to produce an
 answer and is not republished. Every answer links back to the source page.
 
 ## The sample briefing
