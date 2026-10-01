@@ -22,6 +22,20 @@ id = "3cace9b99cdd430ba1a873add185c670"
 binding = "PP_ANALYTICS"
 dataset = "pp_usage"
 
+# Workers Logs (1 October 2026), so the console.error lines the Worker writes
+# when a call to the AI service fails can be read for three days afterwards
+# (Cloudflare dashboard -> the Worker -> Logs). September 2026's Make-it-plain
+# failures could not be explained because nothing was kept. Invocation logs
+# are OFF on purpose: they would record every request's URL and headers,
+# which this tool promises not to keep. Only the explicit console lines are
+# stored - endpoint, attempt number and HTTP status, never text or addresses.
+[observability]
+enabled = true
+
+[observability.logs]
+enabled = true
+invocation_logs = false
+
 [vars]
 # Locked to the GitHub Pages origin (3 July 2026). Browser calls from any
 # other website are refused. To allow local testing temporarily, set this

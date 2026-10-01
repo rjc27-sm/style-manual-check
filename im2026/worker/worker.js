@@ -907,40 +907,61 @@ export default {
         }
 
         // ---- call Claude ----
-        let apiRes;
-        try {
-            apiRes = await fetch('https://api.anthropic.com/v1/messages', {
-                method: 'POST',
-                headers: {
-                    'x-api-key': env.ANTHROPIC_API_KEY,
-                    'anthropic-version': '2023-06-01',
-                    'content-type': 'application/json'
-                },
-                body: JSON.stringify({
-                    model,
-                    max_tokens: spec.maxTokens || DEFAULTS.MAX_TOKENS,
-                    system,
-                    messages
-                })
-            });
-        } catch {
-            // Every failure below records WHICH kind it was (1 October 2026).
-            // September 2026 recorded 25 Make-it-plain errors as a bare 'error',
-            // and the Console log showed no API request at any of those times,
-            // so the fault was either this fetch or a 429/529 - and nothing
-            // in the data could say which. The outcome now carries the cause:
-            // error-network, error-<http status>, error-empty, error-shape.
-            // Readers group on the string as is, and the workbook counts
-            // anything other than 'ok' as an error, so no script changes.
+        // Every failure records WHICH kind it was, and a TRANSIENT failure is
+        // retried once (1 October 2026). September 2026 recorded 25
+        // Make-it-plain errors as a bare 'error'; the Console log showed no API
+        // request at any of those times, so the fault was this fetch failing
+        // or a 429/529, and nothing in the data could say which. Outcomes now
+        // carry the cause - error-network, error-<http status>, error-empty,
+        // error-shape - and a call that succeeded only on its second attempt
+        // is recorded as 'ok-retried', so the figures still show how often the
+        // first attempt fails. Readers group on the string as is.
+        // The console.error lines are the only thing Workers Logs keeps
+        // (invocation logs are OFF in wrangler.toml): endpoint, attempt and
+        // status, never any text and never an address.
+        const RETRY_DELAY_MS = 2500;
+        const payload = JSON.stringify({
+            model,
+            max_tokens: spec.maxTokens || DEFAULTS.MAX_TOKENS,
+            system,
+            messages
+        });
+        const callClaude = () => fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: {
+                'x-api-key': env.ANTHROPIC_API_KEY,
+                'anthropic-version': '2023-06-01',
+                'content-type': 'application/json'
+            },
+            body: payload
+        });
+        let apiRes = null;
+        let attempts = 0;
+        for (let attempt = 1; attempt <= 2; attempt++) {
+            attempts = attempt;
+            try {
+                apiRes = await callClaude();
+            } catch (err) {
+                apiRes = null;
+                console.error(endpoint + ': attempt ' + attempt +
+                    ' could not reach the AI service: ' + (err && err.message));
+            }
+            const transient = !apiRes || apiRes.status === 429 || apiRes.status === 529;
+            if (!transient) break;
+            if (apiRes) console.error(endpoint + ': attempt ' + attempt + ' answered ' + apiRes.status);
+            if (attempt === 1) await new Promise(r => setTimeout(r, RETRY_DELAY_MS));
+        }
+
+        if (!apiRes) {
             record(env, request, 'ai', endpoint, 'error-network', uid, '');
             return json({ error: 'Could not reach the AI service.' }, 502, cors);
         }
-
         if (apiRes.status === 429 || apiRes.status === 529) {
             record(env, request, 'ai', endpoint, 'error-' + apiRes.status, uid, '');
             return json({ error: 'The AI service is busy. Try again in a minute.' }, 429, cors);
         }
         if (!apiRes.ok) {
+            console.error(endpoint + ': AI service answered ' + apiRes.status);
             record(env, request, 'ai', endpoint, 'error-' + apiRes.status, uid, '');
             return json({ error: 'AI service error (' + apiRes.status + ').' }, 502, cors);
         }
@@ -949,6 +970,7 @@ export default {
         const text = (data.content || [])
             .filter(b => b.type === 'text').map(b => b.text).join('');
         if (!text) {
+            console.error(endpoint + ': empty answer, stop_reason ' + (data.stop_reason || '?'));
             record(env, request, 'ai', endpoint, 'error-empty', uid, '');
             return json({ error: 'The AI returned an empty answer. Try again.' }, 502, cors);
         }
@@ -956,9 +978,10 @@ export default {
         try {
             const result = spec.shape(text);
             if (sources) result.sources = sources;
-            record(env, request, 'ai', endpoint, 'ok', uid, '');
+            record(env, request, 'ai', endpoint, attempts > 1 ? 'ok-retried' : 'ok', uid, '');
             return json(result, 200, cors);
-        } catch {
+        } catch (err) {
+            console.error(endpoint + ': answer could not be shaped: ' + (err && err.message));
             record(env, request, 'ai', endpoint, 'error-shape', uid, '');
             return json({ error: 'The AI answer could not be processed. Try again.' }, 502, cors);
         }
