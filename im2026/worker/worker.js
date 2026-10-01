@@ -924,16 +924,24 @@ export default {
                 })
             });
         } catch {
-            record(env, request, 'ai', endpoint, 'error', uid, '');
+            // Every failure below records WHICH kind it was (1 October 2026).
+            // September 2026 recorded 25 Make-it-plain errors as a bare 'error',
+            // and the Console log showed no API request at any of those times,
+            // so the fault was either this fetch or a 429/529 - and nothing
+            // in the data could say which. The outcome now carries the cause:
+            // error-network, error-<http status>, error-empty, error-shape.
+            // Readers group on the string as is, and the workbook counts
+            // anything other than 'ok' as an error, so no script changes.
+            record(env, request, 'ai', endpoint, 'error-network', uid, '');
             return json({ error: 'Could not reach the AI service.' }, 502, cors);
         }
 
         if (apiRes.status === 429 || apiRes.status === 529) {
-            record(env, request, 'ai', endpoint, 'error', uid, '');
+            record(env, request, 'ai', endpoint, 'error-' + apiRes.status, uid, '');
             return json({ error: 'The AI service is busy. Try again in a minute.' }, 429, cors);
         }
         if (!apiRes.ok) {
-            record(env, request, 'ai', endpoint, 'error', uid, '');
+            record(env, request, 'ai', endpoint, 'error-' + apiRes.status, uid, '');
             return json({ error: 'AI service error (' + apiRes.status + ').' }, 502, cors);
         }
 
@@ -941,7 +949,7 @@ export default {
         const text = (data.content || [])
             .filter(b => b.type === 'text').map(b => b.text).join('');
         if (!text) {
-            record(env, request, 'ai', endpoint, 'error', uid, '');
+            record(env, request, 'ai', endpoint, 'error-empty', uid, '');
             return json({ error: 'The AI returned an empty answer. Try again.' }, 502, cors);
         }
 
@@ -951,7 +959,7 @@ export default {
             record(env, request, 'ai', endpoint, 'ok', uid, '');
             return json(result, 200, cors);
         } catch {
-            record(env, request, 'ai', endpoint, 'error', uid, '');
+            record(env, request, 'ai', endpoint, 'error-shape', uid, '');
             return json({ error: 'The AI answer could not be processed. Try again.' }, 502, cors);
         }
     }

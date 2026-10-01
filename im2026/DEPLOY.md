@@ -89,6 +89,15 @@ document runs entirely in the browser, so without the beacon the main feature
 would not appear in any figure. Written by `record()` in `worker.js`; nothing
 but the counts listed on the About page is recorded.
 
+The outcome of an AI call is `ok`, `blocked-ip`, `blocked-global`, or - from
+1 October 2026 - an error that names its cause: `error-network` (the Worker
+could not reach the AI service), `error-429` / `error-529` (the service refused
+or was overloaded), any other `error-<http status>`, `error-empty` (no text in
+the answer) or `error-shape` (the answer could not be parsed). Before October
+every failure was a bare `error`; September 2026 had 25 of them on Make it plain
+with no way to tell a network fault from a rate limit, which is why the cause is
+now recorded. The reading scripts group on the string as is.
+
 ```
 node read_analytics.mjs
 node read_analytics.mjs --days 7
