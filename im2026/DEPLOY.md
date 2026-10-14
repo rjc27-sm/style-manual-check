@@ -116,6 +116,12 @@ no server and no login. Gitignored for the same reason as the reader: the
 output carries agency network names. A saved dashboard also outlives the
 three-month retention window, so keep the ones that matter.
 
+Both readers have a **What people ask about** section (14 October 2026). It counts the
+Style Manual page that ANSWERED each Ask question - the page the answer already shows
+the asker - never the question text, which is not recorded anywhere. `(no match)` counts
+questions the saved pages could not answer, and is the row worth watching. The About
+page says so in the same words; if this changes, that paragraph (ABT-27) changes with it.
+
 `read_analytics.mjs` lives at the repo root and is **gitignored, permanently**:
 its output carries agency network names and this repo is public. It needs a
 `.env` beside it holding `CF_ACCOUNT_ID` and a `CF_ANALYTICS_TOKEN` with the

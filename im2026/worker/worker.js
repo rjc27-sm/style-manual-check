@@ -772,7 +772,7 @@ function refHost(value, self) {
  * remember, and nobody who namespaces the counters wants the analytics.
  * Analytics Engine is append-only, so this only fixes it going forward.
  */
-function record(env, request, kind, name, outcome, uid, ref) {
+function record(env, request, kind, name, outcome, uid, ref, topic) {
     try {
         const cf = request.cf || {};
         // Cloudflare caps the index at 96 bytes. Do not assume an organisation
@@ -780,8 +780,12 @@ function record(env, request, kind, name, outcome, uid, ref) {
         const org = (cf.asOrganization || '').slice(0, 96);
         const tagged = env.RATE_KEY_PREFIX ? 'zz-' + name : name;
         env.PP_ANALYTICS && env.PP_ANALYTICS.writeDataPoint({
+            // blob9 (14 October 2026) is the Style Manual page slug that
+            // answered an Ask question - WHICH page, never what was asked. It
+            // is the same page the answer already shows the asker. Empty for
+            // every other kind of row. Sliced for the same reason as the org.
             blobs: [kind, tagged, org, cf.country || '', cf.region || '',
-                    uid || '', ref || '', outcome],
+                    uid || '', ref || '', outcome, (topic || '').slice(0, 96)],
             doubles: [1, cf.asn || 0],
             indexes: [org || 'unknown']
         });
@@ -890,8 +894,13 @@ export default {
             ? (env.STRONG_MODEL || env.ASK_MODEL || DEFAULTS.STRONG_MODEL)
             : (env.MODEL || DEFAULTS.MODEL);
         let sources = null;
+        // The best-matching page, for blob9. '(no match)' is the valuable case:
+        // it marks a question the corpus could not answer, which is the signal
+        // worth having and the one no user text is needed to get.
+        let topic = '';
         if (spec.retrieval) {
             const sections = retrieveSections(userMsg);
+            topic = sections.length ? sections[0].s : '(no match)';
             sources = {};
             for (const s of sections) sources[s.u] = s.t;
             const extracts = buildExtracts(sections);
@@ -953,16 +962,16 @@ export default {
         }
 
         if (!apiRes) {
-            record(env, request, 'ai', endpoint, 'error-network', uid, '');
+            record(env, request, 'ai', endpoint, 'error-network', uid, '', topic);
             return json({ error: 'Could not reach the AI service.' }, 502, cors);
         }
         if (apiRes.status === 429 || apiRes.status === 529) {
-            record(env, request, 'ai', endpoint, 'error-' + apiRes.status, uid, '');
+            record(env, request, 'ai', endpoint, 'error-' + apiRes.status, uid, '', topic);
             return json({ error: 'The AI service is busy. Try again in a minute.' }, 429, cors);
         }
         if (!apiRes.ok) {
             console.error(endpoint + ': AI service answered ' + apiRes.status);
-            record(env, request, 'ai', endpoint, 'error-' + apiRes.status, uid, '');
+            record(env, request, 'ai', endpoint, 'error-' + apiRes.status, uid, '', topic);
             return json({ error: 'AI service error (' + apiRes.status + ').' }, 502, cors);
         }
 
@@ -971,18 +980,18 @@ export default {
             .filter(b => b.type === 'text').map(b => b.text).join('');
         if (!text) {
             console.error(endpoint + ': empty answer, stop_reason ' + (data.stop_reason || '?'));
-            record(env, request, 'ai', endpoint, 'error-empty', uid, '');
+            record(env, request, 'ai', endpoint, 'error-empty', uid, '', topic);
             return json({ error: 'The AI returned an empty answer. Try again.' }, 502, cors);
         }
 
         try {
             const result = spec.shape(text);
             if (sources) result.sources = sources;
-            record(env, request, 'ai', endpoint, attempts > 1 ? 'ok-retried' : 'ok', uid, '');
+            record(env, request, 'ai', endpoint, attempts > 1 ? 'ok-retried' : 'ok', uid, '', topic);
             return json(result, 200, cors);
         } catch (err) {
             console.error(endpoint + ': answer could not be shaped: ' + (err && err.message));
-            record(env, request, 'ai', endpoint, 'error-shape', uid, '');
+            record(env, request, 'ai', endpoint, 'error-shape', uid, '', topic);
             return json({ error: 'The AI answer could not be processed. Try again.' }, 502, cors);
         }
     }
