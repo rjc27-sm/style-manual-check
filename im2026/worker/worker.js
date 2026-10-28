@@ -99,7 +99,14 @@ const EXPANSIONS = [
     // Ordinals: a question phrased as '1st' or 'first' never contains the word
     // the pages actually use, and 'first' on its own ranks First Nations and
     // 'family name first' far above it.
-    [/\b\d+(?:st|nd|rd|th)\b|\bordinals?\b/i, 'ordinal numbers']
+    [/\b\d+(?:st|nd|rd|th)\b|\bordinals?\b/i, 'ordinal numbers'],
+    // Modal verbs: 'can', 'could', 'should', 'would' and 'will' are STOPWORDS,
+    // so 'Is it "can I" or "could I" in a formal request?' tokenised to
+    // 'formal request' and missed the modals blog post (28 October 2026).
+    // Fires on two modals set against each other, or on the word itself -
+    // not on any question that merely contains 'should' or 'can'.
+    [/\b(?:can|could|may|might|shall|should|will|would|must)\b\W+(?:\w+\W+)?(?:or|vs|versus|and)\W+(?:can|could|may|might|shall|should|will|would|must)\b|\bmodals?\b/i,
+        'modal modals verbs']
 ];
 
 function tokenise(s) {

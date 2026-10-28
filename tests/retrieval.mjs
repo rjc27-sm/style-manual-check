@@ -101,7 +101,11 @@ const CASES = [
     ["When do I use 'which' and when do I use 'that'?", /relative pronouns|non.essential/i],
     ['that versus which', /relative pronouns|non.essential/i],
     ["Do I use '1st' or 'first'?", /ordinals/i],
-    ['Should I write 25th or twenty-fifth?', /ordinals/i]
+    ['Should I write 25th or twenty-fifth?', /ordinals/i],
+    // The 'May, might and other modals' blog post (added 28 October 2026)
+    ["Should I write 'may' or 'might'?", /modal/i],
+    ['What is a modal verb?', /modal/i],
+    ['Is it "can I" or "could I" in a formal request?', /modal|possibility|feeling|consider/i]
 ];
 for (const [question, want] of CASES) {
     const picked = worker.retrieveSections(question);
