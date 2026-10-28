@@ -98,6 +98,14 @@ every failure was a bare `error`; September 2026 had 25 of them on Make it plain
 with no way to tell a network fault from a rate limit, which is why the cause is
 now recorded. The reading scripts group on the string as is.
 
+Two outcomes are successes with a note attached, so anything that groups on
+`ok*` counts them as successes: `ok-retried` (the first attempt failed and the
+retry worked) and, from 28 October 2026, `ok-truncated` (an answer came back
+but stopped at the `max_tokens` ceiling, so the reader saw it cut off). Any
+`ok-truncated` row means a ceiling needs raising. Sonnet 5 thinks by default and
+its thinking counts against that ceiling, which is why Ask answers were being cut
+off at the old 1,024 default.
+
 ```
 node read_analytics.mjs
 node read_analytics.mjs --days 7

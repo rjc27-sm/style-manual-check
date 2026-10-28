@@ -38,7 +38,12 @@ const DEFAULTS = {
     ASK_MODEL: 'claude-sonnet-5',
     IP_DAILY_LIMIT: 40,
     GLOBAL_DAILY_LIMIT: 500,
-    MAX_TOKENS: 1024
+    // Sonnet 5 thinks by default when no 'thinking' parameter is sent, and its
+    // thinking counts against max_tokens. At 1024 a harder Ask question spent
+    // most of the budget thinking and the visible answer stopped mid-sentence
+    // (reported 28 October 2026). It is a ceiling, not a spend: only answers
+    // that were being cut off use the extra room.
+    MAX_TOKENS: 4096
 };
 
 // ---------------- retrieval over the scraped Style Manual ----------------
@@ -984,10 +989,20 @@ export default {
             return json({ error: 'The AI returned an empty answer. Try again.' }, 502, cors);
         }
 
+        // A cut-off answer still has text, so it used to be recorded as 'ok'
+        // and nobody could see how often it happened. 'ok-truncated' still
+        // counts as a success everywhere that groups on 'ok*'.
+        const truncated = data.stop_reason === 'max_tokens';
+        if (truncated) {
+            console.error(endpoint + ': answer hit max_tokens (' +
+                (data.usage && data.usage.output_tokens) + ' output tokens)');
+        }
+
         try {
             const result = spec.shape(text);
             if (sources) result.sources = sources;
-            record(env, request, 'ai', endpoint, attempts > 1 ? 'ok-retried' : 'ok', uid, '', topic);
+            record(env, request, 'ai', endpoint,
+                truncated ? 'ok-truncated' : attempts > 1 ? 'ok-retried' : 'ok', uid, '', topic);
             return json(result, 200, cors);
         } catch (err) {
             console.error(endpoint + ': answer could not be shaped: ' + (err && err.message));
