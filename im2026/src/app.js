@@ -21,6 +21,7 @@ const state = {
     fileName: '',
     fileBuffer: null,
     issues: [],
+    skippedHeading: '',      // text of a reference-list heading left unchecked
     categoryFilter: 'all'
 };
 
@@ -33,6 +34,10 @@ function activeRules() {
 }
 
 function runRules(text, ctx) {
+    const skipped = referenceRanges(text, ctx);
+    state.skippedHeading = skipped.length ? skipped[0].heading : '';
+    const inSkipped = issue => skipped.some(r =>
+        issue.position >= r.start && issue.position < r.end);
     const issues = [];
     for (const rule of activeRules()) {
         try {
@@ -44,7 +49,59 @@ function runRules(text, ctx) {
         }
     }
     issues.sort((a, b) => a.position - b.position);
-    return issues;
+    return issues.filter(issue => !inSkipped(issue));
+}
+
+// ---------------- Reference lists ----------------
+
+// A reference list is citations, not prose: its titles, volume numbers and
+// DOIs must stay exactly as published, so nothing under one of these headings
+// is checked (Jen, 28 October 2026). 'Sources' is left out on purpose - a
+// 'Source:' line under a table would switch checking off for the body after it.
+const REFERENCE_HEADING = /^(?:\d+(?:\.\d+)*\.?\s+)?(?:references?|reference list|bibliography|works cited|further reading|references and further reading)\s*:?$/i;
+
+// Back matter that can follow a reference list in pasted text, where there
+// are no heading styles to say where the list ends.
+const BACK_MATTER_HEADING = /^(?:\d+(?:\.\d+)*\.?\s+)?(?:appendix|appendices|attachment|annex|glossary|abbreviations|acronyms|shortened forms|endnotes|acknowledge?ments|index)\b.{0,60}$/i;
+
+/**
+ * The text ranges that sit under a reference-list heading. In a Word document
+ * a range ends at the next real heading of the same or a higher level (or the
+ * next bold pseudo-heading). Pasted text has no reliable headings - a short
+ * citation looks like one - so there it runs to the next back-matter heading
+ * or the end of the text.
+ */
+function referenceRanges(text, ctx) {
+    const lines = text.split('\n');
+    const starts = [];
+    let pos = 0;
+    for (const line of lines) { starts.push(pos); pos += line.length + 1; }
+    const levels = ctx.headingLevels;           // only a loaded .docx has these
+    const styled = levels instanceof Map;
+    const ranges = [];
+    for (let i = 0; i < lines.length; i++) {
+        const heading = lines[i].trim();
+        if (!REFERENCE_HEADING.test(heading)) continue;
+        const level = styled ? levels.get(i) : undefined;
+        let end = text.length;
+        for (let j = i + 1; j < lines.length; j++) {
+            const line = lines[j].trim();
+            if (!line) continue;
+            let breaks;
+            if (styled) {
+                const jLevel = levels.get(j);
+                breaks = (ctx.headingLines.has(j) &&
+                        (level === undefined || jLevel === undefined || jLevel <= level)) ||
+                    (ctx.boldLines && ctx.boldLines.has(j) &&
+                        line.split(/\s+/).length <= 12 && !/[.!?]$/.test(line));
+            } else {
+                breaks = BACK_MATTER_HEADING.test(line);
+            }
+            if (breaks) { end = starts[j]; break; }
+        }
+        ranges.push({ heading: heading.replace(/:$/, ''), start: starts[i] + lines[i].length, end });
+    }
+    return ranges;
 }
 
 /** Point list issues at the Format a list tool (used in docx comments). */
@@ -245,6 +302,10 @@ function renderResults() {
         : state.issues.length + (state.issues.length === 1 ? ' issue' : ' issues') +
           ' found across ' + Object.keys(counts).length +
           (Object.keys(counts).length === 1 ? ' category' : ' categories') + '.';
+    if (state.skippedHeading) {
+        $('summary-line').textContent += ' Text under ‘' + state.skippedHeading +
+            '’ was not checked, so citations stay as published.';
+    }
 
     const src = sourceText();
 

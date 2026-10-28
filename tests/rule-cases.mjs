@@ -347,7 +347,61 @@ const CASES = [
     ['abbrev-expanded-after-first-use',
         'The Australian Institute of Health and Welfare (AIHW) reported a rise.', false],
     ['abbrev-expanded-after-first-use',
-        'A total of 5 mg (MGT) was recorded.', false]
+        'A total of 5 mg (MGT) was recorded.', false],
+    // The whole name is replaced, not the tail after a small word that
+    // happens to supply a letter ('and' could be the A in ANZAC)
+    ['abbrev-expanded-after-first-use',
+        'The Australian and New Zealand Army Corps (ANZAC) landed. ' +
+        'The Australian and New Zealand Army Corps (ANZAC) fought.', true, 'ANZAC'],
+    ['abbrev-expanded-after-first-use',
+        'A general practitioner (GP) saw her. Later a general practitioner (GP) saw him.',
+        true, 'GP'],
+
+    // ---- abbrev-first-use-not-expanded: definitions it used to miss (28 Oct 2026) ----
+    // Lower-case expansions - the Style Manual's own style for common nouns
+    ['abbrev-first-use-not-expanded', 'See a general practitioner (GP) first. The GP will refer you.', false],
+    ['abbrev-first-use-not-expanded', 'The non-government organisation (NGO) sector grew.', false],
+    ['abbrev-first-use-not-expanded', 'The Organisation for Economic Co-operation and Development (OECD) reported.', false],
+    ['abbrev-first-use-not-expanded', 'The National Disability Insurance Scheme (the Scheme or NDIS) began.', false],
+    ['abbrev-first-use-not-expanded', 'The National Aborigines and Islanders Day Observance Committee (NAIDOC) met.', false],
+    ['abbrev-first-use-not-expanded', 'Technical and Further Education (TAFE) colleges.', false],
+    // A contents line is not a use
+    ['abbrev-first-use-not-expanded',
+        'Contents\n1 NDIS overview\t3\nThe National Disability Insurance Scheme (NDIS) began.', false],
+    // A glossary row is neither flagged nor counted as the definition
+    ['abbrev-first-use-not-expanded',
+        'Abbreviations\nNDIS\nNational Disability Insurance Scheme\n' +
+        'The National Disability Insurance Scheme (NDIS) began.', false],
+    ['abbrev-first-use-not-expanded',
+        'Abbreviations\nNDIS – National Disability Insurance Scheme\nThe NDIS began.', true],
+    // Lower case only counts inside brackets: an ordinary lower-case word
+    // before a bare short form is not a definition
+    ['abbrev-first-use-not-expanded', 'People see their GP often.', true],
+
+    // ---- readability-sentence-length: fires at 35 words (28 Oct 2026) ----
+    ['readability-sentence-length',
+        'one two three four five six seven eight nine ten eleven twelve thirteen ' +
+        'fourteen fifteen sixteen seventeen eighteen nineteen twenty twenty-one ' +
+        'twenty-two twenty-three twenty-four twenty-five twenty-six twenty-seven ' +
+        'twenty-eight twenty-nine thirty thirty-one thirty-two thirty-three thirty-four.', false],
+    ['readability-sentence-length',
+        'one two three four five six seven eight nine ten eleven twelve thirteen ' +
+        'fourteen fifteen sixteen seventeen eighteen nineteen twenty twenty-one ' +
+        'twenty-two twenty-three twenty-four twenty-five twenty-six twenty-seven ' +
+        'twenty-eight twenty-nine thirty thirty-one thirty-two thirty-three ' +
+        'thirty-four thirty-five.', true],
+
+    // ---- identifiers are not numbers (28 Oct 2026) ----
+    // A citation's volume(issue) and DOI must survive exactly as published
+    ['numbers-zero-one', 'Journal of Communication, 59(1):172–188.', false],
+    ['numbers-zero-one', 'Under section 5(1) of the Act.', false],
+    ['numbers-comma-thousands', 'doi:10.1111/j.1460-2466.2008.01410.x', false],
+    ['numbers-leading-zero', 'doi:10.1111/j.1460-2466.2008.01410.x', false],
+    ['numbers-comma-thousands', 'https://doi.org/10.1111/j.1460-2466.2008.01410.x', false],
+    ['numbers-comma-thousands', 'ISBN 978-0-642-12345-6', false],
+    // ...while the same digits in prose are still fixed
+    ['numbers-comma-thousands', 'The total was 1460 people.', true, '1,460'],
+    ['numbers-zero-one', 'Only 1 person attended.', true]
 ];
 
 // Batch 3 structure rules: [ruleId, text, docCtx, shouldFlag, expectedFix?]
@@ -388,6 +442,14 @@ const CTX_CASES = [
         { boldLines: new Set([0]) }, true, 'Background and context'],
     ['heading-title-case', 'Report on program delivery',
         { boldLines: new Set([0]) }, false],
+
+    // ---- abbrev-first-use-not-expanded: a title is not the first use ----
+    ['abbrev-first-use-not-expanded',
+        'AIHW annual report\nThe Australian Institute of Health and Welfare (AIHW) publishes it.',
+        { headingLines: new Set([0]) }, false],
+    ['abbrev-first-use-not-expanded',
+        'AIHW annual report\nThe AIHW publishes it.',
+        { headingLines: new Set([0]) }, true],
 
     // ---- format-underline-not-link (HS-03) ----
     ['format-underline-not-link', 'This is an important note here',

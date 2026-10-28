@@ -40,6 +40,12 @@ body{font-family:'Open Sans',Arial,sans-serif;background:var(--bg);color:var(--c
 .msg-check{display:block;margin-top:8px;padding-top:7px;border-top:1px solid var(--line);
   font-size:12px;font-weight:600;color:#27854e}
 .msg-check-warn{color:#7a3d18}
+.msg-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.msg-copy{font:600 13px 'Open Sans',sans-serif;border-radius:6px;padding:6px 13px;cursor:pointer;
+  min-height:34px;border:1px solid var(--blue);background:var(--blue);color:#fff}
+.msg-copy:hover{background:var(--b2);border-color:var(--b2)}
+.msg-copy-ghost{background:#fff;color:var(--b2);border-color:var(--c5)}
+.msg-copy-ghost:hover{background:#eef5f7;border-color:var(--b4)}
 .msg-label{font-size:11.5px;font-weight:700;opacity:.75;display:block;margin-bottom:3px}
 
 .suggests{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
@@ -252,14 +258,108 @@ function addMsg(role, text, sources, check) {
     }
     div.innerHTML = '<span class="msg-label">' +
         (role === 'user' ? 'You' : 'Proof Positive') + '</span>' +
-        (role === 'user' ? escapeHtml(text) : renderAnswer(text, sources)) +
-        checkLine;
+        (role === 'user' ? escapeHtml(text)
+            : '<div class="msg-body">' + renderAnswer(text, sources) + '</div>') +
+        checkLine +
+        (role === 'user' ? '' : '<div class="msg-actions">' +
+            '<button type="button" class="msg-copy" data-copy="word">Copy for Word</button>' +
+            '<button type="button" class="msg-copy msg-copy-ghost" data-copy="text">Copy as text</button>' +
+            '</div>');
     $('chat').appendChild(div);
     // User questions only need to be nudged into view. For an answer, bring the
     // TOP of the panel to the top of the viewport so the reader's eye starts at
     // the beginning of the answer instead of at its (possibly off-screen) end.
     div.scrollIntoView({ block: role === 'user' ? 'nearest' : 'start',
         behavior: 'smooth' });
+}
+
+// ---- Copying an answer ----
+// Nothing is stored, so leaving the page loses the conversation (a tester
+// asked for a way to keep answers, 28 October 2026). These are the Format a
+// list buttons: Word-flavoured HTML that keeps bold, italics, bullets and
+// links, with plain text riding along for every other destination.
+
+/** Plain text of a rendered answer: blank line between paragraphs, '• ' items, link addresses kept. */
+function answerText(body) {
+    const inline = node => Array.from(node.childNodes).map(n => {
+        if (n.nodeType === 3) return n.textContent;
+        if (n.nodeName === 'A') return n.textContent + ' (' + n.href + ')';
+        return inline(n);
+    }).join('');
+    const blocks = [];
+    for (const el of body.children) {
+        if (el.nodeName === 'UL') {
+            blocks.push(Array.from(el.children).map(li => '• ' + inline(li)).join('\n'));
+        } else {
+            blocks.push(inline(el));
+        }
+    }
+    return blocks.join('\n\n');
+}
+
+function answerWordHtml(body) {
+    return '<html><head><meta charset="utf-8"></head><body>' +
+        body.innerHTML + '</body></html>';
+}
+
+// Fallback copy via a hidden textarea + execCommand, for browsers or
+// locked-down agency builds where the async Clipboard API is unavailable.
+function execCommandCopy(text) {
+    try {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.setAttribute('readonly', '');
+        ta.style.position = 'fixed';
+        ta.style.top = '-1000px';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        ta.setSelectionRange(0, text.length);
+        const ok = document.execCommand('copy');
+        document.body.removeChild(ta);
+        return ok;
+    } catch (e) {
+        return false;
+    }
+}
+
+function copyPlain(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        return navigator.clipboard.writeText(text).then(() => true)
+            .catch(() => execCommandCopy(text));
+    }
+    return Promise.resolve(execCommandCopy(text));
+}
+
+function copyRich(html, text) {
+    if (navigator.clipboard && window.ClipboardItem && navigator.clipboard.write) {
+        try {
+            const item = new ClipboardItem({
+                'text/html': new Blob([html], { type: 'text/html' }),
+                'text/plain': new Blob([text], { type: 'text/plain' })
+            });
+            return navigator.clipboard.write([item]).then(() => true).catch(() => false);
+        } catch (e) { return Promise.resolve(false); }
+    }
+    return Promise.resolve(false);
+}
+
+function flashBtn(btn, label) {
+    const restore = btn.dataset.copy === 'word' ? 'Copy for Word' : 'Copy as text';
+    btn.textContent = label;
+    setTimeout(() => { btn.textContent = restore; }, 2500);
+}
+
+async function copyAnswer(btn) {
+    const body = btn.closest('.msg-bot').querySelector('.msg-body');
+    const text = answerText(body);
+    if (btn.dataset.copy === 'word') {
+        if (await copyRich(answerWordHtml(body), text)) return flashBtn(btn, 'Copied!');
+        // Rich copy unavailable in this browser - fall back to plain text.
+        const ok = await copyPlain(text);
+        return flashBtn(btn, ok ? 'Copied as text' : 'Couldn’t copy');
+    }
+    flashBtn(btn, await copyPlain(text) ? 'Copied!' : 'Couldn’t copy');
 }
 
 async function ask(question) {
@@ -298,6 +398,10 @@ if (!AI_ENABLED) {
 $('ask-btn').addEventListener('click', () => ask($('ask-input').value));
 $('ask-input').addEventListener('keydown', e => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); ask($('ask-input').value); }
+});
+$('chat').addEventListener('click', e => {
+    const b = e.target.closest('[data-copy]');
+    if (b) copyAnswer(b);
 });
 $('suggests').addEventListener('click', e => {
     const b = e.target.closest('button');

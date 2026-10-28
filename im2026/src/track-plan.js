@@ -13,7 +13,6 @@ export const COMMENT_ONLY_RULES = new Set([
     'heading-all-caps',          // same sentence-casing risk
     'heading-bold-not-styled',   // the fix is a style change, not a text change
     'punct-serial-comma',        // the Style Manual allows it for clarity
-    'punct-capital-after-colon', // no proper-noun list can cover every name
     'numbers-words-to-numerals', // figures of speech trip it
     'govt-generic-department',   // house styles often capitalise these
     'govt-generic-minister',

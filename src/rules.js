@@ -2093,7 +2093,11 @@ const RULES = [
                     const words = sentence.split(/\s+/).filter(w => w.length > 0);
                     const wordCount = words.length;
 
-                    if (wordCount > 25) {
+                    // Fires at 35 words, not at the 25 the description
+                    // mentions: at 25 it flagged too many ordinary sentences
+                    // to be useful (Jen, 28 October 2026). Only genuinely
+                    // long sentences are worth the reader's attention.
+                    if (wordCount >= 35) {
                         // Use first 8 words for navigation (long sentences break Word search)
                         const searchText = words.slice(0, 8).join(' ');
                         issues.push({
@@ -2903,115 +2907,9 @@ const RULES = [
         }
     },
 
-    // ==================== ADDITIONAL PUNCTUATION ====================
-    {
-        id: 'punct-capital-after-colon',
-        name: 'Capital letter after colon',
-        category: 'punctuation',
-        description: 'Use a lowercase letter after a colon (unless the word is a proper noun).',
-        link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/punctuation/colons',
-        check: function(text, headingLines) {
-            const issues = [];
-            // Use [ \t]+ (not \s+) so the regex never bridges line breaks (\r or \n)
-            const regex = /:[  \t]+([A-Z][a-z]+)/g;
-            // Proper nouns and other words that are legitimately capitalised
-            const properNouns = new Set([
-                'I',
-                'January', 'February', 'March', 'April', 'May', 'June',
-                'July', 'August', 'September', 'October', 'November', 'December',
-                'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday',
-                'Australia', 'Australian', 'Australians',
-                'Aboriginal', 'Indigenous',
-                'English', 'French', 'German', 'Spanish', 'Chinese', 'Japanese',
-                'Christmas', 'Easter',
-                'Parliament', 'Commonwealth', 'Government',
-                // Australian states/territories (single-word; multi-word names like
-                // 'New South Wales' are handled by the multi-word skip below) and
-                // capital cities - common single-occurrence proper nouns in
-                // government writing that a mid-sentence check cannot catch.
-                'Queensland', 'Victoria', 'Tasmania',
-                'Sydney', 'Melbourne', 'Brisbane', 'Perth', 'Adelaide',
-                'Hobart', 'Darwin', 'Canberra'
-            ]);
-            // A proper noun keeps its capital everywhere; a common word is
-            // capitalised only at the start of a sentence. So if this word ALSO
-            // appears capitalised somewhere that is not sentence-initial, it is a
-            // proper noun - leave it alone. Needs no maintained list and catches
-            // repeated names (Medicare, Centrelink, a surname) automatically.
-            const appearsMidSentence = (w) => {
-                const re = new RegExp('\\b' + w + '\\b', 'g');
-                let m2;
-                while ((m2 = re.exec(text)) !== null) {
-                    let j = m2.index - 1;
-                    while (j >= 0 && (text[j] === ' ' || text[j] === '\t')) j--;
-                    if (j < 0) continue;                              // start of text
-                    // Sentence-initial contexts: after . ! ? : a line break, or an
-                    // opening quote/bracket. Anything else means mid-sentence.
-                    if (/[.!?:\r\n"'(‘“]/.test(text[j])) continue;
-                    return true;
-                }
-                return false;
-            };
-            let match;
-            while ((match = regex.exec(text)) !== null) {
-                const word = match[1];
-
-                // Skip proper nouns
-                if (properNouns.has(word)) continue;
-
-                // Skip words that read as proper nouns elsewhere in the text
-                if (appearsMidSentence(word)) continue;
-
-                // Skip if the match bridges a line break (\r or \n) — safety net for any
-                // line endings that slip through the [ \t]+ regex guard above
-                if (/[\r\n]/.test(match[0])) continue;
-
-                // Skip if the colon is at the very start of a line (paragraph starting with ':')
-                const charBeforeColon = match.index > 0 ? text[match.index - 1] : '\n';
-                if (/[\r\n]/.test(charBeforeColon)) continue;
-
-                // Skip if the match falls within a heading line
-                if (headingLines && headingLines.size > 0) {
-                    const lineIndex = text.substring(0, match.index).split('\n').length - 1;
-                    if (headingLines.has(lineIndex)) continue;
-                }
-
-                // Skip if the word is part of a CamelCase identifier (e.g. ReadWriteDocument)
-                const charAfterWord = text[match.index + match[0].length];
-                if (charAfterWord && /[A-Z]/.test(charAfterWord)) continue;
-
-                // Skip if the colon follows a label word (Step 2:, Phase 1:, Option A:, Note:, etc.)
-                const before = text.substring(Math.max(0, match.index - 60), match.index);
-                if (/\b(step|phase|stage|part|section|note|example|exercise|task|chapter|item|option|figure|table|exhibit|rule|action|activity|objective|outcome|principle|requirement|tip|warning|caution|appendix|schedule|attachment|annex)\s*[\d\w]*\s*$/i.test(before)) continue;
-
-                // Skip if the entire clause after the colon is a question
-                // (look from the colon to the first sentence-ending character)
-                const textAfterColon = text.substring(match.index + 1);
-                const sentenceEnd = textAfterColon.search(/[\n.!?]/);
-                if (sentenceEnd >= 0 && textAfterColon[sentenceEnd] === '?') continue;
-
-                // Skip if the flagged word is the start of a multi-word proper-noun phrase
-                // (the very next word also starts with a capital, e.g. "Style Manual", "Commonwealth Bank")
-                const afterPos = match.index + match[0].length;
-                const after = text.substring(afterPos, afterPos + 50);
-                if (/^ [A-Z]/.test(after)) continue;
-
-                const lower = word[0].toLowerCase() + word.slice(1);
-
-                // Build a short context snippet so the card shows exactly where the colon is
-                const ctxSnippet = before.replace(/[\r\n]+/g, ' ').replace(/\s+/g, ' ').trim();
-                const ctxShort = ctxSnippet.length > 40 ? '\u2026' + ctxSnippet.slice(-40) : ctxSnippet;
-                issues.push({
-                    found: word,
-                    suggestion: 'Use lowercase after a colon (unless a proper noun). Found: \u2018' + ctxShort + ': ' + word + '\u2026\u2019 \u2192 try \u2018' + lower + '\'',
-                    autoFix: lower,
-                    position: match.index + match[0].indexOf(word),
-                    rule: this
-                });
-            }
-            return issues;
-        }
-    },
+    // 'punct-capital-after-colon' was removed on 28 October 2026 (Jen's call):
+    // in real documents it was mostly false positives - proper nouns, titles and
+    // labels that no list or heuristic could cover - and users found it noise.
 
     // ==================== ADDITIONAL ABBREVIATION RULES ====================
     {
@@ -4089,9 +3987,21 @@ const RULES = [
         // The engine does not know what the letters stand for, so there is no
         // autoFix - and no AI draft either. A guess is worse than a flag.
         aiExempt: true,
-        check: function(text) {
+        check: function(text, headingLines) {
             const issues = [];
             const seen = new Set();
+            const lineStarts = [0];
+            for (let i = 0; i < text.length; i++) {
+                if (text[i] === '\n') lineStarts.push(i + 1);
+            }
+            const lineIndexOf = pos => {
+                let lo = 0, hi = lineStarts.length - 1;
+                while (lo < hi) {
+                    const mid = (lo + hi + 1) >> 1;
+                    if (lineStarts[mid] <= pos) lo = mid; else hi = mid - 1;
+                }
+                return lo;
+            };
             const regex = /\b([A-Z]{2,6})(s?)\b/g;
             let match;
             while ((match = regex.exec(text)) !== null) {
@@ -4100,6 +4010,16 @@ const RULES = [
                 // short form, so they do not consume the first use either.
                 if (inAllCapsRun(text, match.index)) continue;
                 if (inUrlOrEmail(text, match.index)) continue;
+                // Nor are a title, a heading, a contents line or a glossary
+                // row: the first use the Style Manual means is in the body,
+                // and a report's title usually carries its agency's short
+                // form long before the text defines it (28 October 2026).
+                const line = lineIndexOf(match.index);
+                if (headingLines && headingLines.has(line)) continue;
+                const lineEnd = line + 1 < lineStarts.length
+                    ? lineStarts[line + 1] - 1 : text.length;
+                if (/(?:\t|\.{3,}|…)\s*\d+\s*$/.test(text.slice(lineStarts[line], lineEnd))) continue;
+                if (isGlossaryEntry(text, match.index, match[0].length, token)) continue;
                 if (seen.has(token)) continue;
                 seen.add(token);
                 if (EXPANSION_EXEMPT.has(token)) continue;
@@ -4149,6 +4069,55 @@ const RULES = [
         }
     }
 ];
+
+/**
+ * Spans that are identifiers, not prose: web addresses, DOIs, ISBNs/ISSNs and
+ * a journal's volume(issue):pages ('59(1):172–188', which also covers a
+ * legislative 'section 5(1)'). The digits in these are labels - spelling out
+ * the '1' in '59(1)' or putting commas into 'doi:10.1111/j.1460-2466' breaks
+ * the citation (reported 28 October 2026, from an Ask answer and from
+ * reference lists in Check a document).
+ */
+function identifierSpans(text) {
+    const spans = [];
+    const patterns = [
+        /(?:https?:\/\/|www\.)[^\s<>"]+/gi,
+        /\b(?:doi:\s*)?10\.\d{4,9}\/[^\s<>"]+/gi,
+        /\bIS[BS]N(?:-?1[03])?:?\s*[\dXx][\dXx  -]{6,20}[\dXx]/g,
+        /\b\d+\(\d+(?:[–-]\d+)?\)(?::\s*[A-Za-z]?\d+(?:[–-][A-Za-z]?\d+)?)?/g
+    ];
+    for (const regex of patterns) {
+        let m;
+        while ((m = regex.exec(text)) !== null) {
+            spans.push({ start: m.index, end: m.index + m[0].length });
+        }
+    }
+    return spans;
+}
+
+// Categories whose fixes would corrupt an identifier. Links and accessibility
+// rules are left out on purpose: some of them flag the address itself.
+const IDENTIFIER_GUARDED = new Set([
+    'numbers-and-measurements', 'dates-and-time', 'punctuation', 'spelling'
+]);
+
+// Applied here, once, rather than inside each rule: every tool iterates RULES
+// and calls rule.check directly, so this is the one place that reaches them
+// all. toString is passed through because build_skill.mjs reads each check
+// function's source to decide whether a rule is mechanical.
+for (const rule of RULES) {
+    if (!IDENTIFIER_GUARDED.has(rule.category)) continue;
+    const check = rule.check;
+    rule.check = function(text, ...rest) {
+        const issues = check.call(this, text, ...rest);
+        if (issues.length === 0 || typeof text !== 'string') return issues;
+        const spans = identifierSpans(text);
+        if (spans.length === 0) return issues;
+        return issues.filter(issue => !spans.some(s =>
+            issue.position >= s.start && issue.position < s.end));
+    };
+    rule.check.toString = () => check.toString();
+}
 
 /**
  * Shared matcher for the three advisory inclusive-language term lists.
@@ -4263,11 +4232,95 @@ function inUrlOrEmail(text, position) {
 }
 
 /**
+ * Split text into expansion words. A hyphenated compound is kept as parts so
+ * 'non-government organisation (NGO)' can use the inner initial and
+ * 'Co-operation and Development (OECD)' can skip it.
+ */
+function expansionWords(text, from, to) {
+    const parts = [];
+    const slice = text.slice(from, to);
+    const wordRegex = /[A-Za-z][A-Za-z'’]*(?:-[A-Za-z][A-Za-z'’]*)*/g;
+    let m;
+    while ((m = wordRegex.exec(slice)) !== null) {
+        let offset = 0;
+        m[0].split('-').forEach((part, k) => {
+            parts.push({ text: part, index: from + m.index + offset,
+                compoundStart: from + m.index, inner: k > 0 });
+            offset += part.length + 1;
+        });
+    }
+    return parts;
+}
+
+// A word supplies the token's next letter when its initial matches and it is
+// capitalised, a small word ('of' in FOI), or - in a bracketed definition -
+// any word at all. The Style Manual writes common-noun expansions in lower
+// case: 'general practitioner (GP)'.
+function suppliesLetter(part, letter, allowLower) {
+    if (part.text[0].toUpperCase() !== letter) return false;
+    return allowLower || /^[A-Z]/.test(part.text) ||
+        EXPANSION_SMALL_WORDS.has(part.text.toLowerCase());
+}
+
+function skippableWord(part) {
+    return part.inner || EXPANSION_SMALL_WORDS.has(part.text.toLowerCase());
+}
+
+/**
+ * Match the token's letters right to left against the words that end just
+ * before it. A small word or the inner part of a compound may be skipped,
+ * and every reading is tried, so the small word in 'Australian and New
+ * Zealand Army Corps (ANZAC)' cannot steal the A. The earliest start wins -
+ * the whole name, not its tail. Returns the start index or -1.
+ */
+function matchInitialsBackward(parts, token, allowLower) {
+    let best = -1;
+    const go = (wi, ti) => {
+        if (wi < 0) return;
+        const part = parts[wi];
+        if (suppliesLetter(part, token[ti], allowLower)) {
+            if (ti === 0) {
+                const start = part.inner ? part.compoundStart : part.index;
+                if (best === -1 || start < best) best = start;
+            } else {
+                go(wi - 1, ti - 1);
+            }
+        }
+        if (skippableWord(part)) go(wi - 1, ti);
+    };
+    go(parts.length - 1, token.length - 1);
+    return best;
+}
+
+/** Left-to-right version for a full name that follows the short form. */
+function matchInitialsForward(parts, token) {
+    const go = (wi, ti) => {
+        if (ti === token.length) return true;
+        if (wi >= parts.length) return false;
+        const part = parts[wi];
+        if (suppliesLetter(part, token[ti], true) && go(wi + 1, ti + 1)) return true;
+        return skippableWord(part) && go(wi + 1, ti);
+    };
+    return go(0, 0);
+}
+
+/** Index of the '(' that encloses 'position' on its line, or -1. */
+function openingBracketBefore(text, position) {
+    if (text[position] === '(') return position;
+    for (let i = position - 1; i >= 0 && position - i <= 60; i--) {
+        if (text[i] === '(') return i;
+        if (text[i] === ')' || text[i] === '\n') return -1;
+    }
+    return -1;
+}
+
+/**
  * Walk back from 'position' over the words of the current sentence, matching
- * their initials against 'token' from right to left. A small word is ignored
- * unless it supplies the letter the token needs next, so both 'Australian
- * Institute of Health and Welfare (AIHW)' and 'Return on Investment (ROI)'
- * match. Returns the index where the matching phrase starts, or -1.
+ * their initials against 'token' from right to left, so 'Australian Institute
+ * of Health and Welfare (AIHW)' and 'Return on Investment (ROI)' both match.
+ * A bracketed short form is a definition, so lower-case words count and the
+ * name may sit before the bracket: 'National Disability Insurance Scheme
+ * (the Scheme or NDIS)'. Returns the index where the name starts, or -1.
  */
 function expansionStartBefore(text, position, token) {
     let sentenceStart = 0;
@@ -4278,27 +4331,13 @@ function expansionStartBefore(text, position, token) {
             break;
         }
     }
-    const before = text.slice(sentenceStart, position);
-    const words = [];
-    const wordRegex = /[A-Za-z][A-Za-z'’]*/g;
-    let m;
-    while ((m = wordRegex.exec(before)) !== null) {
-        words.push({ text: m[0], index: sentenceStart + m.index });
-    }
-    let ti = token.length - 1;
-    let start = -1;
-    for (let i = words.length - 1; i >= 0 && ti >= 0; i--) {
-        const word = words[i].text;
-        const small = EXPANSION_SMALL_WORDS.has(word.toLowerCase());
-        if (word[0].toUpperCase() === token[ti] && (/^[A-Z]/.test(word) || small)) {
-            ti--;
-            start = words[i].index;
-            continue;
-        }
-        if (small) continue;
-        break;
-    }
-    return ti < 0 ? start : -1;
+    const from = Math.max(sentenceStart, position - 300);
+    const bracket = openingBracketBefore(text, position);
+    const allowLower = bracket !== -1;
+    const start = matchInitialsBackward(
+        expansionWords(text, from, position), token, allowLower);
+    if (start !== -1 || bracket === -1 || bracket === position) return start;
+    return matchInitialsBackward(expansionWords(text, from, bracket), token, true);
 }
 
 /**
@@ -4308,19 +4347,35 @@ function expansionStartBefore(text, position, token) {
 function expansionAfter(text, position, token) {
     const m = /^\s*\(([^)]{2,180})\)/.exec(text.slice(position, position + 200));
     if (!m) return false;
-    const words = m[1].match(/[A-Za-z][A-Za-z'’]*/g) || [];
-    let ti = 0;
-    for (let i = 0; i < words.length && ti < token.length; i++) {
-        const word = words[i];
-        const small = EXPANSION_SMALL_WORDS.has(word.toLowerCase());
-        if (word[0].toUpperCase() === token[ti] && (/^[A-Z]/.test(word) || small)) {
-            ti++;
-            continue;
-        }
-        if (small) continue;
-        break;
+    const from = position + m.index + m[0].indexOf('(') + 1;
+    return matchInitialsForward(expansionWords(text, from, from + m[1].length), token);
+}
+
+/**
+ * A row of a glossary or list of shortened forms: the short form on its own
+ * with the full name after a dash, colon or tab, or alone in a table cell
+ * with the full name in the next cell. The Style Manual wants a glossary AS
+ * WELL AS a first-use expansion, so a row is neither flagged nor counted as
+ * the first use.
+ */
+function isGlossaryEntry(text, position, length, token) {
+    const lineStart = text.lastIndexOf('\n', position - 1) + 1;
+    let lineEnd = text.indexOf('\n', position);
+    if (lineEnd === -1) lineEnd = text.length;
+    if (text.slice(lineStart, position).trim() !== '') return false;
+    const rest = text.slice(position + length, lineEnd);
+    const sep = /^\s*(?:[–—:=-]|\t)\s*/.exec(rest);
+    if (sep) {
+        const from = position + length + sep[0].length;
+        if (matchInitialsForward(expansionWords(text, from, lineEnd), token)) return true;
     }
-    return ti === token.length;
+    if (rest.trim() !== '') return false;
+    let next = lineEnd + 1;
+    while (next < text.length && text[next] === '\n') next++;
+    if (next >= text.length) return false;
+    let nextEnd = text.indexOf('\n', next);
+    if (nextEnd === -1) nextEnd = text.length;
+    return matchInitialsForward(expansionWords(text, next, nextEnd), token);
 }
 
 // Helper: preserve case when replacing
