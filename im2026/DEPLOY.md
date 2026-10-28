@@ -220,10 +220,26 @@ node tests/retrieval.mjs        # checks they agree, and the known questions
 cd im2026/worker && npx wrangler deploy
 ```
 
-`scrape_stylemanual.py` reads `style_manual_urls.txt` and writes complete
-markdown - `*italics*`, `**bold**`, tables, and the Example / Correct /
-Incorrect cards with their labels. Both scripts are at the repo root and are
-gitignored, like the other build scripts.
+`scrape_stylemanual.py` reads `style_manual_urls.txt` (plus every URL already
+in `scraped_pages/`) and writes complete markdown - `*italics*`, `**bold**`,
+tables, and the Example / Correct / Incorrect cards with their labels. Both
+scripts are at the repo root and are gitignored, like the other build scripts.
+
+**Usually you won't need the full scrape.** `watch_stylemanual.py` (repo root,
+gitignored) runs weekly as a local scheduled task. It compares the site's
+`sitemap.xml` `lastmod` dates and blog listings with `scraped_pages/`, fetches
+only the pages that changed, and writes a report to `site_watch/`. To refresh
+from what it found, without fetching anything again:
+
+```
+python watch_stylemanual.py --apply     # staged pages -> scraped_pages/
+python build_pages_index.py
+node tests/retrieval.mjs
+cd im2026/worker && npx wrangler deploy
+```
+
+The site sits behind bot protection that silently drops some User-Agents.
+Both scripts use the same one, which is known to work. Keep it that way.
 
 This is a Worker-only change now: no `git push` needed for a source refresh,
 and no deploy-order trap, because the index and the text it numbers ship

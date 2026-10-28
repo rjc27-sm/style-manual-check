@@ -37,7 +37,8 @@ for the full bot card, limitations and accessibility statement.
   mappings. Runs in the browser; documents never leave the user's device.
 - **Cloudflare Worker** (`im2026/worker/`): the only server component. Holds
   the Claude API key, enforces per-IP and global daily limits, and answers Ask
-  from a section-level retrieval index over 171 Style Manual pages. The page
+  from a section-level retrieval index over 207 Style Manual pages, including
+  the Government writing handbook. The page
   text and index are bundled into the Worker and deployed straight to
   Cloudflare – they are deliberately not in this repository. See
   [im2026/DEPLOY.md](im2026/DEPLOY.md).
