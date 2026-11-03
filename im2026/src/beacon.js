@@ -19,10 +19,24 @@
 
 import { WORKER_URL } from './ai.js';
 
-/** The page name, from the file name: 'index', 'ask', 'lists' and so on. */
+/**
+ * The page name, from the file name: 'index', 'ask', 'lists' and so on.
+ *
+ * A page opened with ?nocount in its URL is named 'zz-<page>' instead, which
+ * every reader already filters out (`blob2 NOT LIKE 'zz%'` - the same
+ * convention the loss-test beacons use). It exists for ONE reason: a developer
+ * bookmark that lands on the same page every working day otherwise shows up as
+ * real demand for that page. Index had roughly 46 views in October and a daily
+ * bookmark would be about twenty of them.
+ *
+ * It tags THIS page load only. Carrying it across a session would mean storing
+ * something on the device, and the About page promises nothing is - so the
+ * cheap fix stops at the bookmark, which is where the distortion is.
+ */
 function pageName() {
     const last = location.pathname.split('/').pop() || 'index.html';
-    return last.replace(/\.html?$/i, '').replace(/[^a-z0-9_-]/gi, '') || 'index';
+    const name = last.replace(/\.html?$/i, '').replace(/[^a-z0-9_-]/gi, '') || 'index';
+    return new URLSearchParams(location.search).has('nocount') ? 'zz-' + name : name;
 }
 
 /**

@@ -124,6 +124,11 @@ no server and no login. Gitignored for the same reason as the reader: the
 output carries agency network names. A saved dashboard also outlives the
 three-month retention window, so keep the ones that matter.
 
+Your own bookmark skews the page figures. Open the page as
+`index.html?nocount=1` and that load is recorded as `zz-index`, which every
+reader already excludes. It tags that page load only, stores nothing, and needs
+no worker deploy - `src/beacon.js` alone.
+
 Both readers have a **What people ask about** section (14 October 2026). It counts the
 Style Manual page that ANSWERED each Ask question - the page the answer already shows
 the asker - never the question text, which is not recorded anywhere. `(no match)` counts
