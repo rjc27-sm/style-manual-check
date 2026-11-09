@@ -401,7 +401,29 @@ const CASES = [
     ['numbers-comma-thousands', 'ISBN 978-0-642-12345-6', false],
     // ...while the same digits in prose are still fixed
     ['numbers-comma-thousands', 'The total was 1460 people.', true, '1,460'],
-    ['numbers-zero-one', 'Only 1 person attended.', true]
+    ['numbers-zero-one', 'Only 1 person attended.', true],
+
+    // ---- fixes for statistical-report text (Nov 2026) ----
+    ['punct-dash-from-between', 'From 2017–18, all private hospital data were included.', false],
+    ['punct-dash-from-between', 'Hospital data are available from 2019–20.', false],
+    ['punct-dash-from-between', 'Rates rose from 1968-72 in the study.', true, 'from 1968 to 1972'],
+    ['punct-dash-from-between', 'Rates rose from 1998-02 in the study.', true, 'from 1998 to 2002'],
+    ['numbers-unit-space', 'Rates rose (AIHW 2026g).', false],
+    ['numbers-unit-space', 'Each pack weighs 5kg.', true, '5 kg'],
+    ['numbers-zero-one', 'About 1 in 3 people had it.', false],
+    ['numbers-zero-one', 'People with type 1 diabetes', false],
+    ['numbers-zero-one', 'Progress against Target 1 slowed.', false],
+    ['numbers-zero-one', 'Less than 1% of people replied.', false],
+    ['numbers-zero-one', 'Scores range from 0 to 10.', false],
+    ['numbers-zero-one', 'Patients are triaged into 1 of 5 categories.', false],
+    ['numbers-zero-one', 'Deaths of infants (aged under 1) fell.', false],
+    ['numbers-zero-one', 'Only 1 person replied.', true, 'one'],
+    ['error-common-phrases', 'The Commonwealth Home Support Programme funds it.', true],
+    ['error-common-phrases', 'The programme funds it.', true, 'program'],
+    ['numbers-leading-zero', 'See Figure EXP.2 for detail.', false],
+    ['numbers-leading-zero', 'A .5 change.', true, '0.5'],
+    ['spelling-ize', 'Data came from the World Health Organization.', false],
+    ['spelling-ize', 'The organization was restructured.', true, 'organisation'],
 ];
 
 // Batch 3 structure rules: [ruleId, text, docCtx, shouldFlag, expectedFix?]

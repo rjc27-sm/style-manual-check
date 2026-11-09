@@ -418,6 +418,23 @@ const RULES = [
                 let match;
                 while ((match = regex.exec(text)) !== null) {
                     const replacement = preserveCase(match[0], correct);
+                    // 'Programme' capitalised mid-sentence is
+                    // usually part of an official name ('Commonwealth Home
+                    // Support Programme', 'World Food Programme'), which keeps
+                    // its spelling. Comment only - never fix it automatically.
+                    if (/^programmes?$/i.test(wrong) &&
+                        properNounGuard(text, match.index, match[0]) === 'name') {
+                        issues.push({
+                            found: match[0],
+                            suggestion: replacement,
+                            note: 'Official names keep their own spelling. ' +
+                                'If this is not part of a name, use \'' +
+                                replacement.toLowerCase() + '\'.',
+                            position: match.index,
+                            rule: this
+                        });
+                        continue;
+                    }
                     issues.push({
                         found: match[0],
                         suggestion: replacement,
@@ -2333,7 +2350,7 @@ const RULES = [
         category: 'numbers-and-measurements',
         description: 'Write \'zero\' and \'one\' as words, not numerals. The numerals \'0\' and \'1\' can be hard to distinguish from letters in some fonts.',
         link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/numbers-and-measurements/choosing-numerals-or-words',
-        check: function(text) {
+        check: function(text, headingLines, listLines, boldLines, italicLines, tableLines) {
             const issues = [];
 
             // Use word boundaries - \b matches between word and non-word characters
@@ -2388,6 +2405,14 @@ const RULES = [
                 // Skip if preceded by stage/phase/section/chapter etc.
                 if (/(?:stage|phase|section|chapter|step|part|level|tier|grade|year|version|volume|appendix|annex|figure|table|item|option|priority|round|wave|track|point|number|no\.?|#)\s*$/i.test(before)) continue;
 
+                // labels and ratios keep the numeral -
+                // 'Target 1', 'Measure 1.01', 'Priority Reform 1', 'type 1
+                // diabetes', 'Box 1', and ratios such as '1 in 3' (both the
+                // Style Manual and statistical agencies use numerals for ratios).
+                if (/\b(?:target|measure|reform|outcome|indicator|objective|goal|domain|type|box|schedule|clause|recommendation|question|module|dose|cohort|attachment|element|principle|action)\s*$/i.test(before)) continue;
+                if (/^\s+in\s+\d/.test(after)) continue;
+                if (/\d\s+in\s+$/.test(before)) continue;
+
                 // Skip mathematical relationships (8 + 1 = 9, 1 < 2)
                 if (/[+=\u00d7\u00f7<>\u2212]\s*$/.test(before) || /^\s*[+=\u00d7\u00f7<>\u2212]/.test(after)) continue;
 
@@ -2399,6 +2424,22 @@ const RULES = [
 
                 // Skip percentage and measurements
                 if (/^\s*(?:%|per\s*cent|km|m|cm|mm|kg|g|mg|mL|L|ha|°)\b/i.test(after)) continue;
+                // '%' needs its own test - \b after '%' never
+                // matches before a space or ')', so '1%' became 'one%'.
+                if (/^\s*%/.test(after)) continue;
+                // more numbers that are data or labels, not
+                // counts: ranges in words ('0 to 10', 'Quintiles 1 and 5'),
+                // 'N of M' ('1 of 5 categories'), ages ('aged under 1',
+                // 'under 1 year of age') and table cells (data, never words).
+                if (/^\s+(?:to|and|or)\s+\d/i.test(after)) continue;
+                if (/\d\s+(?:to|and|or)\s+$/i.test(before)) continue;
+                if (/^\s+of\s+\d/i.test(after)) continue;
+                if (/\b(?:aged?|ages)\s+(?:under\s+|over\s+)?$/i.test(before)) continue;
+                if (/^\s+years?\s+(?:of\s+age|old)\b/i.test(after)) continue;
+                if (tableLines && tableLines.size > 0) {
+                    const lineIndex = text.substring(0, pos).split('\n').length - 1;
+                    if (tableLines.has(lineIndex)) continue;
+                }
 
                 // All checks passed - this looks like a standalone 0 or 1
                 const replacement = digit === '0' ? 'zero' : 'one';
@@ -2593,6 +2634,9 @@ const RULES = [
             const regex = /(?<![0-9.])\.(\d+)/g;
             let match;
             while ((match = regex.exec(text)) !== null) {
+                // a dot straight after a letter is part of a
+                // code or table ID ('EXP.2', 'Table D1.02'), not a decimal.
+                if (match.index > 0 && /[A-Za-z]/.test(text[match.index - 1])) continue;
                 const replacement = '0.' + match[1];
                 issues.push({
                     found: match[0],
@@ -3275,8 +3319,23 @@ const RULES = [
                 const after = text.substring(end, Math.min(text.length, end + 8));
                 // Skip financial-year spans used correctly: 'from 2017-18 to 2018-19'
                 if (/^\s+(?:to|and)\b/i.test(after)) continue;
+                // a single financial year is not a span.
+                // 'From 2017–18, all data…' must not become 'From 2017 to 18'.
+                // (The end part can carry the sentence's full stop: '2019–20.')
+                const fy = /^(\d{4})$/.test(match[2]) && /^\d{2}[.:]?$/.test(match[3]);
+                if (fy && (parseInt(match[2], 10) + 1) % 100 === parseInt(match[3], 10)) continue;
+                // 'from 1968-72' is 'from 1968 to 1972'.
+                // A shortened end year takes the start year's century (or the
+                // next one when it wraps: '1998-02' ends in 2002).
+                let endPart = match[3];
+                if (fy) {
+                    const start = parseInt(match[2], 10);
+                    let century = Math.floor(start / 100) * 100;
+                    if (parseInt(match[3], 10) < start % 100) century += 100;
+                    endPart = String(century + parseInt(match[3], 10)) + match[3].slice(2);
+                }
                 const isFrom = match[1].toLowerCase() === 'from';
-                const replacement = match[1] + ' ' + match[2] + (isFrom ? ' to ' : ' and ') + match[3];
+                const replacement = match[1] + ' ' + match[2] + (isFrom ? ' to ' : ' and ') + endPart;
                 issues.push({
                     found: match[0],
                     suggestion: replacement,
@@ -3698,6 +3757,9 @@ const RULES = [
                 const before = text.substring(Math.max(0, match.index - 2), match.index);
                 if (/[A-Za-z]$/.test(before)) continue;
                 if (/[A-Za-z][-–]$/.test(before)) continue;
+                // a citation year with a letter is not grams
+                // or tonnes - '(ABS 2026g)', 'Smith 2021t'.
+                if (/^\d{4}$/.test(match[1]) && match[2].length === 1) continue;
                 const replacement = match[1] + ' ' + match[2];
                 issues.push({
                     found: match[0],
@@ -4423,7 +4485,13 @@ const KEEP_SPELLING_PHRASES = [
     /\bAustralian Labor\b/,
     /\bLabor Party\b/,
     /\bVictor Harbor\b/,
-    /\bPearl Harbor\b/
+    /\bPearl Harbor\b/,
+    // organisations whose own names use -ization.
+    /\bWorld Health Organization\b/,
+    /\bPan American Health Organization\b/,
+    /\bInternational Labour Organization\b/,
+    /\bFood and Agriculture Organization\b/,
+    /\bWorld Intellectual Property Organization\b/
 ];
 
 /**
