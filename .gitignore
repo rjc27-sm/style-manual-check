@@ -56,6 +56,18 @@ im2026/worker/pages-index.js
 # 17 August 2026 while using `wrangler dev --remote` to test a prompt change.
 im2026/worker/.wrangler/
 
+# Secrets, at ANY depth. The !im2026/** negation above re-included these
+# inside im2026, so a wrangler `.dev.vars` (where local Worker secrets go)
+# or a `.env` under im2026/worker/ would have been committed to this public
+# repo by `git add -A`. Found 11 November 2026 in a secrets audit; nothing
+# had leaked. Must stay below the negation.
+.env
+.env.*
+.dev.vars
+.dev.vars.*
+*.pem
+*.key
+
 # Local build scripts (source of truth for generated Word docs)
 /build_rules_doc.mjs
 /build_user_facing_doc.mjs
