@@ -1,10 +1,11 @@
 /**
  * Style Manual Check - list analysis rules
  *
- * Ported from the Style Manual list formatter
- * (https://rjc27-sm.github.io/list-formatter/). The classification logic -
- * item grammar, lead-in analysis and list-type detection - is carried over
- * so the two tools agree on what a sentence, fragment or stand-alone list is.
+ * Ported from the standalone Style Manual list formatter, which was retired
+ * in November 2026 once Proof Positive's Format a list (im2026/lists.html)
+ * replaced it. The classification logic - item grammar, lead-in analysis and
+ * list-type detection - was carried over so both agreed on what a sentence,
+ * fragment or stand-alone list is.
  *
  * These rules replace the older 'inconsistent capitals' and 'inconsistent
  * punctuation' list rules: instead of only spotting that items disagree,

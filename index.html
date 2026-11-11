@@ -3,202 +3,28 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Style Manual Check</title>
-<meta name="description" content="Check Word documents and text against the Australian Government Style Manual. Runs entirely in your browser – no data leaves your device.">
-<link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
-<link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<title>Proof Positive</title>
+<!-- The original Style Manual Check lived here until November 2026. Proof
+     Positive (im2026/) replaced it; this page forwards anyone who trims the
+     address or kept an old bookmark. The old checker is in git history. -->
+<meta name="robots" content="noindex">
+<link rel="canonical" href="https://rjc27-sm.github.io/style-manual-check/im2026/">
+<meta http-equiv="refresh" content="0; url=im2026/">
+<script>location.replace('im2026/' + location.search + location.hash);</script>
+<link rel="icon" type="image/png" sizes="32x32" href="im2026/assets/style-check-32x32.png">
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700;800&display=swap');
-:root{
-  --blue:#2d7e98;--b1:#192f38;--b2:#295665;--b4:#61a9be;--b5:#b7d6df;
-  --teal:#27854e;--green:#4d8227;--orange:#f36f21;--o2:#863a0d;
-  --c1:#2b2d2d;--c2:#4f5152;--c3:#707678;--c4:#9c9fa0;--c5:#cfd1d1;
-  --bg:#f6f7f7;--line:#e3e6e6;--ease:cubic-bezier(.2,0,.2,1);
-}
-*{margin:0;padding:0;box-sizing:border-box}
-html{-webkit-text-size-adjust:100%}
-body{font-family:'Open Sans',Arial,sans-serif;background:var(--bg);color:var(--c1);
-  font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
-[hidden]{display:none !important}
-:focus-visible{outline:3px solid rgba(45,126,152,.45);outline-offset:2px;border-radius:4px}
-
-.keyline{height:4px;background:linear-gradient(90deg,var(--b2),var(--blue) 55%,var(--b4))}
-.wrap{max-width:960px;margin:0 auto;padding:40px 28px 56px}
-
-.head{margin-bottom:28px}
-.head h1{font-size:30px;font-weight:800;color:var(--b1);letter-spacing:-.01em;line-height:1.12;margin:0}
-.lede{font-size:15.5px;color:var(--c2);margin:8px 0 0;max-width:640px;line-height:1.6}
-.privacy{font-size:13.5px;color:var(--c3);margin-top:10px}
-
-.step-h{display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap}
-.num{width:26px;height:26px;border-radius:999px;background:var(--blue);color:#fff;
-  font:700 13px 'Open Sans',sans-serif;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.step-h h2{font-size:16px;font-weight:700;color:var(--b1);margin:0}
-.step-hint{font-size:12.5px;color:var(--c3)}
-
-.seg{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
-.seg button{display:inline-flex;align-items:center;gap:7px;padding:9px 15px;border:1px solid var(--c5);
-  border-radius:999px;font:600 14px 'Open Sans',sans-serif;color:var(--c2);cursor:pointer;background:#fff;
-  transition:all .15s var(--ease)}
-.seg button:hover{border-color:var(--b4)}
-.seg button[aria-selected="true"]{background:#eef5f7;border-color:var(--blue);color:var(--b2);font-weight:700}
-
-.card{background:#fff;border:1px solid var(--line);border-radius:10px;overflow:hidden;
-  box-shadow:0 1px 2px rgba(25,47,56,.04)}
-
-#drop-zone{margin:14px;border:2px dashed var(--b5);border-radius:8px;padding:36px 20px;text-align:center;
-  cursor:pointer;transition:all .15s var(--ease)}
-#drop-zone:hover,#drop-zone.drag{background:#eef5f7;border-color:var(--blue)}
-#drop-zone strong{color:var(--b2)}
-#drop-zone .hint{font-size:13px;color:var(--c3);margin-top:6px;line-height:1.55}
-#file-name{font-weight:700;color:var(--b2);margin-top:10px;font-size:14.5px}
-#file-input{display:none}
-
-textarea#text-input{width:100%;min-height:230px;padding:18px 20px;border:0;resize:vertical;display:block;
-  font:15px/1.6 'Open Sans',Arial,sans-serif;color:var(--c1);background:#fff}
-textarea#text-input::placeholder{color:var(--c4)}
-textarea#text-input:focus{outline:none;box-shadow:inset 0 0 0 2px var(--b5)}
-.card-foot{border-top:1px solid var(--line);padding:11px 16px;display:flex;justify-content:flex-end;
-  align-items:center}
-
-.btn{font:700 15px 'Open Sans',sans-serif;border-radius:8px;padding:12px 26px;cursor:pointer;border:none;
-  min-height:46px;display:inline-flex;align-items:center;gap:8px}
-.btn-primary{background:var(--blue);color:#fff}
-.btn-primary:hover{background:var(--b2)}
-.btn:disabled{background:var(--c4);cursor:default}
-
-.controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:22px 0 0}
-.controls .ctrl-lab{font-size:13px;font-weight:600;color:var(--c3)}
-.controls select{font:600 14px 'Open Sans',sans-serif;color:var(--c2);padding:9px 12px;
-  border:1px solid var(--c5);border-radius:999px;background:#fff;cursor:pointer}
-.controls select:hover{border-color:var(--b4)}
-.pill-check{display:inline-flex;align-items:center;gap:7px;padding:9px 15px;border:1px solid var(--c5);
-  border-radius:999px;font-size:14px;color:var(--c2);cursor:pointer;background:#fff;transition:all .15s var(--ease)}
-.pill-check:hover{border-color:var(--b4)}
-.pill-check:has(input:checked){background:#eef5f7;border-color:var(--blue);color:var(--b2);font-weight:700}
-.pill-check:has(input:disabled){color:var(--c4);cursor:default;background:var(--bg)}
-.pill-check input{accent-color:var(--blue);width:15px;height:15px;cursor:pointer}
-.pill-check input:disabled{cursor:default}
-
-#busy{margin-top:18px;font-size:14.5px;font-weight:600;color:var(--b2)}
-
-#error-box{margin-top:22px;background:#fdf3ec;border:1px solid #f4d4bd;border-left:4px solid var(--orange);
-  border-radius:10px;padding:18px 22px;font-size:14.5px;line-height:1.65;color:#7a3d18;
-  animation:rise .25s var(--ease)}
-
-#download-section{margin-top:28px}
-#download-bar{background:#eef5f7;border:1px solid #cfe2e8;border-left:4px solid var(--blue);
-  border-radius:10px;padding:18px 22px;display:flex;align-items:center;gap:18px;flex-wrap:wrap;
-  animation:rise .25s var(--ease)}
-#download-note{font-size:14px;color:var(--c2);line-height:1.6;flex:1;min-width:240px}
-
-#results-section{margin-top:28px}
-#summary-line{font-size:15px;font-weight:700;color:var(--b1);margin-bottom:14px}
-
-.issue-card{background:#fff;border:1px solid var(--line);border-left:4px solid var(--blue);border-radius:10px;
-  padding:15px 20px;margin-bottom:10px;box-shadow:0 1px 2px rgba(25,47,56,.04);animation:rise .25s var(--ease)}
-.issue-head{display:flex;gap:10px;align-items:baseline;margin-bottom:5px;flex-wrap:wrap}
-.badge{font-size:12px;font-weight:700;color:var(--b2);background:#eef5f7;border:1px solid var(--b5);
-  border-radius:999px;padding:2px 11px}
-.para-ref{font-size:12.5px;color:var(--c3)}
-.issue-found{font-size:15px;font-weight:700;color:var(--c1)}
-.issue-suggestion{font-size:14.5px;font-weight:700;color:var(--teal);margin-top:1px}
-.issue-desc{font-size:14px;color:var(--c2);line-height:1.6;margin-top:3px}
-.learn-more{display:inline-block;font-size:13.5px;color:var(--b2);margin-top:5px;
-  text-underline-offset:2px}
-.learn-more:hover{color:var(--blue)}
-
-.copyright{margin-top:44px;padding-top:32px;border-top:1px solid var(--line);font-size:13.5px;
-  color:var(--c3);line-height:1.6}
-.copyright a{color:var(--b2)}
-
-@keyframes rise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
-
-@media (max-width:720px){
-  .wrap{padding:28px 18px 44px}
-  .head h1{font-size:25px}
-  .lede{font-size:15px}
-}
+  :root { color-scheme: light dark; }
+  body { margin: 0; padding: 3rem 16px; font: 1.0625rem/1.5 system-ui, sans-serif;
+         background: #fff; color: #1a1a1a; }
+  a { color: #0b5cad; }
+  @media (prefers-color-scheme: dark) {
+    body { background: #121212; color: #eee; }
+    a { color: #8cc4ff; }
+  }
 </style>
 </head>
 <body>
-
-<div class="keyline"></div>
-<main class="wrap">
-  <header class="head">
-    <h1>Style Manual Check</h1>
-    <p class="lede">Upload a Word document and download it back with a review
-      comment on every style issue – your formatting is untouched. Each comment
-      links to the relevant page of the
-      <a href="https://www.stylemanual.gov.au" target="_blank" rel="noopener noreferrer">Australian Government Style Manual</a>.</p>
-    <p class="privacy">Everything runs in your browser. Your document is not
-      uploaded anywhere and no data leaves your device.</p>
-  </header>
-
-  <section>
-    <div class="step-h"><span class="num">1</span><h2>Your content</h2>
-      <span class="step-hint">a Word document, or pasted text for a quick check</span></div>
-
-    <div class="seg" role="tablist" aria-label="What to check">
-      <button id="tab-document" type="button" role="tab" aria-selected="true">Word document</button>
-      <button id="tab-text" type="button" role="tab" aria-selected="false">Pasted text</button>
-    </div>
-
-    <div class="card" id="panel-document" role="tabpanel">
-      <div id="drop-zone" tabindex="0" role="button" aria-label="Choose a Word document to check">
-        <p><strong>Choose a Word document</strong> or drag it here</p>
-        <p class="hint">.docx files only. The tool reads heading styles, list
-          formatting and bold text directly from the document.</p>
-        <p id="file-name"></p>
-      </div>
-      <input type="file" id="file-input" accept=".docx">
-    </div>
-
-    <div class="card" id="panel-text" role="tabpanel" hidden>
-      <textarea id="text-input" aria-label="Text to check" spellcheck="false"
-        placeholder="Paste your text here. Pasting strips Word formatting, so heading and list checks use a best guess – for full checks, use the Word document option."></textarea>
-      <div class="card-foot">
-        <button class="btn btn-primary" id="check-text-btn" type="button">Check text</button>
-      </div>
-    </div>
-  </section>
-
-  <div class="controls">
-    <label class="pill-check"><input type="checkbox" id="aihw-toggle">
-      <span id="aihw-label">AIHW house style pack</span></label>
-  </div>
-
-  <p id="busy" hidden role="status"><span id="busy-label">Working…</span></p>
-  <p id="error-box" hidden role="alert"></p>
-
-  <section id="download-section" hidden>
-    <div class="step-h" style="margin-top:6px"><span class="num">2</span><h2>Download with comments</h2></div>
-    <div id="download-bar">
-      <button class="btn btn-primary" id="download-btn" type="button">Download with comments (.docx)</button>
-      <span id="download-note">Adds a Word review comment for every issue, with a
-        link to the Style Manual. Your formatting is untouched.</span>
-    </div>
-  </section>
-
-  <section id="results-section" hidden aria-live="polite">
-    <div class="step-h" style="margin-top:6px"><span class="num" id="results-num">3</span><h2>Issues found</h2></div>
-    <p id="summary-line"></p>
-    <div class="controls" style="margin:0 0 14px">
-      <span class="ctrl-lab" id="filter-lab">Show</span>
-      <select id="category-filter" aria-labelledby="filter-lab">
-        <option value="all">All categories</option>
-      </select>
-    </div>
-    <div id="issue-list"></div>
-  </section>
-
-  <p class="copyright">Based on the
-    <a href="https://www.stylemanual.gov.au">Australian Government Style Manual</a>.
-    This tool checks the rules that can be applied automatically – it does not
-    replace editorial judgement.</p>
-</main>
-
-<script type="module" src="src/app.js"></script>
+<p>Style Manual Check is now part of Proof Positive.</p>
+<p><a href="im2026/">Go to Proof Positive</a></p>
 </body>
 </html>
