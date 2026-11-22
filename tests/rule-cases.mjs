@@ -266,6 +266,21 @@ const CASES = [
     ['numbers-start-sentence', 'Under reg. 12 the fee applies.', false],
     ['numbers-start-sentence', 'The fee rose. 23 people objected.', true, 'Twenty-three'],
 
+    // ---- Ported from the AIHW Writing Style Check (22 Nov 2026) ----
+    ['govt-generic-department', 'Data from the Department for Education show a rise.', false],
+    ['govt-generic-department', 'The report went to the Department for review.', false],
+    ['govt-generic-department', 'We wrote to the Department about it.', true, 'the department'],
+    ['latin-etal', 'Smith et al. found the same result.', false],
+    ['latin-etal', 'Other results were similar (Smith et al. n.d.).', false],
+    ['abbrev-first-use-not-expanded', 'Rates rose (ABS 2024; AIHW 2026a).', false],
+    ['abbrev-first-use-not-expanded', 'ABS (2024) found a rise.', false],
+    ['abbrev-first-use-not-expanded', 'Rates rose (ABS 2024). ABS data show it.', false],
+    ['abbrev-first-use-not-expanded', 'Rates rose (ABS 2024). NDIS data show it.', true],
+    ['abbrev-first-use-not-expanded', 'Coding used ICD-9-CM throughout.', true],
+    ['inclusive-age-term', 'Funding for the aged care system grew.', false],
+    ['inclusive-age-term', 'Workers in the aged-care sector', false],
+    ['inclusive-age-term', 'Services for the aged are changing.', true],
+
     // ---- spelling-prefix-hyphen (PU-17) ----
     ['spelling-prefix-hyphen', 'staff must reenter the building', true, 're-enter'],
     ['spelling-prefix-hyphen', 'a preexisting condition', true, 'pre-existing'],
@@ -482,6 +497,16 @@ const CTX_CASES = [
         { headingLines: new Set([0]) }, false],
     ['heading-title-case', 'Data on unicorn movements in Australia',
         { headingLines: new Set([0]) }, false],
+    // Proper nouns are not title case, and keep their capitals in the fix
+    // (ported from the AIHW Writing Style Check, 22 Nov 2026)
+    ['heading-title-case', 'Outcomes for First Nations people',
+        { headingLines: new Set([0]) }, false],
+    ['heading-title-case', 'Services for Aboriginal and Torres Strait Islander people',
+        { headingLines: new Set([0]) }, false],
+    ['heading-title-case', 'Health Services in New South Wales',
+        { headingLines: new Set([0]) }, true, 'Health services in New South Wales'],
+    ['heading-title-case', 'First Nations Health Outcomes',
+        { headingLines: new Set([0]) }, true, 'First Nations health outcomes'],
     // Bold pseudo-headings keep the stricter two-word test
     ['heading-title-case', 'Key Numbers Summary',
         { boldLines: new Set([0]) }, true, 'Key numbers summary'],

@@ -1125,8 +1125,14 @@ const RULES = [
                     // rather than discarding it with the rest of the small words.
                     let smallWordCapitalised = false;
 
+                    // Proper nouns ('First Nations', 'New South Wales') carry
+                    // their own capitals, so they are not evidence either
+                    // way. Each of their words becomes a marker in a copy,
+                    // which keeps the word positions the same.
+                    const scanWords = markHeadingProperNouns(trimmed).split(/\s+/);
                     for (let i = 1; i < words.length; i++) {
-                        const word = words[i];
+                        const word = scanWords[i];
+                        if (word === PROPER_NOUN_MARK) continue;
                         const wordLower = word.toLowerCase().replace(/[^a-z]/g, '');
 
                         // Skip small words and likely proper nouns
@@ -1156,7 +1162,7 @@ const RULES = [
                         (hasHeadingStyle && capitalizedCount >= 1 && ratioOk);
                     if (titleCase) {
                         // Convert to sentence case: first letter caps, rest lowercase (except acronyms)
-                        const sentenceCase = toSentenceCase(trimmed);
+                        const sentenceCase = restoreHeadingProperNouns(toSentenceCase(trimmed), trimmed);
                         const issue = {
                             found: trimmed,
                             suggestion: sentenceCase,
@@ -1558,6 +1564,11 @@ const RULES = [
                 // RF-01: 'et al.' is correct in author-date citations.
                 // Skip 'Smith et al. (2008)' and 'Smith et al., 2008'
                 if (/^[.,]?\s*\(?\s*(?:19|20)\d\d/.test(after)) continue;
+                // After an author's name it is a citation, with or without a
+                // year: 'Smith et al. found', '(Smith et al. n.d.)'. Ported
+                // from the AIHW Writing Style Check (Jen, 10 Nov 2026).
+                const before = text.slice(Math.max(0, match.index - 40), match.index);
+                if (/[A-Z][\w'’-]*,?\s+$/.test(before)) continue;
                 // Skip citations inside parentheses: '(Smith et al. 2008)'
                 const lastOpen = text.lastIndexOf('(', match.index);
                 if (lastOpen !== -1) {
@@ -2060,8 +2071,10 @@ const RULES = [
         link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/names-and-terms/government-terms',
         check: function(text) {
             const issues = [];
-            // Match "the Department" NOT followed by "of" (which would indicate a formal name)
-            const regex = /\bthe Department\b(?!\s+of\b)/g;
+            // Match "the Department" NOT followed by "of" or "for" (which
+            // would indicate a formal name: 'the Department for Education'
+            // in South Australia was being autofixed to 'the department')
+            const regex = /\bthe Department\b(?!\s+(?:of|for)\b)/g;
             let match;
             while ((match = regex.exec(text)) !== null) {
                 issues.push({
@@ -3099,7 +3112,7 @@ const RULES = [
         id: 'punct-and-or',
         name: "'and/or'",
         category: 'punctuation',
-        description: 'Do not use \'and/or\' in text. It could mean either \'and\' or \'or\', which confuses many users. Rewrite the sentence to make the meaning clear - use \'or\' alone, or \'either ... or\'.',
+        description: 'Do not use \'and/or\' in text. It could mean either \'and\' or \'or\', which confuses many users. Rewrite the sentence to make the meaning clear. Use \'or\' alone, or \'either … or\'.',
         link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/punctuation/forward-slashes',
         check: function(text) {
             const issues = [];
@@ -3531,7 +3544,7 @@ const RULES = [
         id: 'time-24hour-ampm',
         name: "'am' or 'pm' on 24-hour time",
         category: 'dates-and-time',
-        description: '24-hour times don\'t take \'am\' or \'pm\' - the hour already shows whether it\'s morning or evening. Write \'23:18\', not \'23:18 pm\'.',
+        description: '24-hour times don\'t take \'am\' or \'pm\'. The hour already shows whether it\'s morning or evening. Write \'23:18\', not \'23:18 pm\'.',
         link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/numbers-and-measurements/dates-and-time',
         check: function(text) {
             const issues = [];
@@ -3655,7 +3668,7 @@ const RULES = [
         id: 'readability-if-unless',
         name: "'if' and 'unless' in one sentence",
         category: 'readability',
-        description: 'Don\'t use \'if\' and \'unless\' in the same sentence - the combined conditions are hard to follow. Split them into 2 sentences.',
+        description: 'Don\'t use \'if\' and \'unless\' in the same sentence. The combined conditions are hard to follow. Split them into 2 sentences.',
         link: 'https://www.stylemanual.gov.au/writing-and-designing-content/clear-language-and-writing-style/sentences',
         check: function(text) {
             const issues = [];
@@ -3880,7 +3893,7 @@ const RULES = [
         id: 'readability-passive-voice',
         name: 'Passive voice with named doer',
         category: 'readability',
-        description: 'Prefer active voice. When the doer appears after \'by\', the sentence can usually be turned around: \'the board approved the report\', not \'the report was approved by the board\'. Passive voice is sometimes appropriate - this is advisory only.',
+        description: 'Prefer active voice. When the doer appears after \'by\', the sentence can usually be turned around: \'the board approved the report\', not \'the report was approved by the board\'. Passive voice is sometimes appropriate, so this is advisory only.',
         link: 'https://www.stylemanual.gov.au/writing-and-designing-content/clear-language-and-writing-style/sentences',
         check: function(text) {
             const issues = [];
@@ -3913,7 +3926,7 @@ const RULES = [
         id: 'heading-skipped-level',
         name: 'Skipped heading level',
         category: 'headings',
-        description: 'Don\'t skip heading levels - a Heading 3 should not follow a Heading 1 directly. Screen reader users rely on heading levels to understand how content is organised.',
+        description: 'Don\'t skip heading levels. A Heading 3 should not follow a Heading 1 directly. Screen reader users rely on heading levels to understand how content is organised.',
         link: 'https://www.stylemanual.gov.au/structuring-content/headings',
         check: function(text, headingLines, listLines, boldLines, italicLines, tableLines, docCtx) {
             const issues = [];
@@ -3947,7 +3960,7 @@ const RULES = [
         id: 'format-underline-not-link',
         name: 'Underlined text that is not a link',
         category: 'accessibility',
-        description: 'Underlining signals hyperlinks. Don\'t underline text for emphasis or headings - users will try to click it. Use bold or a heading style instead.',
+        description: 'Underlining signals hyperlinks. Don\'t underline text for emphasis or headings, because users will try to click it. Use bold or a heading style instead.',
         link: 'https://www.stylemanual.gov.au/structuring-content/headings',
         check: function(text, headingLines, listLines, boldLines, italicLines, tableLines, docCtx) {
             const issues = [];
@@ -4023,7 +4036,7 @@ const RULES = [
         id: 'accessibility-nonbreaking-space',
         name: 'Non-breaking space in times, units and phone numbers',
         category: 'accessibility',
-        description: 'Use a non-breaking space so the number and what follows it stay together on one line - between numerals and \'am\'/\'pm\', between numbers and units, and between phone number chunks.',
+        description: 'Use a non-breaking space so the number and what follows it stay together on one line. Put one between numerals and \'am\'/\'pm\', between numbers and units, and between phone number chunks.',
         link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/numbers-and-measurements/dates-and-time',
         check: function(text, headingLines, listLines, boldLines, italicLines, tableLines, docCtx) {
             const issues = [];
@@ -4155,6 +4168,20 @@ const RULES = [
                     ? lineStarts[line + 1] - 1 : text.length;
                 if (/(?:\t|\.{3,}|…)\s*\d+\s*$/.test(text.slice(lineStarts[line], lineEnd))) continue;
                 if (isGlossaryEntry(text, match.index, match[0].length, token)) continue;
+                // An in-text citation uses the short form, and the full name
+                // is in the reference list: '(ABS 2024; AIHW 2026a)', 'ABS
+                // (2024) found'. It counts as the first use, as it does in
+                // the AIHW Writing Style Check (15 Nov 2026): measured on
+                // 133,000 words of AIHW text, not counting it flagged 84
+                // later mentions ('ABS survey data') of a cited agency.
+                const tail = text.slice(match.index + match[0].length, match.index + match[0].length + 14);
+                if (/^\s\(?(?:19|20)\d{2}[a-z]{0,2}[);,:]/.test(tail)) {
+                    seen.add(token);
+                    continue;
+                }
+                // The later parts of a code such as 'ICD-9-CM' are not a
+                // separate short form: 'ICD' is checked, 'CM' is not.
+                if (/\d-$/.test(text.slice(Math.max(0, match.index - 2), match.index))) continue;
                 if (seen.has(token)) continue;
                 seen.add(token);
                 if (EXPANSION_EXEMPT.has(token)) continue;
@@ -4307,6 +4334,9 @@ function advisoryFalsePositive(text, found, position, term) {
         if (properNounGuard(text, position, found) === 'name') return true;
         if (insideQuotes(text, position)) return true;
     }
+    // 'the aged care system' is about aged care, not 'the aged' as a group
+    // of people (found by the AIHW Writing Style Check, E-11).
+    if (term === 'the aged' && /^[\s-]+care\b/i.test(text.slice(position + found.length))) return true;
     // 'suffers from' is only the disability usage when a person suffers.
     if (term === 'suffers from') {
         const from = Math.max(0, position - 40);
@@ -4531,6 +4561,44 @@ const NOT_ACRONYM_WORDS = ['a', 'an', 'the', 'and', 'but', 'or', 'for', 'nor', '
                         'long', 'great', 'little', 'own', 'other', 'old', 'right', 'big',
                         'high', 'different', 'small', 'large', 'next', 'early', 'young',
                         'important', 'public', 'bad', 'same', 'able'];
+
+// Proper nouns that government headings use all the time. The heading rule
+// read 'First Nations people' as title case and suggested 'First nations
+// people'. Generic subset of the AIHW Writing Style Check's list (its
+// remoteness areas are AIHW house style and stay there). Longest first, so
+// 'Torres Strait Islander' wins over 'Islander' and 'South Australia' over
+// 'Australia'.
+const HEADING_PROPER_NOUNS = [
+    'Aboriginal and Torres Strait Islander', 'Torres Strait Islanders?', 'First Nations',
+    'Closing the Gap', 'Australian Capital Territory', 'Northern Territory',
+    'New South Wales', 'Western Australia', 'South Australia', 'Aboriginal', 'Indigenous',
+    'Victoria', 'Queensland', 'Tasmania', 'Australia(?:ns?)?', 'Medicare',
+    'Alzheimer[\'’]s', 'Parkinson[\'’]s', 'Down syndrome', 'COVID-19'
+].map(p => new RegExp('\\b' + p + '(?![\\w-])', 'g'));
+
+const PROPER_NOUN_MARK = '~pn~';
+
+function markHeadingProperNouns(text) {
+    let out = text;
+    for (const re of HEADING_PROPER_NOUNS) {
+        out = out.replace(re, m => m.replace(/\S+/g, PROPER_NOUN_MARK));
+    }
+    return out;
+}
+
+// Put the writer's capitals back on any proper noun the sentence-case
+// conversion lowered.
+function restoreHeadingProperNouns(converted, original) {
+    let out = converted;
+    for (const re of HEADING_PROPER_NOUNS) {
+        const originals = original.match(re);
+        if (!originals) continue;
+        let k = 0;
+        const loose = new RegExp(re.source, 'gi');
+        out = out.replace(loose, m => (k < originals.length ? originals[k++] : m));
+    }
+    return out;
+}
 
 // Helper: convert text to sentence case (first letter caps, rest lowercase)
 // Preserves all-caps words that are likely acronyms (2-5 chars) but not common words
