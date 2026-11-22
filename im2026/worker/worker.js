@@ -72,7 +72,11 @@ const STOPWORDS = new Set(('a an and are as at be but by for from has have how i
     'should would could writing write written when using style manual australian government').split(' '));
 
 // Short tokens that matter for style questions despite the length filter.
-const KEEP_SHORT = new Set(['am', 'pm', 'en', 'em', 'e.g', 'ie', 'eg', 'vs']);
+// 'ly' (added 22 November 2026): 'What's the rule about hyphens after words that
+// end in ly' lost its one telling word to the length filter, retrieved the
+// generic hyphen sections, and Ask said the guidance did not exist - while the
+// Hyphens page has a section headed "Don't hyphenate ... most '-ly' adverbs".
+const KEEP_SHORT = new Set(['am', 'pm', 'en', 'em', 'e.g', 'ie', 'eg', 'vs', 'ly']);
 
 // Query expansion: common phrasings that the page keywords don't contain.
 const EXPANSIONS = [
@@ -106,7 +110,11 @@ const EXPANSIONS = [
     // Fires on two modals set against each other, or on the word itself -
     // not on any question that merely contains 'should' or 'can'.
     [/\b(?:can|could|may|might|shall|should|will|would|must)\b\W+(?:\w+\W+)?(?:or|vs|versus|and)\W+(?:can|could|may|might|shall|should|will|would|must)\b|\bmodals?\b/i,
-        'modal modals verbs']
+        'modal modals verbs'],
+    // An '-ly' word hyphenated to the next one ('highly-regarded or highly
+    // regarded?') is a question about the '-ly' adverb rule even when it never
+    // says so. Without this it matched nothing but its own example words.
+    [/\b[a-z]{2,}ly-[a-z]/i, 'ly adverbs hyphenate compound adjectives']
 ];
 
 function tokenise(s) {
@@ -142,10 +150,14 @@ const tokenCache = new WeakMap();
 function fieldTokens(sec) {
     let fields = tokenCache.get(sec);
     if (!fields) {
+        // The keyword blob keeps suffixes as written ('-ly', '-ize'), and the
+        // question tokeniser splits on hyphens, so a suffix keyword could never
+        // match. Store the bare suffix alongside it.
+        const k = sec.k.split(' ');
         fields = {
             h: new Set(tokenise(sec.h)),
             t: new Set(tokenise(sec.t)),
-            k: new Set(sec.k.split(' '))
+            k: new Set([...k, ...k.filter(w => w.startsWith('-')).map(w => w.slice(1))])
         };
         tokenCache.set(sec, fields);
     }

@@ -105,7 +105,14 @@ const CASES = [
     // The 'May, might and other modals' blog post (added 28 October 2026)
     ["Should I write 'may' or 'might'?", /modal/i],
     ['What is a modal verb?', /modal/i],
-    ['Is it "can I" or "could I" in a formal request?', /modal|possibility|feeling|consider/i]
+    ['Is it "can I" or "could I" in a formal request?', /modal|possibility|feeling|consider/i],
+    // Bug report, 12 November 2026. 'ly' was dropped by the tokeniser's length
+    // filter, and the keyword blob stores the suffix as '-ly', so neither the
+    // Hyphens page's '-ly' adverbs section nor the Adjectives page's compound
+    // adjectives section was retrieved and Ask said there was no guidance.
+    ["What's the rule about hyphens after words that end in ly", /-ly. adverbs/i],
+    ["What's the rule about hyphens after words that end in ly", /compound adjectives can have hyphens/i],
+    ['Is it highly-regarded or highly regarded?', /-ly. adverbs/i]
 ];
 for (const [question, want] of CASES) {
     const picked = worker.retrieveSections(question);
