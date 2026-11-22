@@ -40,6 +40,16 @@ const COMMON_ABBREVS = [
     'tel', 'temp', 'yr', 'yrs', 'ed', 'eds', 'fig', 'figs'
 ];
 
+// Honorifics that come before a name. 'abbrev-common-full-stop' must not read
+// the capital that starts the name as the start of a new sentence.
+const HONORIFICS_BEFORE_NAME = new Set(['dr', 'mr', 'mrs', 'ms', 'mx', 'prof', 'rev', 'hon']);
+
+// Shortened units of legislation ('s 23', 'ss 4-6', 'cl 7', 'reg 12'), in
+// any case and with or without a full stop. Only ever tested against text
+// that is followed by digits, so the single letter 's' cannot match a word.
+// Not in COMMON_ABBREVS: a bare 's.' there would also match the end of "'s.".
+const LEGAL_UNIT_BEFORE = /(?:^|[^\w'’])(?:s|ss|cl|cll|reg|regs|r|rr|sch|div|pt)\.?\s+$/i;
+
 // Matches text ending with an abbreviation's full stop plus spacing -
 // includes Latin forms whose internal dots aren't in COMMON_ABBREVS.
 const ABBREV_STOP_BEFORE = new RegExp(
@@ -1677,16 +1687,53 @@ const RULES = [
             let match;
             while ((match = regex.exec(text)) !== null) {
                 const abbrev = match[1];
+                const lower = abbrev.toLowerCase();
                 const afterPos = match.index + match[0].length;
                 const after = text.substring(afterPos, afterPos + 3);
 
+                // An honorific comes before a name, and a name starts with a
+                // capital, so for these 'space + capital' is not a sentence
+                // end. Without this, 'Mr. Smith' and 'Dr. Jones' - the most
+                // common case - were never flagged. Sr and Jr stay out: they
+                // come AFTER a name and can end a sentence.
+                const beforeName = HONORIFICS_BEFORE_NAME.has(lower) &&
+                    /^[A-Z]/.test(abbrev) && /^\s+[A-Z]/.test(after);
+
+                if (lower === 'no' || lower === 'nos') {
+                    // An Act's title keeps 'No.' exactly as written
+                    // ('Treasury Laws Amendment (2020 Measures No. 1) Act 2020')
+                    const ahead = text.substring(afterPos, afterPos + 60);
+                    if (/^\s*\d[^\n]*?\bAct\s+\d{4}\b/.test(ahead)) continue;
+                    // A quoted mention of the word itself ('‘No.’')
+                    if (/['‘"“]$/.test(text.substring(0, match.index)) &&
+                        /^['’"”]/.test(after)) continue;
+                }
+
                 // Skip if this ends a sentence
-                if (/^\s*$/.test(after) || /^\s+[A-Z]/.test(after) || /^[\s]*[\r\n]/.test(after)) {
+                if (!beforeName &&
+                    (/^\s*$/.test(after) || /^\s+[A-Z]/.test(after) || /^[\s]*[\r\n]/.test(after))) {
+                    continue;
+                }
+
+                // 'no' is only a contraction of 'number' immediately before a
+                // numeral. Anywhere else, dropping the stop would leave the
+                // negation 'no' ('the manager's no tomorrow'), so write the
+                // word out in full.
+                if ((lower === 'no' || lower === 'nos') && !/^\s*\d/.test(after)) {
+                    const word = preserveCase(abbrev, lower === 'no' ? 'number' : 'numbers');
+                    issues.push({
+                        found: match[0],
+                        suggestion: word,
+                        autoFix: word,
+                        position: match.index,
+                        description: 'Only use \'no\' for \'number\' immediately before a numeral (\'box no 152\'). Otherwise write \'number\' in full.',
+                        rule: this
+                    });
                     continue;
                 }
 
                 // Preserve original case
-                const expanded = expansions[abbrev.toLowerCase()];
+                const expanded = expansions[lower];
                 const replacement = expanded ? preserveCase(abbrev, expanded) : abbrev;
                 issues.push({
                     found: match[0],
@@ -1782,10 +1829,30 @@ const RULES = [
             while ((match = regex.exec(text)) !== null) {
                 const found = match[1];
                 const pos = match.index;
-                const after = text.substring(pos + found.length, Math.min(text.length, pos + found.length + 30));
+                const after = text.substring(pos + found.length, Math.min(text.length, pos + found.length + 60));
+                const before = text.substring(Math.max(0, pos - 60), pos);
 
-                // Skip centuries (1st century, 9th-century)
-                if (/^\s*[-\u2010\u2011]?\s*centur/i.test(after)) continue;
+                // Skip centuries (1st century, 9th-century), including a
+                // coordinated series that shares one 'centuries' at the end
+                // ('the 2nd and 3rd centuries', 'the 4th, 5th or 6th century')
+                if (/^(?:\s*(?:,|and|or|to|[-\u2013])\s*\d+(?:st|nd|rd|th))*\s*[-\u2010\u2011]?\s*centur/i.test(after)) continue;
+
+                // Regnal numbers: 'King Charles 3rd' is 'King Charles III',
+                // not 'King Charles third'. A royal or papal title before the
+                // name, or a monarch's name on its own, marks it.
+                const regnal = /\b(?:(?:King|Queen|Pope|Prince|Princess|Emperor|Empress|Tsar|Czar|Kaiser)\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?|Elizabeth|Charles|George|Edward|William|Henry|Richard|James|Mary)\s+$/.test(before);
+                if (regnal) {
+                    const roman = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX'][parseInt(found, 10) - 1];
+                    issues.push({
+                        found: found,
+                        suggestion: roman,
+                        autoFix: roman,
+                        position: pos,
+                        description: 'Use a regnal number (a roman numeral) for monarchs and popes, not an ordinal: \'Charles III\', \'Elizabeth II\'.',
+                        rule: this
+                    });
+                    continue;
+                }
 
                 // Skip dates (followed by month name, with or without 'of')
                 // - already handled by date-ordinal-in-date
@@ -2682,6 +2749,12 @@ const RULES = [
                 // Skip if the 'sentence end' is really an abbreviation's
                 // full stop ('Approx. 45 per cent' is mid-sentence)
                 if (ABBREV_STOP_BEFORE.test(before)) {
+                    continue;
+                }
+
+                // Same for a unit of legislation: 'See s. 23 of the Act' is
+                // a section number, not a sentence starting with '23'
+                if (LEGAL_UNIT_BEFORE.test(before)) {
                     continue;
                 }
 

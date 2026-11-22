@@ -240,6 +240,31 @@ const CASES = [
     // ---- RF-02: numbers-ordinal-words century exception ----
     ['numbers-ordinal-words', 'in the 9th century the region changed', false],
     ['numbers-ordinal-words', 'she came 9th in the race', true],
+    // Coordinated centuries share one 'centuries' (audit, 22 Nov 2026)
+    ['numbers-ordinal-words', 'It was built in the 2nd and 3rd centuries.', false],
+    ['numbers-ordinal-words', 'in the 4th, 5th or 6th century', false],
+    ['numbers-ordinal-words', 'in the 2nd round and the 3rd century', true, 'second'],
+    // Regnal numbers take roman numerals
+    ['numbers-ordinal-words', 'King Charles 3rd visited Canberra.', true, 'III'],
+    ['numbers-ordinal-words', 'a portrait of Elizabeth 2nd', true, 'II'],
+    ['numbers-ordinal-words', 'Pope John Paul 2nd visited in 1986', true, 'II'],
+    ['numbers-ordinal-words', 'Smith came 2nd in the final', true, 'second'],
+
+    // ---- abbrev-common-full-stop: honorifics and 'no' (audit, 22 Nov 2026) ----
+    ['abbrev-common-full-stop', 'We met Mr. Smith today.', true, 'Mr'],
+    ['abbrev-common-full-stop', 'Dr. Jones and Prof. Lee spoke.', true, 'Dr'],
+    ['abbrev-common-full-stop', 'We met Mr Smith today.', false],
+    ['abbrev-common-full-stop', 'He is Smith Jr. The next speaker was late.', false],
+    ['abbrev-common-full-stop', "I won't get the manager's no. until tomorrow.", true, 'number'],
+    ['abbrev-common-full-stop', 'Archive box no. 152 was found.', true, 'no'],
+    ['abbrev-common-full-stop', 'The answer was no. We left.', false],
+    ['abbrev-common-full-stop', 'the Treasury Laws Amendment (2020 Measures No. 1) Act 2020 applies', false],
+    ['abbrev-common-full-stop', 'The contraction ‘No.’ keeps its stop in Act titles.', false],
+
+    // ---- numbers-start-sentence: legislation units are not sentence ends ----
+    ['numbers-start-sentence', 'See s. 23 of the Act.', false],
+    ['numbers-start-sentence', 'Under reg. 12 the fee applies.', false],
+    ['numbers-start-sentence', 'The fee rose. 23 people objected.', true, 'Twenty-three'],
 
     // ---- spelling-prefix-hyphen (PU-17) ----
     ['spelling-prefix-hyphen', 'staff must reenter the building', true, 're-enter'],
