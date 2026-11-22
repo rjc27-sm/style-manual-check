@@ -544,6 +544,10 @@ const CASES = [
     ['punct-space-before', 'a ratio of 3 : 1', false],
     ['punct-space-before', 'a smiley :) face', false],
     ['punct-space-before', 'Write to us, and we will reply.', false],
+    // ---- abbrev-needs-list (tier 3) ----
+    ['abbrev-needs-list', 'We met the ABS and the AIHW.\nThe ATO and CSIRO came along with staff from DFAT.\nThe NDIS, NHMRC and PBS teams joined later in the day.\nThe MBS and ARC sent papers.\nASIC, the ACCC and APRA spoke about markets.\nASIO and the AFP sent apologies.\nThe BOM gave a forecast.\nThe CDC, the OECD and UNSW also wrote.\nACARA, the TGA and the ACMA replied.', true],
+    ['abbrev-needs-list', 'Abbreviations\nWe met the ABS and the AIHW.\nThe ATO and CSIRO came along with staff from DFAT.\nThe NDIS, NHMRC and PBS teams joined later in the day.\nThe MBS and ARC sent papers.\nASIC, the ACCC and APRA spoke about markets.\nASIO and the AFP sent apologies.\nThe BOM gave a forecast.\nThe CDC, the OECD and UNSW also wrote.\nACARA, the TGA and the ACMA replied.', false],
+    ['abbrev-needs-list', 'The ABS and the AIHW met.', false],
 ];
 
 // Batch 3 structure rules: [ruleId, text, docCtx, shouldFlag, expectedFix?]
@@ -635,7 +639,65 @@ const CTX_CASES = [
         { paragraphs: [] }, true, '02 6244 1000'],
     ['accessibility-nonbreaking-space', 'the meeting is at 3:30 pm today',
         { paragraphs: [] }, false],
-    ['accessibility-nonbreaking-space', 'the meeting is at 3:30 pm today', null, false]
+    ['accessibility-nonbreaking-space', 'the meeting is at 3:30 pm today', null, false],
+
+    // ==== Tier 3 structure rules from the coverage audit (22 Nov 2026) ====
+    // ---- heading-too-deep ----
+    ['heading-too-deep', 'A\nB\nC\nD\nE',
+        { headingLevels: new Map([[0, 1], [1, 2], [2, 3], [3, 4], [4, 5]]) }, true],
+    ['heading-too-deep', 'A\nB\nC\nD',
+        { headingLevels: new Map([[0, 1], [1, 2], [2, 3], [3, 4]]) }, false],
+    // ---- heading-numbered-deep ----
+    ['heading-numbered-deep', '2.3.1.4 Detailed results\nText',
+        { headingLines: new Set([0]), headingLevels: new Map([[0, 4]]) }, true],
+    ['heading-numbered-deep', '2.3.1 Results\nText',
+        { headingLines: new Set([0]), headingLevels: new Map([[0, 3]]) }, false],
+    // ---- link-file-details ----
+    ['link-file-details', 'Read the Annual report 2024 now.',
+        { links: [{ text: 'Annual report 2024', position: 9, length: 18, target: 'https://x.gov.au/ar.pdf', line: 0 }] }, true],
+    ['link-file-details', 'Read the Annual report 2024 [PDF 1.98 MB] now.',
+        { links: [{ text: 'Annual report 2024 [PDF 1.98 MB]', position: 9, length: 32, target: 'https://x.gov.au/ar.pdf', line: 0 }] }, false],
+    ['link-file-details', 'Read the Annual report 2024 (PDF 2 MB) now.',
+        { links: [{ text: 'Annual report 2024', position: 9, length: 18, target: 'https://x.gov.au/ar.pdf', line: 0 }] }, false],
+    ['link-file-details', 'Read the annual report page now.',
+        { links: [{ text: 'annual report page', position: 9, length: 18, target: 'https://x.gov.au/annual-report', line: 0 }] }, false],
+    // ---- format-latin-italic ----
+    ['format-latin-italic', 'As Smith et al. (2020) found.',
+        { italics: [{ text: 'et al.', position: 9, length: 6, line: 0 }] }, true],
+    ['format-latin-italic', 'We read The Plays of Shakespeare et al. today.',
+        { italics: [{ text: 'The Plays of Shakespeare et al.', position: 8, length: 31, line: 0 }] }, false],
+    // ---- accessibility-image-alt-text ----
+    ['accessibility-image-alt-text', 'Figure 1 shows the trend.\n\nThe next paragraph.',
+        { images: [{ line: 1, kind: 'picture', alt: '', title: '', decorative: false }] }, true],
+    ['accessibility-image-alt-text', 'Figure 1 shows the trend.\n\nThe next paragraph.',
+        { images: [{ line: 1, kind: 'picture', alt: '', title: '', decorative: true }] }, false],
+    ['accessibility-image-alt-text', 'Figure 1 shows the trend.\n\nThe next paragraph.',
+        { images: [{ line: 1, kind: 'picture', alt: 'Line chart of rising hospital admissions, 2015 to 2024', title: '', decorative: false }] }, false],
+    ['accessibility-image-alt-text', 'Figure 1 shows the trend.\n\nThe next paragraph.',
+        { images: [{ line: 1, kind: 'picture', alt: 'A picture containing text, screenshot Description automatically generated', title: '', decorative: false }] }, true],
+    ['accessibility-image-alt-text', 'Figure 1 shows the trend.\n\nThe next paragraph.',
+        { images: [{ line: 1, kind: 'chart', alt: 'x'.repeat(140), title: '', decorative: false }] }, true],
+    // ---- accessibility-text-box ----
+    ['accessibility-text-box', 'Body text.\n\nMore text.',
+        { textBoxes: [{ line: 1, count: 1 }] }, true],
+    ['accessibility-text-box', 'Body text.\n\nMore text.',
+        { textBoxes: [] }, false],
+    // ---- format-caption-full-stop ----
+    ['format-caption-full-stop', 'Text\nFigure 1: Hospital admissions, 2015 to 2024.',
+        { captionLines: new Set([1]) }, true, 'Figure 1: Hospital admissions, 2015 to 2024'],
+    ['format-caption-full-stop', 'Text\nFigure 1: Hospital admissions, 2015 to 2024',
+        { captionLines: new Set([1]) }, false],
+    ['format-caption-full-stop', 'Text\nSource: AIHW analysis of hospital data.',
+        { captionLines: new Set([1]) }, false],
+    ['format-caption-full-stop', 'Text\nA sentence ends here.',
+        { captionLines: new Set() }, false],
+    // ---- accessibility-table-header-row ----
+    ['accessibility-table-header-row', 'Intro\nState\nRate\nNSW\n12',
+        { tables: [{ line: 1, rows: 2, cols: 2, headerRow: false }] }, true],
+    ['accessibility-table-header-row', 'Intro\nState\nRate\nNSW\n12',
+        { tables: [{ line: 1, rows: 2, cols: 2, headerRow: true }] }, false],
+    // Pasted text has no document context: every structure rule is silent
+    ['accessibility-image-alt-text', 'Pasted text with no document.', null, false],
 ];
 
 const ruleById = new Map(RULES.map(r => [r.id, r]));

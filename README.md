@@ -33,7 +33,7 @@ for the full bot card, limitations and accessibility statement.
 - **Static site** (`im2026/`): plain HTML + vanilla JavaScript ES modules,
   no framework, no build step. Published by GitHub Pages from the repo root.
 - **Rule engine** (`src/rules.js`, `src/list-analysis.js`,
-  `src/spellings.js`): 117 rules across 12 categories, 1,829 US→AU spelling
+  `src/spellings.js`): 126 rules across 12 categories, 1,829 US→AU spelling
   mappings. Runs in the browser; documents never leave the user's device.
 - **Cloudflare Worker** (`im2026/worker/`): the only server component. Holds
   the Claude API key, enforces per-IP and global daily limits, and answers Ask
@@ -101,6 +101,9 @@ The third (`tests/retrieval.mjs`) checks that the Ask index and the bundled
 page text agree on every section boundary, and that known questions retrieve
 the section that answers them; it skips rather than fails when the bundled
 corpus is absent, since that file is not in the repository.
+The last (`tests/docx-reader.mjs`) builds a Word document in memory with
+images, a text box, a caption, tables and italics, and checks what the reader
+finds and that comments about objects with no text of their own still land.
 Always open annotated output in Word as a final check.
 
 Per-rule trigger and non-trigger cases live in `tests/rule-cases.mjs` and are

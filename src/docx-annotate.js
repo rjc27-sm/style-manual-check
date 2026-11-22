@@ -158,7 +158,10 @@ export async function loadDocx(arrayBuffer, env) {
     if (!docFile) {
         throw new Error('This file does not look like a Word document (no word/document.xml).');
     }
-    const xml = await docFile.async('string');
+    // Some tools write a byte-order mark before the XML declaration, which
+    // a strict parser rejects ('xml declaration only at the start'). Found
+    // on a real AIHW document, 22 Nov 2026.
+    const xml = (await docFile.async('string')).replace(/^﻿/, '');
     const parser = new E.DOMParser();
     const doc = parser.parseFromString(xml, 'application/xml');
 
@@ -175,6 +178,13 @@ export async function loadDocx(arrayBuffer, env) {
     const headingLevels = new Map();
     const links = [];
     const underlines = [];
+    // For the document-structure rules (coverage audit tier 3, 22 Nov 2026).
+    // None of these change fullText or any position the other rules see.
+    const italics = [];          // italic runs as text ranges (adjacent runs merged)
+    const images = [];           // pictures, charts and diagrams with their alt text
+    const textBoxes = [];        // paragraphs that hold a text box
+    const captionLines = new Set();
+    const tables = [];           // top-level tables: first line, size, header row
     const lineStarts = [];
     let fullText = '';
 
@@ -260,13 +270,100 @@ export async function loadDocx(arrayBuffer, env) {
         }
         if (uRange) pushURange(uRange);
 
+        // Italic runs (direct formatting only - an italic character style
+        // is not seen). Ported from the AIHW Writing Style Check.
+        let iRange = null;
+        const pushIRange = (r) => {
+            const t = text.substring(r.startOff, r.endOff);
+            if (t.trim()) {
+                italics.push({ text: t, position: lineStart + r.startOff,
+                    length: r.endOff - r.startOff, line: i });
+            }
+        };
+        for (const seg of segments) {
+            const italic = seg.kind === 't' && seg.run && toggleOn(getRPr(seg.run), 'i');
+            if (italic) {
+                if (iRange && iRange.endOff === seg.start) {
+                    iRange.endOff = seg.start + seg.length;
+                } else {
+                    if (iRange) pushIRange(iRange);
+                    iRange = { startOff: seg.start, endOff: seg.start + seg.length };
+                }
+            } else if (iRange) {
+                pushIRange(iRange);
+                iRange = null;
+            }
+        }
+        if (iRange) pushIRange(iRange);
+
+        // Pictures, charts and diagrams (DrawingML). A text box is also a
+        // drawing with a wp:docPr, so it is left to the text box check.
+        for (const dp of Array.from(pEl.getElementsByTagName('wp:docPr'))) {
+            if (hasAncestor(dp, 'Fallback')) continue;
+            const holder = dp.parentNode;
+            const has = tag => holder.getElementsByTagName(tag).length > 0;
+            let kind = null;
+            if (has('wps:txbx')) kind = null;
+            else if (has('pic:pic')) kind = 'picture';
+            else if (has('c:chart')) kind = 'chart';
+            else if (has('dgm:relIds')) kind = 'diagram';
+            if (!kind) continue;
+            images.push({
+                line: i, kind,
+                alt: (dp.getAttribute('descr') || '').trim(),
+                title: (dp.getAttribute('title') || '').trim(),
+                // Word's 'Mark as decorative' (Office 2019 and later)
+                decorative: Array.from(dp.getElementsByTagName('adec:decorative'))
+                    .some(d => d.getAttribute('val') === '1')
+            });
+        }
+        // Pictures in older documents that have only a VML version
+        for (const im of Array.from(pEl.getElementsByTagName('v:imagedata'))) {
+            if (hasAncestor(im, 'Fallback')) continue;
+            const shape = im.parentNode;
+            images.push({ line: i, kind: 'picture',
+                alt: ((shape && shape.getAttribute('alt')) || '').trim(),
+                title: '', decorative: false });
+        }
+        // Text boxes. Their paragraphs sit inside this one, so their text is
+        // never part of fullText and nothing in them is checked.
+        const boxes = Array.from(pEl.getElementsByTagName('w:txbxContent'))
+            .filter(t => !hasAncestor(t, 'Fallback'));
+        if (boxes.length) textBoxes.push({ line: i, count: boxes.length });
+
+        if (/^Caption$/i.test(style)) captionLines.add(i);
+
         paragraphs.push({ el: pEl, text, segments });
     });
+
+    // Tables: header row and size. Layout tables of one row or one column
+    // are left out. A table inside a text box has no line of its own.
+    const pIndex = new Map(paragraphEls.map((p, i) => [p, i]));
+    for (const tbl of Array.from(doc.getElementsByTagName('w:tbl'))) {
+        if (hasAncestor(tbl, 'tbl')) continue;
+        const rows = Array.from(tbl.childNodes).filter(n => isW(n, 'tr'));
+        if (rows.length < 2) continue;
+        const cols = Math.max(...rows.map(r => Array.from(r.childNodes).filter(n => isW(n, 'tc')).length));
+        if (cols < 2) continue;
+        let headerRow = false;
+        for (const c of Array.from(rows[0].childNodes)) {
+            if (!isW(c, 'trPr')) continue;
+            for (const s of Array.from(c.childNodes)) {
+                if (!isW(s, 'tblHeader')) continue;
+                const v = s.getAttribute('w:val');
+                headerRow = !(v === '0' || v === 'false');
+            }
+        }
+        const firstP = tbl.getElementsByTagName('w:p')[0];
+        if (!pIndex.has(firstP)) continue;
+        tables.push({ line: pIndex.get(firstP), rows: rows.length, cols, headerRow });
+    }
 
     return {
         zip, doc, paragraphs, fullText, lineStarts,
         headingLines, listLines, listLevels, boldLines, italicLines, tableLines,
-        headingLevels, links, underlines
+        headingLevels, links, underlines,
+        italics, images, textBoxes, captionLines, tables
     };
 }
 

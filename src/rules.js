@@ -4002,7 +4002,7 @@ const RULES = [
                         issues.push({
                             found: trimmed,
                             suggestion: 'Heading level jumps from Heading ' + prevLevel +
-                                ' to Heading ' + level + ' - use Heading ' + (prevLevel + 1) +
+                                ' to Heading ' + level + '. Use Heading ' + (prevLevel + 1) +
                                 ' or restructure the section',
                             // No autoFix - restructuring is the author's call
                             position: lineStart + lines[i].indexOf(trimmed),
@@ -4654,8 +4654,313 @@ const RULES = [
             }
             return issues;
         }
+    },
+
+    // ==================== BATCH 6 - DOCUMENT STRUCTURE, TIER 3 (November 2026) ====================
+    // From AUDIT-rule-coverage.md tier 3. All but abbrev-needs-list need a
+    // loaded Word document (docCtx from loadDocx) and return nothing for
+    // pasted text. None has an autoFix except the caption full stop: the
+    // fix is a style, a structure or a property, not a change to the text.
+    {
+        id: 'heading-too-deep',
+        name: 'Heading level 5 or deeper',
+        category: 'headings',
+        description: 'Try to use only 3 or 4 heading levels. Deep heading levels are a sign that a section is trying to do too much, and readers can lose track of where they are.',
+        link: 'https://www.stylemanual.gov.au/structuring-content/headings',
+        check: function(text, headingLines, listLines, boldLines, italicLines, tableLines, docCtx) {
+            const issues = [];
+            if (!docCtx || !(docCtx.headingLevels instanceof Map)) return issues;
+            const lines = text.split('\n');
+            const deep = [];
+            let lineStart = 0;
+            for (let i = 0; i < lines.length; i++) {
+                const level = docCtx.headingLevels.get(i);
+                const trimmed = lines[i].trim();
+                if (level >= 5 && trimmed) deep.push({ trimmed, level, position: lineStart + lines[i].indexOf(trimmed) });
+                lineStart += lines[i].length + 1;
+            }
+            if (deep.length === 0) return issues;
+            // One comment per document, on the first deep heading
+            const deepest = Math.max(...deep.map(d => d.level));
+            issues.push({
+                found: deep[0].trimmed,
+                suggestion: 'Restructure so the document needs 4 heading levels at most',
+                description: 'This is a Heading ' + deep[0].level + '. The document has ' + deep.length +
+                    (deep.length === 1 ? ' heading' : ' headings') + ' at level 5 or deeper (down to Heading ' +
+                    deepest + '). Try to use only 3 or 4 heading levels.',
+                position: deep[0].position,
+                rule: this
+            });
+            return issues;
+        }
+    },
+    {
+        id: 'heading-numbered-deep',
+        name: 'Heading numbered below level 3',
+        category: 'headings',
+        description: 'Don\'t number more than the first 3 heading levels. Numbered headings help readers cross-reference a printed document, but long numbers such as \'2.3.1.4\' are hard to follow.',
+        link: 'https://www.stylemanual.gov.au/structuring-content/headings',
+        check: function(text, headingLines, listLines, boldLines, italicLines, tableLines, docCtx) {
+            const issues = [];
+            if (!docCtx || !(docCtx.headingLevels instanceof Map) || !headingLines) return issues;
+            const lines = text.split('\n');
+            let lineStart = 0;
+            for (let i = 0; i < lines.length; i++) {
+                const m = headingLines.has(i) && lines[i].match(/^\s*(\d+(?:\.\d+){3,})\.?\s/);
+                if (m) {
+                    issues.push({
+                        found: m[1],
+                        suggestion: 'Number only the first 3 heading levels',
+                        position: lineStart + lines[i].indexOf(m[1]),
+                        rule: this
+                    });
+                }
+                lineStart += lines[i].length + 1;
+            }
+            return issues;
+        }
+    },
+    {
+        id: 'link-file-details',
+        name: 'Link to a file without its type and size',
+        category: 'links',
+        description: 'When a link goes to a file instead of a webpage, give the file type and size so readers can decide whether to download it: \'Annual report 2024–25 [PDF 1.98 MB]\'.',
+        link: 'https://www.stylemanual.gov.au/structuring-content/links',
+        check: function(text, headingLines, listLines, boldLines, italicLines, tableLines, docCtx) {
+            const issues = [];
+            if (!docCtx || !Array.isArray(docCtx.links)) return issues;
+            for (const link of docCtx.links) {
+                const ext = /\.(pdf|docx?|xlsx?|xlsm|pptx?|csv|zip|rtf|odt|ods)(?:[?#]|$)/i.exec(link.target || '');
+                if (!ext) continue;
+                // The details can be in the link text or straight after it
+                const around = link.text + text.slice(link.position + link.length, link.position + link.length + 40);
+                const hasType = /\b(?:PDF|DOCX?|Word|XLSX?|XLSM|Excel|CSV|PPTX?|PowerPoint|ZIP|RTF|ODT|ODS)\b/i.test(around);
+                const hasSize = /\d+(?:[.,]\d+)?\s?(?:KB|MB|GB|kB|kb|mb)\b/.test(around);
+                if (hasType && hasSize) continue;
+                const type = ext[1].toUpperCase().replace(/^DOCX?$/, 'DOCX');
+                const missing = !hasType && !hasSize ? 'the file type and size'
+                    : !hasType ? 'the file type' : 'the file size';
+                issues.push({
+                    found: link.text,
+                    suggestion: 'Add ' + missing + ', for example \'[' + type + ' 1.2 MB]\'',
+                    description: 'This link goes to a ' + type + ' file. Give ' + missing + ' so readers can decide whether to download it: \'Annual report 2024–25 [PDF 1.98 MB]\'.',
+                    position: link.position,
+                    rule: this
+                });
+            }
+            return issues;
+        }
+    },
+    {
+        id: 'format-latin-italic',
+        name: 'Latin shortened form in italics',
+        category: 'abbreviations',
+        description: 'Don\'t use italics for Latin shortened forms such as \'et al.\', \'ibid.\' and \'cf.\'. Write them in roman type, like the text around them.',
+        link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/italics',
+        check: function(text, headingLines, listLines, boldLines, italicLines, tableLines, docCtx) {
+            const issues = [];
+            if (!docCtx || !Array.isArray(docCtx.italics)) return issues;
+            const LATIN = /^(?:et al\.?|ibid\.?|op\.? ?cit\.?|loc\.? ?cit\.?|n\.d\.|cf\.?|viz\.?|e\.g\.|i\.e\.|etc\.)$/i;
+            for (const r of docCtx.italics) {
+                // Only when the italics cover the Latin form alone: inside an
+                // italic title the italics belong to the title.
+                const core = r.text.trim().replace(/^[(\[,;\s]+|[)\],;:\s]+$/g, '');
+                if (!LATIN.test(core)) continue;
+                issues.push({
+                    found: core,
+                    suggestion: 'Remove the italics from \'' + core + '\'',
+                    position: r.position + r.text.indexOf(core),
+                    rule: this
+                });
+            }
+            return issues;
+        }
+    },
+    {
+        id: 'abbrev-needs-list',
+        name: 'Many short forms and no list of them',
+        category: 'abbreviations',
+        description: 'Content that relies on many acronyms and initialisms needs a list of them, such as an \'Abbreviations\' section. Readers can check a term they have forgotten without searching for its first use.',
+        link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/shortened-words-and-phrases/acronyms-and-initialisms',
+        check: function(text) {
+            const issues = [];
+            const LIST_HEADING = /^\s*(?:\d+(?:\.\d+)*\.?\s+)?(?:list of\s+)?(?:abbreviations|acronyms|shortened forms|glossary|initialisms)\b.{0,50}$/im;
+            if (LIST_HEADING.test(text)) return issues;
+            const tokens = new Map();
+            const regex = /\b([A-Z]{2,6})s?\b/g;
+            let match;
+            while ((match = regex.exec(text)) !== null) {
+                const token = match[1];
+                if (tokens.has(token)) continue;
+                if (EXPANSION_EXEMPT.has(token)) continue;
+                if (NOT_ACRONYM_WORDS.includes(token.toLowerCase())) continue;
+                if (inAllCapsRun(text, match.index) || inUrlOrEmail(text, match.index)) continue;
+                tokens.set(token, match.index);
+            }
+            // 15 caught Style Manual pages that only name a few time zones
+            // or markings (dates, security classifications); 20 leaves pages
+            // that are about short forms, plus genuinely heavy documents.
+            const THRESHOLD = 20;
+            if (tokens.size < THRESHOLD) return issues;
+            const [first, at] = tokens.entries().next().value;
+            issues.push({
+                found: first,
+                suggestion: 'Add an \'Abbreviations\' list',
+                description: 'This text uses ' + tokens.size + ' different acronyms and initialisms and has no list of them. Add an \'Abbreviations\' or \'Shortened forms\' section so readers can look a term up.',
+                position: at,
+                matchWholeWord: true,
+                rule: this
+            });
+            return issues;
+        }
+    },
+    {
+        id: 'accessibility-image-alt-text',
+        name: 'Image alt text',
+        category: 'accessibility',
+        description: 'Give every informative image short alt text (under about 100 characters) that conveys the same information as the image. Mark decorative images as decorative so screen readers skip them.',
+        link: 'https://www.stylemanual.gov.au/content-types/images/alt-text-captions-and-titles-images',
+        check: function(text, headingLines, listLines, boldLines, italicLines, tableLines, docCtx) {
+            const issues = [];
+            if (!docCtx || !Array.isArray(docCtx.images)) return issues;
+            for (const img of docCtx.images) {
+                if (img.decorative) continue;
+                const what = img.kind === 'picture' ? 'image' : img.kind;
+                let problem = null;
+                let suggestion = null;
+                if (!img.alt) {
+                    problem = 'has no alt text. Add a short description of what it shows and why it is there. If it is decorative, mark it as decorative (right-click > View Alt Text).';
+                    suggestion = 'Add alt text, or mark the ' + what + ' as decorative';
+                } else if (/description automatically generated|^a (?:picture|screenshot|close-up|group of)\b.*\bcontaining\b/i.test(img.alt)) {
+                    problem = 'has alt text that Word wrote automatically (\'' + truncateAlt(img.alt) + '\'). Replace it with a description of what the ' + what + ' shows and why it is there.';
+                    suggestion = 'Replace the automatic alt text';
+                } else if (img.alt.length > 125) {
+                    problem = 'has alt text of ' + img.alt.length + ' characters. Keep alt text to about 100 characters. Put a longer explanation in the caption or the text.';
+                    suggestion = 'Shorten the alt text to about 100 characters';
+                }
+                if (!problem) continue;
+                const anchor = structureAnchor(text, img.line);
+                if (!anchor) continue;
+                issues.push({
+                    found: anchor.found,
+                    suggestion,
+                    description: 'The ' + what + ' ' + anchor.where + ' ' + problem,
+                    position: anchor.position,
+                    rule: this
+                });
+            }
+            return issues;
+        }
+    },
+    {
+        id: 'accessibility-text-box',
+        name: 'Text box in a Word document',
+        category: 'accessibility',
+        description: 'Don\'t use text boxes in Word documents. Most screen reader users can\'t read them, or hear them out of order. Use borders and paragraph styles to highlight content, or a table of one cell.',
+        link: 'https://www.stylemanual.gov.au/structuring-content/text-boxes-and-callouts',
+        check: function(text, headingLines, listLines, boldLines, italicLines, tableLines, docCtx) {
+            const issues = [];
+            if (!docCtx || !Array.isArray(docCtx.textBoxes)) return issues;
+            for (const box of docCtx.textBoxes) {
+                const anchor = structureAnchor(text, box.line);
+                if (!anchor) continue;
+                issues.push({
+                    found: anchor.found,
+                    suggestion: 'Move the text into the body of the document',
+                    description: 'There is ' + (box.count === 1 ? 'a text box' : box.count + ' text boxes') + ' ' + anchor.where +
+                        '. Most screen reader users can\'t read text boxes, or hear them out of order. Use borders and paragraph styles instead, or a table of one cell. This check also can\'t read the text inside a text box, so none of it has been checked.',
+                    position: anchor.position,
+                    rule: this
+                });
+            }
+            return issues;
+        }
+    },
+    {
+        id: 'format-caption-full-stop',
+        name: 'Full stop at the end of a caption',
+        category: 'punctuation',
+        description: 'Don\'t end a caption or a figure or table title with a full stop, even if it is a complete sentence.',
+        link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/punctuation/full-stops',
+        check: function(text, headingLines, listLines, boldLines, italicLines, tableLines, docCtx) {
+            const issues = [];
+            if (!docCtx || !(docCtx.captionLines instanceof Set)) return issues;
+            const lines = text.split('\n');
+            let lineStart = 0;
+            for (let i = 0; i < lines.length; i++) {
+                const trimmed = lines[i].trim();
+                const at = lineStart + lines[i].indexOf(trimmed);
+                lineStart += lines[i].length + 1;
+                if (!docCtx.captionLines.has(i)) continue;
+                if (!/[^.]\.$/.test(trimmed)) continue;          // not '...'
+                // Notes and sources under a figure are sentences, not captions
+                if (/^(?:notes?|sources?)\b/i.test(trimmed)) continue;
+                const fixed = trimmed.slice(0, -1);
+                const issue = { found: trimmed, suggestion: fixed, position: at, rule: this };
+                // One sentence: safe to fix. More than one is the writer's call.
+                if (!/\.\s+\S/.test(fixed)) issue.autoFix = fixed;
+                issues.push(issue);
+            }
+            return issues;
+        }
+    },
+    {
+        id: 'accessibility-table-header-row',
+        name: 'Table without a header row',
+        category: 'accessibility',
+        description: 'Mark the first row of a table as a header row, so screen readers announce each column heading and the headings repeat on every printed page. In Word: Table Properties > Row > \'Repeat as header row at the top of each page\'.',
+        link: 'https://www.stylemanual.gov.au/structuring-content/tables',
+        check: function(text, headingLines, listLines, boldLines, italicLines, tableLines, docCtx) {
+            const issues = [];
+            if (!docCtx || !Array.isArray(docCtx.tables)) return issues;
+            for (const t of docCtx.tables) {
+                if (t.headerRow) continue;
+                const anchor = structureAnchor(text, t.line, true);
+                if (!anchor) continue;
+                issues.push({
+                    found: anchor.found,
+                    suggestion: 'Set the first row as a header row',
+                    description: 'This table (' + t.rows + ' rows, ' + t.cols + ' columns) has no header row. Mark the first row as a header row so screen readers announce the column headings: Table Properties > Row > \'Repeat as header row at the top of each page\'.',
+                    position: anchor.position,
+                    rule: this
+                });
+            }
+            return issues;
+        }
     }
 ];
+
+/**
+ * Where to hang a comment about an object that has no text of its own (an
+ * image, a text box, a table). Returns the first few words of the nearest
+ * line with text - this line, then the next 3, then the 3 before - and
+ * where the object is relative to them. With sameLineOnly, only this line.
+ */
+function structureAnchor(text, line, sameLineOnly) {
+    const lines = text.split('\n');
+    const starts = [];
+    let pos = 0;
+    for (const l of lines) { starts.push(pos); pos += l.length + 1; }
+    const order = [[line, 'in this paragraph']];
+    if (!sameLineOnly) {
+        for (let d = 1; d <= 3; d++) order.push([line + d, 'just above this text']);
+        for (let d = 1; d <= 3; d++) order.push([line - d, 'just below this text']);
+    }
+    for (const [i, where] of order) {
+        if (i < 0 || i >= lines.length) continue;
+        const trimmed = lines[i].trim();
+        if (!trimmed) continue;
+        // The first few words, cut at a word boundary
+        let found = trimmed.length <= 50 ? trimmed : trimmed.slice(0, 50).replace(/\s+\S*$/, '');
+        if (!found) found = trimmed.split(/\s+/)[0];
+        return { found, position: starts[i] + lines[i].indexOf(trimmed), where };
+    }
+    return null;
+}
+
+function truncateAlt(alt) {
+    return alt.length <= 60 ? alt : alt.slice(0, 57).replace(/\s+\S*$/, '') + '…';
+}
 
 /**
  * Spans that are identifiers, not prose: web addresses, DOIs, ISBNs/ISSNs and
