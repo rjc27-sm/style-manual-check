@@ -544,6 +544,55 @@ const CASES = [
     ['punct-space-before', 'a ratio of 3 : 1', false],
     ['punct-space-before', 'a smiley :) face', false],
     ['punct-space-before', 'Write to us, and we will reply.', false],
+    // ==== Tier 2 rules from the coverage audit (22 Nov 2026) ====
+    // ---- inclusive-he-or-she ----
+    ['inclusive-he-or-she', 'Each applicant says whether he or she is eligible.', true, 'they'],
+    ['inclusive-he-or-she', 'Give his/her income.', true, 'their'],
+    ['inclusive-he-or-she', 'Ask him or her to sign.', true, 'them'],
+    ['inclusive-he-or-she', 'Each applicant says whether they are eligible.', false],
+    ['inclusive-he-or-she', 'He or she? Neither, said the judge.', true, 'They'],
+    // ---- govt-federal-government ----
+    ['govt-federal-government', 'The Federal Government funded it.', true, 'Australian Government'],
+    ['govt-federal-government', 'The federal Government funded it.', true],
+    ['govt-federal-government', 'Federal government funding rose.', false],
+    ['govt-federal-government', 'The federal government funded it.', false],
+    ['govt-federal-government', 'The Federal Government of Germany agreed.', false],
+    // ---- date-abbreviated-in-text ----
+    ['date-abbreviated-in-text', 'It is on Sat 22 Dec 2025 at noon.', true, 'Saturday 22 December'],
+    ['date-abbreviated-in-text', 'It started on 3 Jan. 2026 in Canberra.', true, '3 January'],
+    ['date-abbreviated-in-text', 'It is on Wed 4 March this year.', true, 'Wednesday 4 March'],
+    ['date-abbreviated-in-text', 'The term ends on 22 Dec. The next one starts later.', true, '22 December'],
+    ['date-abbreviated-in-text', 'Updated 09 Jul 2026 by the team.', true, '9 July'],
+    ['date-abbreviated-in-text', 'It is on Saturday 22 December 2025.', false],
+    ['date-abbreviated-in-text', 'It is on 22 December 2025.', false],
+    ['date-abbreviated-in-text', 'We ate 22 Mars bars.', false],
+    // abbrev-month-full-stop leaves a body-text date to the rule above
+    ['abbrev-month-full-stop', 'It started on 3 Jan. 2026 in Canberra.', false],
+    ['abbrev-month-full-stop', 'Rates rose in Jan. and fell after.', true, 'Jan'],
+    ['abbrev-day-full-stop', 'It is on Sat. 22 Dec this year.', false],
+    // ---- list-inline-numbered ----
+    ['list-inline-numbered', 'The facilitator will 1) welcome participants to the room and 2) introduce each of the speakers.', true],
+    ['list-inline-numbered', 'Applicants must (a) complete the form in full and (b) attach their payslips.', true],
+    ['list-inline-numbered', 'Under paragraphs (a) and (b) of section 5(a) the fee applies.', false],
+    ['list-inline-numbered', 'See Table 1) for more.', false],
+    ['numbers-zero-one', 'The facilitator will 1) welcome participants to the room and 2) introduce each of the speakers.', false],
+    ['punct-parentheses-nested', 'The facilitator will 1) welcome participants to the room and 2) introduce each of the speakers.', false],
+    // ---- numbers-ordinal-adverbs ----
+    ['numbers-ordinal-adverbs', 'Firstly, check the form.', true],
+    ['numbers-ordinal-adverbs', 'Lastly, post it.', false],
+    ['numbers-ordinal-adverbs', 'First, check the form.', false],
+    // ---- govt-security-marking-case ----
+    ['govt-security-marking-case', "The report was stamped 'Official: sensitive'.", true, 'OFFICIAL:\u00a0Sensitive'],
+    ['govt-security-marking-case', 'The file is classified as Protected.', true, 'PROTECTED'],
+    ['govt-security-marking-case', 'It has a security classification of Top Secret.', true, 'TOP\u00a0SECRET'],
+    ['govt-security-marking-case', 'They kept the plan top secret.', false],
+    ['govt-security-marking-case', 'It is marked OFFICIAL: Sensitive.', false],
+    ['govt-security-marking-case', 'The file is protected by a password.', false],
+    // ---- numbers-money-shortened ----
+    ['numbers-money-shortened', 'The program cost $5m last year.', true, '$5 million'],
+    ['numbers-money-shortened', 'The grant was $2.1bn in total.', true, '$2.1 billion'],
+    ['numbers-money-shortened', 'The program cost $5 million last year.', false],
+    ['numbers-money-shortened', 'The track is 5m wide.', false],
     // ---- abbrev-needs-list (tier 3) ----
     ['abbrev-needs-list', 'We met the ABS and the AIHW.\nThe ATO and CSIRO came along with staff from DFAT.\nThe NDIS, NHMRC and PBS teams joined later in the day.\nThe MBS and ARC sent papers.\nASIC, the ACCC and APRA spoke about markets.\nASIO and the AFP sent apologies.\nThe BOM gave a forecast.\nThe CDC, the OECD and UNSW also wrote.\nACARA, the TGA and the ACMA replied.', true],
     ['abbrev-needs-list', 'Abbreviations\nWe met the ABS and the AIHW.\nThe ATO and CSIRO came along with staff from DFAT.\nThe NDIS, NHMRC and PBS teams joined later in the day.\nThe MBS and ARC sent papers.\nASIC, the ACCC and APRA spoke about markets.\nASIO and the AFP sent apologies.\nThe BOM gave a forecast.\nThe CDC, the OECD and UNSW also wrote.\nACARA, the TGA and the ACMA replied.', false],

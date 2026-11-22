@@ -1676,7 +1676,7 @@ const RULES = [
         category: 'abbreviations',
         description: 'Don\'t put a full stop after abbreviations. Write \'Jan\', not \'Jan.\' (unless the abbreviation ends a sentence).',
         link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/shortened-words-and-phrases/abbreviations',
-        check: function(text) {
+        check: function(text, headingLines, listLines, boldLines, italicLines, tableLines) {
             const issues = [];
             // Match month abbreviations with trailing full stop
             const months = 'Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec';
@@ -1692,6 +1692,11 @@ const RULES = [
                 if (/^\s*$/.test(after) || /^\s+[A-Z]/.test(after) || /^[\s]*[\r\n]/.test(after)) {
                     continue;
                 }
+                // In body text a date like '3 Jan. 2025' belongs to
+                // 'date-abbreviated-in-text', which writes the month out in
+                // full. Two different fixes on one word would both become comments.
+                if (/\d{1,2}[  ]+$/.test(text.slice(Math.max(0, match.index - 4), match.index)) &&
+                    !inTableLine(text, match.index, tableLines)) continue;
 
                 issues.push({
                     found: match[0],
@@ -1710,7 +1715,7 @@ const RULES = [
         category: 'abbreviations',
         description: 'Don\'t put a full stop after abbreviations. Write \'Mon\', not \'Mon.\' (unless the abbreviation ends a sentence).',
         link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/shortened-words-and-phrases/abbreviations',
-        check: function(text) {
+        check: function(text, headingLines, listLines, boldLines, italicLines, tableLines) {
             const issues = [];
             // Match day abbreviations with trailing full stop
             const days = 'Mon|Tue|Tues|Wed|Thu|Thur|Thurs|Fri|Sat|Sun';
@@ -1725,6 +1730,9 @@ const RULES = [
                 if (/^\s*$/.test(after) || /^\s+[A-Z]/.test(after) || /^[\s]*[\r\n]/.test(after)) {
                     continue;
                 }
+                // 'Sat. 22 Dec' in body text belongs to 'date-abbreviated-in-text'
+                if (/^[  ]+\d{1,2}[  ]+[A-Z][a-z]{2}/.test(text.slice(afterPos, afterPos + 12)) &&
+                    !inTableLine(text, match.index, tableLines)) continue;
 
                 issues.push({
                     found: match[0],
@@ -2509,6 +2517,10 @@ const RULES = [
 
                 // Skip decimals (0.5, 1.5, etc.)
                 if (charBefore === '.' || charAfter === '.') continue;
+
+                // An in-line list marker ('will 1) welcome …') is not a count:
+                // 'list-inline-numbered' comments on the list instead
+                if (inInlineListMarker(text, pos)) continue;
 
                 // Skip comma-separated thousands (1,100 or 1,000,000)
                 // Check if followed by comma+digits or preceded by digits+comma
@@ -3310,6 +3322,8 @@ const RULES = [
                         } else {
                             // Skip list markers like '1)' or 'a)' at the start of a line
                             if (/^\s*\(?\w{1,4}\)$/.test(line.substring(0, i + 1))) continue;
+                            // ...and in-line list markers ('will 1) welcome … 2) introduce')
+                            if (inInlineListMarker(text, offset + i)) continue;
                             // Skip emoticons
                             if (/[:;]-?$/.test(line.substring(Math.max(0, i - 2), i))) continue;
                             issues.push({
@@ -4927,8 +4941,290 @@ const RULES = [
             }
             return issues;
         }
+    },
+
+    // ==================== BATCH 7 - COVERAGE AUDIT, TIER 2 (November 2026) ====================
+    // The tier 2 rules Jen chose (AUDIT-rule-coverage.md section 3a): each was
+    // prototyped on the Style Manual, the AIHW web corpus and 31 WAIHW Word
+    // documents first. Contested ones were left out on purpose.
+    {
+        id: 'inclusive-he-or-she',
+        name: '\'He or she\' instead of \'they\'',
+        category: 'inclusive-language',
+        description: 'Use \'they\', \'their\' and \'them\' for a person whose gender you don\'t know or that doesn\'t matter, not \'he or she\' or \'his/her\'. Check whether the verb needs to change too: \'they are\'.',
+        link: 'https://www.stylemanual.gov.au/accessible-and-inclusive-content/inclusive-language/gender-and-sexual-diversity',
+        check: function(text) {
+            const issues = [];
+            const forms = [
+                [/\b(?:he or she|she or he|he\/she|she\/he|s\/he)\b/gi, 'they'],
+                [/\b(?:his or hers|hers or his)\b/gi, 'theirs'],
+                [/\b(?:his or her|her or his|his\/her|her\/his)\b/gi, 'their'],
+                [/\b(?:him or her|her or him|him\/her|her\/him)\b/gi, 'them'],
+                [/\b(?:himself or herself|herself or himself|himself\/herself)\b/gi, 'themselves']
+            ];
+            const claimed = [];
+            for (const [regex, word] of forms) {
+                let match;
+                while ((match = regex.exec(text)) !== null) {
+                    const start = match.index, end = start + match[0].length;
+                    if (claimed.some(c => start < c.end && end > c.start)) continue;
+                    claimed.push({ start, end });
+                    // No autoFix: 'he or she is' becomes 'they are', and only
+                    // the writer can see the whole sentence.
+                    issues.push({
+                        found: match[0],
+                        suggestion: preserveCase(match[0], word),
+                        position: start,
+                        rule: this
+                    });
+                }
+            }
+            issues.sort((a, b) => a.position - b.position);
+            return issues;
+        }
+    },
+    {
+        id: 'govt-federal-government',
+        name: '\'Federal Government\'',
+        category: 'government-terms',
+        description: 'Write \'Australian Government\', not \'Federal Government\'. \'Federal\' takes a capital only when it is part of a formal name, such as the Federal Court of Australia.',
+        link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/names-and-terms/government-terms',
+        check: function(text) {
+            const issues = [];
+            const regex = /\b(Federal [Gg]overnment|federal Government)(s?)\b/g;
+            let match;
+            while ((match = regex.exec(text)) !== null) {
+                const after = text.slice(match.index + match[0].length, match.index + match[0].length + 4);
+                // Another country's government ('the Federal Government of Germany')
+                if (/^\s+of\b/.test(after)) continue;
+                // A sentence-start capital on 'Federal' alone is just the
+                // sentence: 'Federal government funding rose' is fine.
+                if (/^Federal government/.test(match[0]) && properNounGuard(text, match.index, 'Federal') !== 'name') continue;
+                issues.push({
+                    found: match[0],
+                    suggestion: 'Australian Government',
+                    // No autoFix: 'the federal government' (lower case) is
+                    // acceptable too, and the writer may want that instead.
+                    position: match.index,
+                    rule: this
+                });
+            }
+            return issues;
+        }
+    },
+    {
+        id: 'date-abbreviated-in-text',
+        name: 'Abbreviated date in body text',
+        category: 'dates-and-time',
+        description: 'Don\'t abbreviate dates in body text. Write \'Saturday 22 December 2025\', not \'Sat 22 Dec 2025\'. Shortened forms are fine where space is limited, such as in tables.',
+        link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/numbers-and-measurements/dates-and-time',
+        check: function(text, headingLines, listLines, boldLines, italicLines, tableLines) {
+            const issues = [];
+            const MONTHS = { Jan: 'January', Feb: 'February', Mar: 'March', Apr: 'April', Jun: 'June',
+                Jul: 'July', Aug: 'August', Sep: 'September', Sept: 'September', Oct: 'October',
+                Nov: 'November', Dec: 'December' };
+            const DAYS = { Mon: 'Monday', Tue: 'Tuesday', Tues: 'Tuesday', Wed: 'Wednesday',
+                Thu: 'Thursday', Thur: 'Thursday', Thurs: 'Thursday', Fri: 'Friday',
+                Sat: 'Saturday', Sun: 'Sunday' };
+            const FULL_MONTH = 'January|February|March|April|May|June|July|August|September|October|November|December';
+            // [Day.] 22 Dec[.] [2025]  - the day name is optional, and a
+            // day name before a FULL month counts too ('Sat 22 December')
+            const regex = new RegExp('\\b(?:(Mon|Tues?|Wed|Thu(?:rs?)?|Fri|Sat|Sun)\\.?[ \\u00a0]+)?' +
+                '(\\d{1,2})[ \\u00a0]+(Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sept?|Oct|Nov|Dec|' + FULL_MONTH + ')' +
+                '(\\.)?(?![a-z])', 'g');
+            let match;
+            while ((match = regex.exec(text)) !== null) {
+                const [whole, day, num, month, stop] = match;
+                const shortMonth = MONTHS[month] !== undefined;
+                if (!day && !shortMonth) continue;               // '22 December': fine
+                if (inTableLine(text, match.index, tableLines)) continue;
+                if (headingLines && headingLines.has(lineIndexAt(text, match.index))) continue;
+                // A stop that ends the sentence stays: '…on 22 Dec. The next'
+                const after = text.slice(match.index + whole.length, match.index + whole.length + 3);
+                const keepStop = stop && (/^\s*$/.test(after) || /^\s+[A-Z]/.test(after));
+                const found = keepStop ? whole.slice(0, -1) : whole;
+                // Body text has no leading zero on the day: '9 July', not '09 July'
+                const fixed = (day ? DAYS[day] + ' ' : '') + String(parseInt(num, 10)) + ' ' +
+                    (shortMonth ? MONTHS[month] : month);
+                issues.push({ found, suggestion: fixed, autoFix: fixed, position: match.index, rule: this });
+            }
+            return issues;
+        }
+    },
+    {
+        id: 'list-inline-numbered',
+        name: 'In-line numbered list',
+        category: 'lists',
+        description: 'Break a series of numbered points out into a numbered list instead of numbering them inside a sentence: \'The facilitator will:\' followed by \'1. welcome participants\' and \'2. introduce the speakers\'.',
+        link: 'https://www.stylemanual.gov.au/structuring-content/lists',
+        check: function(text) {
+            const issues = [];
+            for (const span of inlineListSpans(text)) {
+                issues.push({
+                    found: text.slice(span.start, span.end),
+                    suggestion: 'Make this a numbered list',
+                    position: span.start,
+                    rule: this
+                });
+            }
+            return issues;
+        }
+    },
+    {
+        id: 'numbers-ordinal-adverbs',
+        name: '\'Firstly\', \'secondly\' to order points',
+        category: 'numbers-and-measurements',
+        description: 'Don\'t use ordinals such as \'firstly\' and \'secondly\' to order points. Use a numbered list, or reword so the order doesn\'t need numbering.',
+        link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/numbers-and-measurements/ordinal-numbers',
+        check: function(text) {
+            const issues = [];
+            // Not 'lastly': it is ordinary English and doesn't number a point
+            const regex = /\b(?:firstly|secondly|thirdly|fourthly|fifthly)\b/gi;
+            let match;
+            while ((match = regex.exec(text)) !== null) {
+                issues.push({
+                    found: match[0],
+                    suggestion: 'Use a numbered list, or reword without ordinals',
+                    position: match.index,
+                    rule: this
+                });
+            }
+            return issues;
+        }
+    },
+    {
+        id: 'govt-security-marking-case',
+        name: 'Security marking capitals',
+        category: 'government-terms',
+        description: 'Write protective markings in PSPF style when you mention them in body text: \'OFFICIAL\', \'OFFICIAL: Sensitive\', \'PROTECTED\', \'SECRET\' and \'TOP SECRET\'. Use non-breaking spaces so the parts stay together.',
+        link: 'https://www.stylemanual.gov.au/writing-and-designing-content/security-classifications-and-protective-markings',
+        check: function(text) {
+            const issues = [];
+            const NB = ' ';
+            // 'OFFICIAL: Sensitive' in any other case or spacing. The colon
+            // form can only be the marking.
+            const sensitive = /\b(official)\s*:\s*(sensitive)\b/gi;
+            let match;
+            while ((match = sensitive.exec(text)) !== null) {
+                const canonical = 'OFFICIAL:' + NB + 'Sensitive';
+                if (match[0] === canonical || match[0] === 'OFFICIAL: Sensitive') continue;
+                issues.push({ found: match[0], suggestion: 'OFFICIAL: Sensitive', autoFix: canonical,
+                    position: match.index, rule: this });
+            }
+            // The other markings only where the words name a classification
+            // ('classified as Protected', 'marked top secret'). 'Kept it top
+            // secret' is ordinary English and stays.
+            const CONTEXT = '(?:classified|classification(?:s)?(?: of| level)?|marked|stamped|labelled|marking(?:s)?|dissemination limiting marker|security classification(?: of)?)\\s+(?:as\\s+|at\\s+)?[\'‘"“]?';
+            const named = new RegExp('\\b' + CONTEXT + '(top\\s+secret|secret|protected|official|unofficial)\\b(?!\\s*:)', 'gi');
+            while ((match = named.exec(text)) !== null) {
+                const word = match[1];
+                const canonical = word.toUpperCase().replace(/\s+/, NB);
+                if (word.replace(/\s+/, ' ') === canonical.replace(NB, ' ')) continue;
+                const pos = match.index + match[0].length - word.length;
+                issues.push({ found: word, suggestion: canonical.replace(NB, ' '), autoFix: canonical,
+                    position: pos, rule: this });
+            }
+            issues.sort((a, b) => a.position - b.position);
+            return issues;
+        }
+    },
+    {
+        id: 'numbers-money-shortened',
+        name: '\'$5m\' in body text',
+        category: 'numbers-and-measurements',
+        description: 'Write \'million\' and \'billion\' in full in body text: \'$2.1 million\', not \'$2.1m\'. Shortened forms are fine in tables and charts, with a note to explain them.',
+        link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/numbers-and-measurements/currency',
+        check: function(text, headingLines, listLines, boldLines, italicLines, tableLines) {
+            const issues = [];
+            const regex = /((?:A|US|NZ)?\$\d+(?:[.,]\d+)?)[  ]?(m|mn|mil|M|bn|b|B)\b(?!\.\d)/g;
+            let match;
+            while ((match = regex.exec(text)) !== null) {
+                if (inTableLine(text, match.index, tableLines)) continue;
+                const word = /^(?:m|mn|mil|M)$/.test(match[2]) ? 'million' : 'billion';
+                const fixed = match[1] + ' ' + word;
+                issues.push({ found: match[0], suggestion: fixed, autoFix: fixed, position: match.index, rule: this });
+            }
+            return issues;
+        }
     }
 ];
+
+/** The line index of a position in text. */
+function lineIndexAt(text, position) {
+    let n = 0;
+    for (let i = 0; i < position && i < text.length; i++) if (text[i] === '\n') n++;
+    return n;
+}
+
+/** True if position is on a line the reader marked as a table cell. */
+function inTableLine(text, position, tableLines) {
+    return !!(tableLines && tableLines.size > 0 && tableLines.has(lineIndexAt(text, position)));
+}
+
+// In-line numbered lists: '1) … 2) …', '(a) … (b) …', '(i) … (ii) …' inside a
+// sentence. Each item needs real words between its markers, so a
+// cross-reference ('paragraphs (a) and (b)', 'section 5(a)') is not a list.
+const INLINE_MARKER = /(?:^|[\s:;,])(\(?)(\d{1,2}|[a-h]|i{1,3}|iv|v)\)(?=\s)/g;
+const MARKER_SEQUENCES = [
+    ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'],
+    ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'],
+    ['i', 'ii', 'iii', 'iv', 'v']
+];
+let inlineListCache = { text: null, spans: [] };
+
+function inlineListSpans(text) {
+    if (inlineListCache.text === text) return inlineListCache.spans;
+    const spans = [];
+    let lineStart = 0;
+    for (const line of text.split('\n')) {
+        const markers = [];
+        let m;
+        INLINE_MARKER.lastIndex = 0;
+        while ((m = INLINE_MARKER.exec(line)) !== null) {
+            const at = m.index + m[0].indexOf(m[1] + m[2] + ')');
+            markers.push({ at, len: m[1].length + m[2].length + 1, label: m[2] });
+        }
+        // Find runs of consecutive labels (1 then 2, a then b, i then ii)
+        for (let k = 0; k < markers.length; k++) {
+            const seq = MARKER_SEQUENCES.find(s => s[0] === markers[k].label);
+            if (!seq) continue;
+            const run = [markers[k]];
+            for (let j = k + 1; j < markers.length && run.length < seq.length; j++) {
+                if (markers[j].label === seq[run.length]) run.push(markers[j]);
+            }
+            if (run.length < 2) continue;
+            // A list item at the very start of the line is a typed list, not
+            // an in-line one
+            if (!line.slice(0, run[0].at).trim()) continue;
+            // Real words between markers: at least 2 per item
+            const itemText = (a, b) => line.slice(a.at + a.len, b ? b.at : undefined);
+            const ok = run.slice(0, -1).every((r, x) =>
+                itemText(r, run[x + 1]).replace(/\b(?:and|or)\b|[,;]/g, ' ').trim().split(/\s+/).filter(Boolean).length >= 2);
+            if (!ok) continue;
+            // Not a cross-reference ('under paragraphs (a) and (b)')
+            if (/\b(?:paragraphs?|subparagraphs?|sections?|subsections?|clauses?|items?|rules?|regulations?|schedules?|parts?|tables?|figures?|steps?|options?|appendix|appendices)\s*$/i
+                .test(line.slice(0, run[0].at))) continue;
+            const last = run[run.length - 1];
+            const rest = line.slice(last.at + last.len);
+            const stop = rest.search(/[.!?](?:\s|$)/);
+            const end = last.at + last.len + (stop === -1 ? rest.length : stop);
+            spans.push({ start: lineStart + run[0].at, end: lineStart + end,
+                markers: run.map(r => ({ start: lineStart + r.at, end: lineStart + r.at + r.len })) });
+            k += run.length - 1;
+        }
+        lineStart += line.length + 1;
+    }
+    inlineListCache = { text, spans };
+    return spans;
+}
+
+/** True if position falls inside the marker of an in-line numbered list. */
+function inInlineListMarker(text, position) {
+    for (const span of inlineListSpans(text)) {
+        for (const mk of span.markers) if (position >= mk.start && position < mk.end) return true;
+    }
+    return false;
+}
 
 /**
  * Where to hang a comment about an object that has no text of its own (an
