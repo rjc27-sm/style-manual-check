@@ -1519,7 +1519,7 @@ function collectFixes(cleaned) {
   function buildReportText() {
     const v = id => document.getElementById(id).value.trim();
     const lines = [
-      'List Formatter – issue report',
+      'Format a list – issue report',
       '',
       'ORIGINAL LIST',
       v('reportOriginal') || '(none)',
@@ -1546,11 +1546,11 @@ function collectFixes(cleaned) {
   }
 
   // Dedicated, disposable feedback inbox for this tool (safe to expose publicly).
-  const REPORT_EMAIL = 'listformatterfeedback@gmail.com';
+  const REPORT_EMAIL = 'proofpositivefeedback@gmail.com';
 
   function emailReport() {
     const url = 'mailto:' + REPORT_EMAIL +
-      '?subject=' + encodeURIComponent('List Formatter issue report') +
+      '?subject=' + encodeURIComponent('Format a list issue report') +
       '&body=' + encodeURIComponent(buildReportText());
     window.location.href = url;
   }
