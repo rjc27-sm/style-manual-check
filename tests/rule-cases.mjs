@@ -464,6 +464,86 @@ const CASES = [
     ['numbers-leading-zero', 'A .5 change.', true, '0.5'],
     ['spelling-ize', 'Data came from the World Health Organization.', false],
     ['spelling-ize', 'The organization was restructured.', true, 'organisation'],
+
+    // ==== Tier 1 rules from the coverage audit (22 Nov 2026) ====
+    // ---- punct-ly-adverb-hyphen ----
+    ['punct-ly-adverb-hyphen', 'a fully-loaded truck', true, 'fully loaded'],
+    ['punct-ly-adverb-hyphen', 'a newly-built centre', true, 'newly built'],
+    ['punct-ly-adverb-hyphen', 'his rapidly-declining health', true, 'rapidly declining'],
+    ['punct-ly-adverb-hyphen', 'a fully-fledged plan', false],
+    ['punct-ly-adverb-hyphen', 'a family-owned firm', false],
+    ['punct-ly-adverb-hyphen', 'an early-onset condition', false],
+    ['punct-ly-adverb-hyphen', 'a highly-skilled-worker scheme', false],
+    ['punct-ly-adverb-hyphen', 'a fully loaded truck', false],
+    // ---- spelling-trade-mark ----
+    ['spelling-trade-mark', 'The trademark Vegemite was registered.', true, 'trade mark'],
+    ['spelling-trade-mark', 'Our trademarks are registered.', true, 'trade marks'],
+    ['spelling-trade-mark', 'The trade mark Vegemite was registered.', false],
+    // ---- abbrev-common-full-stop: contractions and states ----
+    ['abbrev-common-full-stop', 'Tempo Pty. Ltd. hired him.', true, 'Pty'],
+    ['abbrev-common-full-stop', 'He walked up Mt. Tennent today.', true, 'Mt'],
+    ['abbrev-common-full-stop', 'She moved to Vic. last year.', true, 'Vic'],
+    ['abbrev-common-full-stop', 'He works for Tempo Australia Ltd.', false],
+    ['abbrev-common-full-stop', 'See www.legislation.vic.gov.au for the Act.', false],
+    ['abbrev-common-full-stop', 'US style adds a stop (for example, ‘Ltd.’).', false],
+    ['spelling-trade-mark', 'most dictionaries prefer ‘trademark’ here', false],
+    ['punct-doubled-end-mark', 'Alive and Kicking Goals!: Preliminary findings', false],
+    // ---- abbrev-dotted-initialism ----
+    ['abbrev-dotted-initialism', 'The A.I.H.W. released it today.', true, 'AIHW'],
+    ['abbrev-dotted-initialism', 'Rates rose in the U.S.', true, 'US.'],
+    ['abbrev-dotted-initialism', 'The book by J.R. Smith', true],
+    ['abbrev-dotted-initialism', 'The AIHW released it.', false],
+    ['abbrev-dotted-initialism', 'N.B. this is a note', false],
+    // ---- cite-author-date-punctuation ----
+    ['cite-author-date-punctuation', 'Results were similar (Jones, 2017).', true, 'Jones 2017'],
+    ['cite-author-date-punctuation', 'Results were similar (Smith et al., 2020a).', true, 'Smith et al. 2020a'],
+    ['cite-author-date-punctuation', 'They agreed (White and Jones 2019, p. 23).', true, 'White and Jones 2019:23'],
+    ['cite-author-date-punctuation', 'They agreed (White 2019, pp. 23-24).', true, 'White 2019:23\u201324'],
+    ['cite-author-date-punctuation', 'White and Jones (2019, p. 23) agreed.', true, '2019:23'],
+    ['cite-author-date-punctuation', 'Results were similar (Jones 2017; Smith et al. 2020).', false],
+    ['cite-author-date-punctuation', 'Rates rose (Figure 3, 2020).', false],
+    ['cite-author-date-punctuation', 'It changed (Data collected in Canberra, 2020).', false],
+    ['cite-author-date-punctuation', 'It rose (In 2020, rates fell).', false],
+    // ---- abbrev-legislation-unit-stop ----
+    ['abbrev-legislation-unit-stop', 'See s. 23 of the Act.', true, 's'],
+    ['abbrev-legislation-unit-stop', 'under reg. 12 and Sch. 2', true, 'reg'],
+    ['abbrev-legislation-unit-stop', 'See s 23 of the Act.', false],
+    ['abbrev-legislation-unit-stop', 'in the 1990s. 5 people', false],
+    // ---- govt-governor-general ----
+    ['govt-governor-general', 'The Governor General opened it.', true, 'Governor-General'],
+    ['govt-governor-general', 'The Governor-General opened it.', false],
+    // ---- inclusive-country-capitals ----
+    ['inclusive-country-capitals', 'The welcome to country was given by an Elder.', true, 'Welcome to Country'],
+    ['inclusive-country-capitals', 'An acknowledgement of country followed.', true, 'Acknowledgement of Country'],
+    ['inclusive-country-capitals', 'An acknowledgment of country followed.', true, 'Acknowledgement of Country'],
+    ['inclusive-country-capitals', 'The Welcome to Country was given.', false],
+    ['inclusive-country-capitals', 'We welcome to country towns new doctors.', false],
+    // ---- date-holiday-capitals ----
+    ['date-holiday-capitals', 'We rest at christmas.', true, 'Christmas'],
+    ['date-holiday-capitals', 'Services on ANZAC Day were held.', true, 'Anzac Day'],
+    ['date-holiday-capitals', 'It falls in naidoc week.', true, 'NAIDOC Week'],
+    ['date-holiday-capitals', "Closed on new year's day.", true, "New Year's Day"],
+    ['date-holiday-capitals', 'Services on Anzac Day were held.', false],
+    ['date-holiday-capitals', 'Christmas Island is remote.', false],
+    // ---- spelling-compass-hyphen ----
+    ['spelling-compass-hyphen', 'The wind came from the northeast.', true, 'north-east'],
+    ['spelling-compass-hyphen', 'in south east Queensland', true, 'south-east'],
+    ['spelling-compass-hyphen', 'a southwesterly change', true, 'south-westerly'],
+    ['spelling-compass-hyphen', 'The North East Link opened.', false],
+    ['spelling-compass-hyphen', 'The wind came from the north-east.', false],
+    // ---- punct-doubled-end-mark ----
+    ['punct-doubled-end-mark', 'Is this the right form?. Yes.', true, '?'],
+    ['punct-doubled-end-mark', 'Stop!, she said.', true, '!'],
+    ['punct-doubled-end-mark', 'Is it?... Perhaps.', false],
+    ['punct-doubled-end-mark', 'Is this the right form? Yes.', false],
+    // ---- punct-space-before ----
+    ['punct-space-before', 'Write to us , and we will reply.', true, ','],
+    ['punct-space-before', 'We will reply .', true, '.'],
+    ['punct-space-before', 'Is it due ?', true, '?'],
+    ['punct-space-before', 'Use .NET for this.', false],
+    ['punct-space-before', 'a ratio of 3 : 1', false],
+    ['punct-space-before', 'a smiley :) face', false],
+    ['punct-space-before', 'Write to us, and we will reply.', false],
 ];
 
 // Batch 3 structure rules: [ruleId, text, docCtx, shouldFlag, expectedFix?]

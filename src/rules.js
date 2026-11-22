@@ -37,12 +37,69 @@ const COMMON_ABBREVS = [
     'assn', 'ave', 'bldg', 'blvd', 'corp', 'est', 'ext',
     'inc', 'intl', 'max', 'min', 'natl', 'no', 'nos',
     'org', 'pt', 'pts', 'qty', 'ref', 'refs',
-    'tel', 'temp', 'yr', 'yrs', 'ed', 'eds', 'fig', 'figs'
+    'tel', 'temp', 'yr', 'yrs', 'ed', 'eds', 'fig', 'figs',
+    // Contractions and state abbreviations (Style Manual: contractions,
+    // and place names - 'Vic', 'Tas', 'Qld' take no full stop). Added
+    // 22 Nov 2026 from the rule coverage audit.
+    'Ltd', 'Pty', 'Bros', 'Mt', 'Vic', 'Qld', 'Tas'
 ];
 
 // Honorifics that come before a name. 'abbrev-common-full-stop' must not read
 // the capital that starts the name as the start of a new sentence.
-const HONORIFICS_BEFORE_NAME = new Set(['dr', 'mr', 'mrs', 'ms', 'mx', 'prof', 'rev', 'hon']);
+// 'Pty' (before 'Ltd') and 'Mt' (before a mountain's name) behave the same way.
+const HONORIFICS_BEFORE_NAME = new Set(['dr', 'mr', 'mrs', 'ms', 'mx', 'prof', 'rev', 'hon', 'pty', 'mt']);
+
+// Words ending in '-ly' that are not adverbs, so a hyphen after them is not
+// the '-ly adverb + participle' compound the Style Manual says to leave open
+// ('family-owned', 'early-onset', 'a daily-updated list', 'supply-led').
+const LY_NOT_ADVERBS = new Set(('early only daily weekly fortnightly monthly quarterly yearly ' +
+    'hourly nightly family holy ugly jolly friendly unfriendly elderly likely unlikely lonely ' +
+    'lovely silly lively costly deadly orderly timely untimely worldly curly burly chilly hilly ' +
+    'oily woolly wily surly homely lowly manly motherly fatherly brotherly sisterly neighbourly ' +
+    'neighborly scholarly cowardly leisurely sickly stately ghostly beastly comely godly ungodly ' +
+    'heavenly earthly princely kingly masterly gentlemanly miserly northerly southerly easterly ' +
+    'westerly unruly bodily supply apply reply multiply comply imply rely ally rally tally sally ' +
+    'belly jelly bully folly holly lily gully dolly fly butterfly assembly anomaly monopoly ' +
+    'homily melancholy italy july').split(' '));
+
+// Participles that don't end in -ed or -ing ('a newly built centre').
+const IRREGULAR_PARTICIPLES = new Set(('built known made done grown held paid written taken ' +
+    'given run read spent kept led left set cut put spread drawn chosen worn sown shown thrown ' +
+    'hidden broken spoken driven forgotten bound found sought taught bought brought thought ' +
+    'fought caught won lit met sold told felt dealt meant sent lent bent burnt learnt spelt ' +
+    'spilt understood misunderstood born borne torn sworn frozen stolen woven beaten eaten ' +
+    'fallen risen proven sung hung struck stuck shut hit let cast').split(' '));
+
+// Nouns ending in -ing, which a '-ly-' compound can end on without being a
+// participle.
+const ING_NOUNS = new Set(('thing king ring spring string wing ceiling morning evening swing ' +
+    'sibling pudding').split(' '));
+
+// Holidays and events take capitals (Style Manual: dates and time, 'Holidays
+// and events'). The fix is this exact form, so 'ANZAC Day' becomes 'Anzac Day'.
+const HOLIDAY_NAMES = ['Christmas Day', 'Christmas Eve', 'Christmas', 'Boxing Day',
+    'Good Friday', 'Easter Sunday', 'Easter Monday', 'Easter', 'New Year’s Day',
+    'New Year’s Eve', 'Anzac Day', 'Australia Day', 'Remembrance Day', 'Labour Day',
+    'National Reconciliation Week', 'Reconciliation Week', 'NAIDOC Week', 'Harmony Week',
+    'Ramadan', 'Yom Kippur', 'Diwali', 'Hanukkah', 'Lunar New Year', 'Mother’s Day',
+    'Father’s Day', 'Melbourne Cup'];
+
+// Words that can follow 'Welcome to Country' or 'Acknowledgement of Country'
+// used as the ceremony. Any other word ('welcome to country towns',
+// 'acknowledgement of country of origin') means ordinary English.
+const COUNTRY_CEREMONY_NEXT = new Set(('was is will would were are be been has had have ' +
+    'ceremony ceremonies and or by at from for to in on that which with performed given ' +
+    'delivered conducted opened began started followed then before after during').split(' '));
+
+// First words that make a bracketed 'Name, 2020' something other than a
+// citation (ported from the AIHW Writing Style Check's reference checks).
+const NOT_A_CITED_SOURCE = new RegExp('^(?:Figure|Table|Box|Chapter|Section|Appendix|Part|' +
+    'Phase|Stage|Wave|Version|Round|Census|Budget|Since|In|From|During|Between|As|At|By|' +
+    'Until|To|Before|After|For|On|Of|Around|About|Over|Under|Early|Late|Mid|Year|Financial|' +
+    'FY|Q[1-4]|Australia|New South Wales|NSW|Victoria|Vic|Queensland|Qld|Western Australia|' +
+    'WA|South Australia|SA|Tasmania|Tas|ACT|NT|Northern Territory|January|February|March|' +
+    'April|May|June|July|August|September|October|November|December|Spring|Summer|Autumn|' +
+    'Winter|Total|Note|Source|See)\\b');
 
 // Shortened units of legislation ('s 23', 'ss 4-6', 'cl 7', 'reg 12'), in
 // any case and with or without a full stop. Only ever tested against text
@@ -1710,14 +1767,17 @@ const RULES = [
                 const beforeName = HONORIFICS_BEFORE_NAME.has(lower) &&
                     /^[A-Z]/.test(abbrev) && /^\s+[A-Z]/.test(after);
 
+                // Part of a web address ('legislation.vic.gov.au'): a letter
+                // straight after the stop, or inside a URL or email address
+                if (/^[A-Za-z]/.test(after) || inUrlOrEmail(text, match.index)) continue;
+                // A quoted mention of the form itself ('‘No.’', '‘Ltd.’')
+                if (/['‘"“]$/.test(text.substring(0, match.index)) &&
+                    /^['’"”]/.test(after)) continue;
                 if (lower === 'no' || lower === 'nos') {
                     // An Act's title keeps 'No.' exactly as written
                     // ('Treasury Laws Amendment (2020 Measures No. 1) Act 2020')
                     const ahead = text.substring(afterPos, afterPos + 60);
                     if (/^\s*\d[^\n]*?\bAct\s+\d{4}\b/.test(ahead)) continue;
-                    // A quoted mention of the word itself ('‘No.’')
-                    if (/['‘"“]$/.test(text.substring(0, match.index)) &&
-                        /^['’"”]/.test(after)) continue;
                 }
 
                 // Skip if this ends a sentence
@@ -4224,6 +4284,371 @@ const RULES = [
                     suggestion: short,
                     autoFix: short,
                     position: start,
+                    rule: this
+                });
+            }
+            return issues;
+        }
+    },
+
+    // ==================== BATCH 5 - COVERAGE AUDIT, TIER 1 (November 2026) ====================
+    // From AUDIT-rule-coverage.md (22 Nov 2026): Style Manual conventions with
+    // an exact fix that no rule checked. Each was noise-tested on the Style
+    // Manual's own text and on 133,000 words of published AIHW text.
+    {
+        id: 'punct-ly-adverb-hyphen',
+        name: 'Hyphen after an \'-ly\' adverb',
+        category: 'punctuation',
+        description: 'Don\'t hyphenate an adverb ending in \'-ly\' and the verb form that follows it. Write \'a fully loaded truck\' and \'a newly built centre\'. The exceptions are \'fully-fledged\' and \'fully-fashioned\'.',
+        link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/punctuation/hyphens',
+        check: function(text) {
+            const issues = [];
+            const regex = /\b([A-Za-z]{2,}ly)[-‐‑]([A-Za-z]+)\b/g;
+            let match;
+            while ((match = regex.exec(text)) !== null) {
+                const adverb = match[1].toLowerCase();
+                const verb = match[2].toLowerCase();
+                if (LY_NOT_ADVERBS.has(adverb)) continue;
+                const participle = IRREGULAR_PARTICIPLES.has(verb) ||
+                    (/ed$/.test(verb) && verb.length > 3) ||
+                    (/ing$/.test(verb) && verb.length > 4 && !ING_NOUNS.has(verb));
+                if (!participle) continue;
+                if (adverb === 'fully' && (verb === 'fledged' || verb === 'fashioned')) continue;
+                // A third part means a longer compound ('a not-so-newly-built'):
+                // leave it to the writer.
+                if (/^[-‐‑]\w/.test(text.slice(match.index + match[0].length))) continue;
+                if (/\w[-‐‑]$/.test(text.slice(Math.max(0, match.index - 2), match.index))) continue;
+                const replacement = match[1] + ' ' + match[2];
+                const issue = { found: match[0], suggestion: replacement, position: match.index, rule: this };
+                // In a name or title ('the Newly-Built Homes Scheme') the writer
+                // decides, so comment only.
+                if (properNounGuard(text, match.index, match[1]) !== 'name') issue.autoFix = replacement;
+                issues.push(issue);
+            }
+            return issues;
+        }
+    },
+    {
+        id: 'spelling-trade-mark',
+        name: '\'Trade mark\' as 2 words',
+        category: 'spelling',
+        description: 'Write \'trade mark\' as 2 words, as the Trade Marks Act 1995 does, even though most dictionaries prefer \'trademark\'.',
+        link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/names-and-terms/commercial-terms',
+        check: function(text) {
+            const issues = [];
+            const regex = /\b(trade)(marks?|marked|marking)\b/gi;
+            let match;
+            while ((match = regex.exec(text)) !== null) {
+                // A quoted mention of the word ('dictionaries prefer ‘trademark’')
+                if (/['‘"“]$/.test(text.slice(0, match.index)) &&
+                    /^['’"”]/.test(text.slice(match.index + match[0].length))) continue;
+                const replacement = match[1] + ' ' + match[2];
+                const issue = { found: match[0], suggestion: replacement, position: match.index, rule: this };
+                // A capitalised mid-sentence 'Trademark' is likely a name ('the
+                // US Patent and Trademark Office'), and the verb forms read
+                // better reworded ('register a trade mark'): comment only.
+                const verbForm = /ed$|ing$/i.test(match[2]);
+                if (verbForm) {
+                    issue.description = 'Write \'trade mark\' as 2 words. As a verb it reads better reworded: \'register a trade mark\'.';
+                } else if (properNounGuard(text, match.index, match[0]) !== 'name') {
+                    issue.autoFix = replacement;
+                }
+                issues.push(issue);
+            }
+            return issues;
+        }
+    },
+    {
+        id: 'abbrev-dotted-initialism',
+        name: 'Full stops in an initialism or initials',
+        category: 'abbreviations',
+        description: 'Write initialisms and a person\'s initials without full stops: \'AIHW\', \'NSW\', \'AD Hope\'. Keep one full stop only when the shortened form ends a sentence.',
+        link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/shortened-words-and-phrases/acronyms-and-initialisms',
+        check: function(text) {
+            const issues = [];
+            // 2 or more capital letters, each followed by a full stop, with
+            // or without a space between ('A.I.H.W.', 'J.R.', 'A. D.')
+            const regex = /(?<![\w.])(?:[A-Z]\.[ ]?)+[A-Z]\.(?![\w])/g;
+            let match;
+            while ((match = regex.exec(text)) !== null) {
+                const letters = match[0].replace(/[.\s]/g, '');
+                // Other rules own these: Latin forms and am/pm
+                if (/^(?:NB|EG|IE|AM|PM)$/.test(letters)) continue;
+                const after = text.slice(match.index + match[0].length, match.index + match[0].length + 3);
+                const issue = { found: match[0], suggestion: letters, position: match.index, rule: this };
+                if (/^\s+[A-Z]/.test(after)) {
+                    // Initials before a family name ('J.R. Smith') or a short
+                    // form ending a sentence ('…in the U.S. The next'). The
+                    // engine can't tell which, so it asks.
+                    issue.description = 'Write initials and initialisms without full stops: \'JR Smith\', \'US\'. If this ends a sentence, keep one full stop.';
+                    issue.suggestion = letters;
+                } else if (/^\s*(?:\n|$)/.test(after)) {
+                    // End of a paragraph: the last stop ends the sentence
+                    issue.suggestion = letters + '.';
+                    issue.autoFix = letters + '.';
+                } else {
+                    issue.autoFix = letters;
+                }
+                issues.push(issue);
+            }
+            return issues;
+        }
+    },
+    {
+        id: 'cite-author-date-punctuation',
+        name: 'In-text citation punctuation',
+        category: 'punctuation',
+        description: 'In an author–date citation, don\'t put a comma between the author and the year. Give a page number after a colon: \'(White and Jones 2019:23)\', not \'(White and Jones, 2019, p. 23)\'.',
+        link: 'https://www.stylemanual.gov.au/referencing-and-attribution/author-date',
+        check: function(text) {
+            const issues = [];
+            const YEARS = '((?:19|20)\\d{2}[a-z]{0,2}|n\\.d\\.)((?:,\\s?(?:19|20)\\d{2}[a-z]{0,2})*)';
+            const PAGES = '(?:,\\s*pp?\\.?\\s*(\\d+(?:\\s*[-–]\\s*\\d+)?))?';
+            // 'Name, 2019' or 'Name 2019, p. 23' (a bracketed citation part)
+            const partRe = new RegExp('^([A-Z][^,;()\\d]{0,80}?)(,?)\\s' + YEARS + PAGES + '$');
+            // '2019, p. 23' after the author's name in the sentence
+            const narrativeRe = new RegExp('^' + YEARS + ',\\s*pp?\\.?\\s*(\\d+(?:\\s*[-–]\\s*\\d+)?)$');
+            const pagesOut = p => p.replace(/\s*[-–]\s*/, '–');
+            const paren = /\(([^()\n]{4,300})\)/g;
+            let m;
+            while ((m = paren.exec(text)) !== null) {
+                const inner = m[1];
+                const innerStart = m.index + 1;
+                if (!/(?:19|20)\d{2}|n\.d\./.test(inner)) continue;
+                let offset = 0;
+                for (const seg of inner.split(';')) {
+                    const lead = seg.length - seg.trimStart().length;
+                    const part = seg.trim();
+                    const at = innerStart + offset + lead;
+                    offset += seg.length + 1;
+                    let fix = null;
+                    const c = part.match(partRe);
+                    if (c) {
+                        const name = c[1].trim();
+                        if (NOT_A_CITED_SOURCE.test(name)) continue;
+                        if (name.split(/\s+/).length > 8) continue;
+                        if (/\b(?:in|from|to|since|during|between|by|of|at|until|and|for|on|the)$/i.test(name)) continue;
+                        if (/\b(?:Act|Bill|Regulations?|Rules|Code|Agreement)$/.test(name)) continue;
+                        // A source is a name: every word capitalised apart
+                        // from joining words ('Department of Health and Aged
+                        // Care', 'Smith et al.'). Prose in brackets ('Data
+                        // collected in Canberra, 2020') is left alone.
+                        const joiners = /^(?:and|&|of|the|for|on|in|et|al\.?|de|van|von|der|du|la)$/;
+                        if (!name.split(/\s+/).every(w => /^[A-Z]/.test(w) || joiners.test(w))) continue;
+                        const hasComma = c[2] === ',';
+                        const pages = c[5];
+                        if (!hasComma && !pages) continue;
+                        fix = name + ' ' + c[3] + c[4] + (pages ? ':' + pagesOut(pages) : '');
+                    } else {
+                        // Narrative: 'White and Jones (2019, p. 23) claimed'
+                        const n = part.match(narrativeRe);
+                        if (!n || inner.indexOf(';') !== -1) continue;
+                        if (!/[A-Z][\w'’-]*(?:\s+et\s+al\.?)?\s+$/.test(text.slice(Math.max(0, m.index - 40), m.index))) continue;
+                        fix = n[1] + n[2] + ':' + pagesOut(n[3]);
+                    }
+                    if (fix && fix !== part) {
+                        issues.push({ found: part, suggestion: fix, autoFix: fix, position: at, rule: this });
+                    }
+                }
+            }
+            return issues;
+        }
+    },
+    {
+        id: 'abbrev-legislation-unit-stop',
+        name: 'Full stop after a unit of legislation',
+        category: 'abbreviations',
+        description: 'Don\'t use a full stop after the shortened form of a unit of an Act or regulation: \'s 23\', \'ss 4–6\', \'cl 7\', \'reg 12\', \'Sch 2\'.',
+        link: 'https://www.stylemanual.gov.au/referencing-and-attribution/legal-material/acts-parliament',
+        check: function(text) {
+            const issues = [];
+            // 'Pt' is already in COMMON_ABBREVS ('abbrev-common-full-stop')
+            const regex = /(?<![\w'’.])(s|ss|cl|cll|reg|regs|Div|Sch)\.(?=[  ]?\d)/g;
+            let match;
+            while ((match = regex.exec(text)) !== null) {
+                issues.push({
+                    found: match[0],
+                    suggestion: match[1],
+                    autoFix: match[1],
+                    position: match.index,
+                    rule: this
+                });
+            }
+            return issues;
+        }
+    },
+    {
+        id: 'govt-governor-general',
+        name: '\'Governor-General\' with a hyphen',
+        category: 'government-terms',
+        description: 'Write \'Governor-General\' with a hyphen. Capitalise it when it is part of the formal title or refers to the current office holder.',
+        link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/titles-honours-forms-address/royalty-vice-royalty-and-nobility',
+        check: function(text) {
+            const issues = [];
+            const regex = /\b(governor)[  ]+(general)\b/gi;
+            let match;
+            while ((match = regex.exec(text)) !== null) {
+                // 'Governor General's' and plural forms keep their ending
+                const replacement = match[1] + '-' + match[2];
+                issues.push({
+                    found: match[0],
+                    suggestion: replacement,
+                    autoFix: replacement,
+                    position: match.index,
+                    rule: this
+                });
+            }
+            return issues;
+        }
+    },
+    {
+        id: 'inclusive-country-capitals',
+        name: 'Welcome to Country and Acknowledgement of Country',
+        category: 'inclusive-language',
+        description: 'Always capitalise \'Welcome to Country\' and \'Acknowledgement of Country\'. They are distinct practices: a Welcome is a ceremony performed by a traditional owner, and an Acknowledgement is a way of showing respect.',
+        link: 'https://www.stylemanual.gov.au/accessible-and-inclusive-content/inclusive-language/aboriginal-and-torres-strait-islander-peoples',
+        check: function(text) {
+            const issues = [];
+            const regex = /\b(welcome)(\s+to\s+)(country)\b|\b(acknowledge?ment)(\s+of\s+)(country)\b/gi;
+            let match;
+            while ((match = regex.exec(text)) !== null) {
+                const welcome = match[1] !== undefined;
+                const middle = (welcome ? match[2] : match[5]).toLowerCase();
+                // 'Acknowledgement' with the e, as the Style Manual writes it
+                // ('spelling-other' changes 'acknowledgment' too, and two
+                // different fixes on one word would both become comments)
+                const canonical = (welcome ? 'Welcome' : 'Acknowledgement') + middle + 'Country';
+                if (match[0] === canonical) continue;
+                if (inAllCapsRun(text, match.index)) continue;
+                // The ceremony is followed by a verb, a preposition or
+                // punctuation. 'welcome to country towns' is ordinary English.
+                const afterText = text.slice(match.index + match[0].length);
+                const next = afterText.match(/^\s+([A-Za-z]+)/);
+                if (next && !COUNTRY_CEREMONY_NEXT.has(next[1].toLowerCase())) continue;
+                issues.push({
+                    found: match[0],
+                    suggestion: canonical,
+                    autoFix: canonical,
+                    position: match.index,
+                    rule: this
+                });
+            }
+            return issues;
+        }
+    },
+    {
+        id: 'date-holiday-capitals',
+        name: 'Capitals for holidays and events',
+        category: 'dates-and-time',
+        description: 'Use initial capitals for holidays, religious days and public events: \'Christmas\', \'Anzac Day\', \'NAIDOC Week\'. \'Anzac\' takes only an initial capital.',
+        link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/numbers-and-measurements/dates-and-time',
+        check: function(text) {
+            const issues = [];
+            const claimed = [];
+            for (const name of HOLIDAY_NAMES) {
+                const pattern = name.replace(/’/g, '[\'’]').replace(/ /g, '[  ]+');
+                const regex = new RegExp('\\b' + pattern + '\\b', 'gi');
+                let match;
+                while ((match = regex.exec(text)) !== null) {
+                    const start = match.index;
+                    const end = start + match[0].length;
+                    if (claimed.some(c => start < c.end && end > c.start)) continue;
+                    claimed.push({ start, end });
+                    // Keep the writer's apostrophe and spaces; fix only the
+                    // letters, which match the name's one for one
+                    const letters = name.replace(/[^A-Za-z]/g, '');
+                    let k = 0;
+                    let fix = '';
+                    for (const ch of match[0]) fix += /[A-Za-z]/.test(ch) ? letters[k++] : ch;
+                    if (fix === match[0]) continue;
+                    if (inAllCapsRun(text, start)) continue;
+                    // 'easter' and 'christmas' inside a longer lower-case
+                    // word are already excluded by \b; a name like
+                    // 'Christmas Island' is already capitalised.
+                    issues.push({ found: match[0], suggestion: fix, autoFix: fix, position: start, rule: this });
+                }
+            }
+            issues.sort((a, b) => a.position - b.position);
+            return issues;
+        }
+    },
+    {
+        id: 'spelling-compass-hyphen',
+        name: 'Hyphen in compass points',
+        category: 'spelling',
+        description: 'Write compass points with a hyphen and in lower case: \'north-east\', \'south-westerly\'.',
+        link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/names-and-terms/topographic-terms',
+        check: function(text) {
+            const issues = [];
+            // Solid: 'northeast', 'Southwestern'. Spaced: 'north east' (lower
+            // case only - 'North East Link' and 'South West Rocks' are names).
+            const regex = /\b(north|south)(east|west)(ern|erly|erners?|wards?)?\b|\b(north|south) (east|west)(ern|erly)?\b/gi;
+            let match;
+            while ((match = regex.exec(text)) !== null) {
+                const solid = match[1] !== undefined;
+                if (!solid && match[0] !== match[0].toLowerCase()) continue;
+                const replacement = solid
+                    ? match[1] + '-' + match[2] + (match[3] || '')
+                    : match[4] + '-' + match[5] + (match[6] || '');
+                const issue = { found: match[0], suggestion: replacement, position: match.index, rule: this };
+                // Capitalised mid-sentence is likely a name ('Northeast Link'):
+                // comment only.
+                if (properNounGuard(text, match.index, match[0]) !== 'name') issue.autoFix = replacement;
+                issues.push(issue);
+            }
+            return issues;
+        }
+    },
+    {
+        id: 'punct-doubled-end-mark',
+        name: 'Full stop or comma after a question or exclamation mark',
+        category: 'punctuation',
+        description: 'A question mark or exclamation mark ends the sentence on its own. Don\'t add a full stop or comma after it.',
+        link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/punctuation/question-marks',
+        check: function(text) {
+            const issues = [];
+            // '?.' and '!,' - but not '?...' (an ellipsis) or '?.5' (a number).
+            // Not '!:' either: a title can end in one before its subtitle
+            // ('Alive and Kicking Goals!: Preliminary findings').
+            const regex = /([?!])([.,])(?![.\d])/g;
+            let match;
+            while ((match = regex.exec(text)) !== null) {
+                issues.push({
+                    found: match[0],
+                    suggestion: match[1],
+                    autoFix: match[1],
+                    position: match.index,
+                    rule: this
+                });
+            }
+            return issues;
+        }
+    },
+    {
+        id: 'punct-space-before',
+        name: 'Space before a punctuation mark',
+        category: 'punctuation',
+        description: 'Don\'t put a space before a comma, full stop, semicolon, colon, question mark or exclamation mark.',
+        link: 'https://www.stylemanual.gov.au/grammar-punctuation-and-conventions/punctuation/punctuation-and-capitalisation',
+        check: function(text) {
+            const issues = [];
+            // A word (or closing bracket or quote) then spaces then the mark,
+            // then a space, closing bracket or quote, or the end. That leaves
+            // '.NET', ' .5', '...' and ':)' alone.
+            const regex = /([\w)\]’”'"%])([ ]+)([,;:?!]|\.(?!\.))(?=[\s)\]’”"']|$)/g;
+            let match;
+            while ((match = regex.exec(text)) !== null) {
+                const mark = match[3];
+                const at = match.index + match[1].length;
+                // '3 : 1' and '10 : 30' are a ratio or a time (their own rules)
+                if (mark === ':' && /\d$/.test(match[1]) && /^\s*\d/.test(text.slice(at + match[2].length + 1))) continue;
+                // ':)' and ';)' are faces, not punctuation
+                if ((mark === ':' || mark === ';') && /^[()]/.test(text.slice(at + match[2].length + 1))) continue;
+                issues.push({
+                    found: match[2] + mark,
+                    suggestion: mark,
+                    autoFix: mark,
+                    position: at,
                     rule: this
                 });
             }
