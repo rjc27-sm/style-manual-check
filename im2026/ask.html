@@ -66,6 +66,27 @@ body{font-family:'Open Sans',Arial,sans-serif;background:var(--bg);color:var(--c
 #ask-error{margin-top:12px}
 .not-configured{background:#fff8e8;border:1px solid #ecd9a0;border-radius:10px;
   padding:16px 20px;font-size:14.5px;color:#574410;line-height:1.6;margin-bottom:20px}
+/* Reporting a question (25 November 2026). Same form as Format a list: the
+   report is built in the page and only leaves it if the user emails or pastes
+   it themselves, so nothing new is stored anywhere. */
+.msg-report{background:none;border:none;padding:6px 2px;color:var(--c3);font:13px 'Open Sans',sans-serif;
+  text-decoration:underline;text-underline-offset:2px;cursor:pointer;min-height:34px}
+.msg-report:hover{color:var(--b2)}
+.msg-nomatch{margin-top:10px;padding:10px 14px;background:#fff8e8;border:1px solid #ecd9a0;
+  border-radius:8px;font-size:14px;color:#574410;line-height:1.55}
+.report-modal{position:fixed;inset:0;background:rgba(25,47,56,.5);display:flex;align-items:flex-start;
+  justify-content:center;padding:32px 16px;overflow-y:auto;z-index:50}
+.report-modal[hidden]{display:none}
+.report-card{background:#fff;border-radius:12px;box-shadow:0 20px 50px rgba(25,47,56,.28);padding:28px;
+  width:100%;max-width:560px;margin:auto}
+.report-card h2{font-size:20px;font-weight:700;color:var(--b1);margin:0 0 6px}
+.report-intro{font-size:14px;color:var(--c2);line-height:1.55;margin:0 0 16px}
+.report-label{display:block;font-size:13px;font-weight:600;color:var(--b2);margin:14px 0 6px}
+.report-field{width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid var(--c5);border-radius:8px;
+  font:14px 'Open Sans',sans-serif;line-height:1.5;color:var(--c1);resize:vertical;background:var(--bg)}
+.report-field:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(45,126,152,.25);background:#fff}
+.report-status{min-height:1.25rem;margin-top:10px;font-size:13px;color:var(--b2);line-height:1.5}
+.report-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}
 @media (max-width:720px){
   .wrap{padding:26px 18px 44px}
   .hero h1{font-size:24px}
@@ -133,6 +154,33 @@ body{font-family:'Open Sans',Arial,sans-serif;background:var(--bg);color:var(--c
   <p id="ask-busy" hidden role="status"><span class="ai-busy-star" aria-hidden="true">✦</span> Thinking…</p>
   <p id="ask-error" class="ai-error" hidden role="alert"></p>
 </main>
+
+<div id="report-modal" class="report-modal" hidden role="dialog" aria-modal="true" aria-labelledby="report-title">
+  <div class="report-card">
+    <h2 id="report-title">Report a question</h2>
+    <p class="report-intro">Your question and the answer are filled in below.
+      Nothing is sent until you email or paste the report yourself. Edit out
+      anything you don't want to share.</p>
+
+    <label class="report-label" for="report-question">Your question</label>
+    <textarea id="report-question" class="report-field" rows="2"></textarea>
+
+    <label class="report-label" for="report-answer">The answer you got</label>
+    <textarea id="report-answer" class="report-field" rows="5"></textarea>
+
+    <label class="report-label" for="report-expected">What were you hoping to find?</label>
+    <textarea id="report-expected" class="report-field" rows="3"
+      placeholder="For example, the rule you were looking for or what the answer got wrong"></textarea>
+
+    <p id="report-status" class="report-status" role="status"></p>
+
+    <div class="report-actions">
+      <button type="button" id="report-email" class="msg-copy">Email report</button>
+      <button type="button" id="report-copy" class="msg-copy msg-copy-ghost">Copy report</button>
+      <button type="button" id="report-close" class="msg-copy msg-copy-ghost">Close</button>
+    </div>
+  </div>
+</div>
 
 <footer class="gov-footer">
   <div class="gov-footer-inner">
@@ -246,8 +294,15 @@ function renderAnswer(text, sources) {
     return html.replace(/\u0000L(\d+)\u0000/g, (m, i) => linkTokens[i]);
 }
 
-function addMsg(role, text, sources, check) {
+// What each answer was a reply to, for the report form. Held in the page only.
+const reportData = new WeakMap();
+
+function addMsg(role, text, sources, check, question) {
     const div = document.createElement('div');
+    // No sources means the search matched nothing, so the answer says it could
+    // not find guidance. That is the report most worth having, so ask for it
+    // outright rather than leaving it to a small link.
+    const noMatch = role !== 'user' && sources && Object.keys(sources).length === 0;
     div.className = 'msg ' + (role === 'user' ? 'msg-user' : 'msg-bot');
     let checkLine = '';
     if (check) {
@@ -261,10 +316,16 @@ function addMsg(role, text, sources, check) {
         (role === 'user' ? escapeHtml(text)
             : '<div class="msg-body">' + renderAnswer(text, sources) + '</div>') +
         checkLine +
+        (noMatch ? '<p class="msg-nomatch">Ask couldn’t find Style Manual guidance ' +
+            'for this question. Reporting it helps fill the gap.</p>' : '') +
         (role === 'user' ? '' : '<div class="msg-actions">' +
             '<button type="button" class="msg-copy" data-copy="word">Copy for Word</button>' +
             '<button type="button" class="msg-copy msg-copy-ghost" data-copy="text">Copy as text</button>' +
+            (noMatch
+                ? '<button type="button" class="msg-copy msg-copy-ghost" data-report>Report this question</button>'
+                : '<button type="button" class="msg-report" data-report>Didn’t answer your question? Report it</button>') +
             '</div>');
+    if (role !== 'user') reportData.set(div, { question: question || '', sources: sources || {} });
     $('chat').appendChild(div);
     // User questions only need to be nudged into view. For an answer, bring the
     // TOP of the panel to the top of the viewport so the reader's eye starts at
@@ -362,6 +423,80 @@ async function copyAnswer(btn) {
     flashBtn(btn, await copyPlain(text) ? 'Copied!' : 'Couldn’t copy');
 }
 
+// ---- Reporting a question ----
+// Built entirely in the page. The worker never sees the report: it leaves only
+// as an email the user sends, or text they paste, so the About page's 'never
+// the question itself' stays true. Same inbox as Format a list's report form.
+const REPORT_EMAIL = 'proofpositivefeedback@gmail.com';
+// mailto: links fail silently in some mail clients once they get long, so the
+// emailed copy shortens the answer. Copy report always carries the whole text.
+const EMAIL_ANSWER_LIMIT = 1200;
+let reportPages = [];
+let reportOpener = null;
+
+function openReport(btn) {
+    const msg = btn.closest('.msg-bot');
+    const data = reportData.get(msg) || { question: '', sources: {} };
+    reportPages = Object.keys(data.sources);
+    reportOpener = btn;
+    $('report-question').value = data.question;
+    $('report-answer').value = answerText(msg.querySelector('.msg-body'));
+    $('report-expected').value = '';
+    $('report-status').textContent = '';
+    $('report-modal').hidden = false;
+    $('report-expected').focus();
+}
+
+function closeReport() {
+    $('report-modal').hidden = true;
+    if (reportOpener) reportOpener.focus();
+}
+
+function buildReport(answerLimit) {
+    const v = id => $(id).value.trim();
+    let answer = v('report-answer') || '(none)';
+    if (answerLimit && answer.length > answerLimit) {
+        answer = answer.slice(0, answerLimit).trimEnd() +
+            '… (shortened for email. Use Copy report for the full answer.)';
+    }
+    return [
+        'Ask the Style Manual – question report',
+        '',
+        'MY QUESTION', v('report-question') || '(none)',
+        '',
+        'THE ANSWER I GOT', answer,
+        '',
+        'STYLE MANUAL PAGES IT USED',
+        reportPages.length ? reportPages.join('\n') : '(none – no guidance found)',
+        '',
+        'WHAT I WAS HOPING TO FIND', v('report-expected') || '(not filled in)',
+        '',
+        '---', 'When: ' + new Date().toISOString(), 'Browser: ' + navigator.userAgent
+    ].join('\n');
+}
+
+function emailReport() {
+    window.location.href = 'mailto:' + REPORT_EMAIL +
+        '?subject=' + encodeURIComponent('Ask the Style Manual – question report') +
+        '&body=' + encodeURIComponent(buildReport(EMAIL_ANSWER_LIMIT));
+    $('report-status').textContent = 'If no email opened, use Copy report and send it to ' +
+        REPORT_EMAIL + '.';
+}
+
+async function copyReport() {
+    $('report-status').textContent = await copyPlain(buildReport())
+        ? 'Report copied. Paste it into an email to ' + REPORT_EMAIL + '.'
+        : 'Couldn’t copy automatically. Select the text in the fields and copy it.';
+}
+
+$('report-email').addEventListener('click', emailReport);
+$('report-copy').addEventListener('click', copyReport);
+$('report-close').addEventListener('click', closeReport);
+$('report-modal').addEventListener('click', e => { if (e.target === $('report-modal')) closeReport(); });
+document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && !$('report-modal').hidden) closeReport();
+});
+
 async function ask(question) {
     question = (question || '').trim();
     if (!question) return;
@@ -376,7 +511,7 @@ async function ask(question) {
         history.push({ role: 'user', content: question });
         history.push({ role: 'assistant', content: check.text });
         if (history.length > 12) history.splice(0, history.length - 12);
-        addMsg('assistant', check.text, sources, check);
+        addMsg('assistant', check.text, sources, check, question);
     } catch (err) {
         $('ask-error').textContent = err.message;
         $('ask-error').hidden = false;
@@ -400,6 +535,8 @@ $('ask-input').addEventListener('keydown', e => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); ask($('ask-input').value); }
 });
 $('chat').addEventListener('click', e => {
+    const r = e.target.closest('[data-report]');
+    if (r) return openReport(r);
     const b = e.target.closest('[data-copy]');
     if (b) copyAnswer(b);
 });

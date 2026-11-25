@@ -137,6 +137,14 @@ function expandQuery(question) {
     return extra.trim();
 }
 
+// Which expansions fired, as short labels for the usage figures: the first
+// word of each entry's terms ('commas', 'ordinal', 'modal' …). Never any of
+// the question's own words.
+function expansionLabels(question) {
+    return EXPANSIONS.filter(([pattern]) => pattern.test(question))
+        .map(([, terms]) => terms.split(' ')[0]).join(' ');
+}
+
 // Match whole words, not substrings. Substring matching made 'act' hit
 // 'practice', 'contact' and 'characters', so the word was everywhere, counted
 // for nothing, and a question about Acts of parliament was answered from the
@@ -798,6 +806,8 @@ function refHost(value, self) {
  */
 function record(env, request, kind, name, outcome, uid, ref, topic) {
     try {
+        // topic is { page, words, hints } for an Ask call, absent otherwise.
+        const t = topic || {};
         const cf = request.cf || {};
         // Cloudflare caps the index at 96 bytes. Do not assume an organisation
         // name is short.
@@ -809,8 +819,15 @@ function record(env, request, kind, name, outcome, uid, ref, topic) {
             // is the same page the answer already shows the asker. Empty for
             // every other kind of row. Sliced for the same reason as the org.
             blobs: [kind, tagged, org, cf.country || '', cf.region || '',
-                    uid || '', ref || '', outcome, (topic || '').slice(0, 96)],
-            doubles: [1, cf.asn || 0],
+                    uid || '', ref || '', outcome, (t.page || '').slice(0, 96),
+                    // blob10 (25 November 2026): labels of the built-in query
+                    // expansions that fired, e.g. 'commas ordinal'. Our own
+                    // words, never the asker's. 'none' when none fired; empty
+                    // only on rows that are not Ask questions, or predate it.
+                    (t.hints || '').slice(0, 96)],
+            // double3 (25 November 2026): how many of the question's words
+            // were searchable. Only meaningful where blob9 is set.
+            doubles: [1, cf.asn || 0, t.words || 0],
             indexes: [org || 'unknown']
         });
     } catch {
@@ -921,10 +938,21 @@ export default {
         // The best-matching page, for blob9. '(no match)' is the valuable case:
         // it marks a question the corpus could not answer, which is the signal
         // worth having and the one no user text is needed to get.
-        let topic = '';
+        // Two more search diagnostics ride along (25 November 2026), still
+        // without any of the asker's words: how many words of the question
+        // were searchable (0 is the 'which or that' failure, where every word
+        // is a stopword), and which built-in expansions fired, by label.
+        let topic = { page: '' };
         if (spec.retrieval) {
             const sections = retrieveSections(userMsg);
-            topic = sections.length ? sections[0].s : '(no match)';
+            topic = {
+                page: sections.length ? sections[0].s : '(no match)',
+                words: tokenise(userMsg).length,
+                // 'none' rather than empty, so a reader can tell a new row
+                // (where double3 is real) from one recorded before this field
+                // existed, whose double3 would otherwise read as 0 words.
+                hints: expansionLabels(userMsg) || 'none'
+            };
             sources = {};
             for (const s of sections) sources[s.u] = s.t;
             const extracts = buildExtracts(sections);
